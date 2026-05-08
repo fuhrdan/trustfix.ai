@@ -34,4 +34,16 @@ class ContractorProfile extends Model
     {
         return $this->hasMany(ProfileClaim::class);
     }
+
+    public function contractorBadges()
+    {
+        return $this->hasMany(ContractorBadge::class);
+    }
+
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'contractor_badges')
+            ->withPivot(['assigned_by', 'assigned_at', 'admin_notes'])
+            ->withTimestamps();
+    }
 }

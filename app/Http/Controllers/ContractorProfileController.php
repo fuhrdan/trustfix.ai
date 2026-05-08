@@ -16,7 +16,7 @@ class ContractorProfileController extends Controller
             'status' => ['nullable', Rule::in(['approved'])],
         ]);
 
-        $query = ContractorProfile::with('user')
+        $query = ContractorProfile::with(['user', 'badges'])
             ->where('status', 'approved')
             ->where('is_public', true);
 
@@ -29,7 +29,7 @@ class ContractorProfileController extends Controller
 
     public function show($id)
     {
-        $profile = ContractorProfile::with('user')
+        $profile = ContractorProfile::with(['user', 'badges'])
             ->where('status', 'approved')
             ->where('is_public', true)
             ->findOrFail($id);
@@ -41,7 +41,9 @@ class ContractorProfileController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $profile = ContractorProfile::where('user_id', $user->id)->first();
+        $profile = ContractorProfile::with('badges')
+            ->where('user_id', $user->id)
+            ->first();
 
         return response()->json($profile);
     }
@@ -78,6 +80,6 @@ class ContractorProfileController extends Controller
             ]
         );
 
-        return response()->json($profile, 200);
+        return response()->json($profile->load('badges'), 200);
     }
 }

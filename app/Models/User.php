@@ -106,4 +106,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Document::class, 'reviewed_by');
     }
+
+    public function assignedContractorBadges()
+    {
+        return $this->hasMany(ContractorBadge::class, 'assigned_by');
+    }
 }
