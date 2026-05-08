@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('handyman_skills', function (Blueprint $table) {
             $table->id();
-	    $table->unsignedBigInteger('handyman_id');
-	    $table->unsignedBigInteger('skills_id');
-	    $table->unsignedBigInteger('proficiency_level');
+            $table->foreignId('handyman_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('skill_id')->constrained('skills')->cascadeOnDelete();
+            $table->unsignedTinyInteger('proficiency_level')->default(1);
             $table->timestamps();
+
+            $table->unique(['handyman_id', 'skill_id']);
         });
     }
 

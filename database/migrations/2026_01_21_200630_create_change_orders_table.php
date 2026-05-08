@@ -17,12 +17,15 @@ return new class extends Migration
     {
         Schema::create('change_orders', function (Blueprint $table) {
             $table->id();
-	    $table->unsignedBigInteger('job_id');
-	    $table->enum('requested_by', ['customer','handyman']);
-	    $table->text('description');
-	    $table->decimal('price_delta', 10, 2);
-	    $table->enum('status', ['pending','approved','rejected'])->default('pending');
+            $table->foreignId('job_id')->constrained('jobs')->cascadeOnDelete();
+            $table->enum('requested_by', ['customer', 'handyman']);
+            $table->text('description');
+            $table->decimal('price_delta', 10, 2);
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
+
+            $table->index('status');
+            $table->index(['job_id', 'status']);
         });
     }
 
