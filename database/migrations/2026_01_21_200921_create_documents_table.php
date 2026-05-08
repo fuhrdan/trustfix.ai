@@ -19,11 +19,17 @@ return new class extends Migration
             $table->foreignId('handyman_id')->constrained('users')->cascadeOnDelete();
             $table->string('file_path');
             $table->string('type');
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->boolean('verified')->default(false);
+            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->text('admin_notes')->nullable();
             $table->timestamps();
 
             $table->index(['handyman_id', 'type']);
+            $table->index('status');
             $table->index('verified');
+            $table->index('reviewed_by');
         });
     }
 

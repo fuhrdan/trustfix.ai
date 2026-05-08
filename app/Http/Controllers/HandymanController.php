@@ -72,6 +72,8 @@ class HandymanController extends Controller
         $document = $user->documents()->create([
             'file_path' => $path,
             'type' => $validated['type'],
+            'status' => 'pending',
+            'verified' => false,
         ]);
 
         return response()->json($document, 201);
