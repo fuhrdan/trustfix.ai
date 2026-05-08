@@ -8,6 +8,7 @@
 //*****************************************************************************
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::get('/contractors', [ContractorProfileController::class, 'index']);
+Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
 
 // Protected routes
 Route::middleware(['auth:api'])->group(function () {
@@ -27,6 +31,10 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/handyman/profile', [HandymanController::class, 'updateProfile']);
         Route::post('/handyman/skills', [HandymanController::class, 'updateSkills']);
         Route::post('/handyman/documents', [HandymanController::class, 'uploadDocument']);
+
+        Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
+        Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
+
         Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
     });
 

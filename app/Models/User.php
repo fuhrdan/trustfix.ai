@@ -86,4 +86,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Job::class, 'handyman_id');
     }
+
+    public function contractorProfile()
+    {
+        return $this->hasOne(ContractorProfile::class);
+    }
 }
