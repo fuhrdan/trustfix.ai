@@ -7,6 +7,7 @@
 //** APIs connect earth to sky
 //*****************************************************************************
 
+use App\Http\Controllers\AdminBadgeController;
 use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContractorProfileController;
@@ -60,5 +61,10 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/admin/documents/pending', [AdminDocumentController::class, 'pending']);
         Route::get('/admin/documents/{id}', [AdminDocumentController::class, 'show']);
         Route::post('/admin/documents/{id}/status', [AdminDocumentController::class, 'updateStatus']);
+
+        Route::get('/admin/badges', [AdminBadgeController::class, 'index']);
+        Route::post('/admin/badges', [AdminBadgeController::class, 'store']);
+        Route::post('/admin/contractors/{id}/badges', [AdminBadgeController::class, 'assign']);
+        Route::delete('/admin/contractors/{contractorProfileId}/badges/{badgeId}', [AdminBadgeController::class, 'remove']);
     });
 });
