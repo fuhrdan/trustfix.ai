@@ -10,6 +10,7 @@
 use App\Http\Controllers\AdminBadgeController;
 use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChangeOrderController;
 use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
@@ -29,6 +30,12 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
+    Route::get('/jobs/my', [JobController::class, 'myJobs']);
+    Route::get('/jobs/{id}', [JobController::class, 'show']);
+
+    Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
+    Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
+
     Route::middleware(['role:handyman'])->group(function () {
         Route::get('/handyman/profile', [HandymanController::class, 'profile']);
         Route::post('/handyman/profile', [HandymanController::class, 'updateProfile']);
@@ -42,11 +49,14 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/profile-claims/my', [ProfileClaimController::class, 'myClaims']);
 
         Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
+        Route::post('/jobs/{id}/start', [JobController::class, 'startJob']);
+        Route::post('/jobs/{id}/complete', [JobController::class, 'completeJob']);
     });
 
     Route::middleware(['role:customer,company'])->group(function () {
         Route::post('/jobs', [JobController::class, 'postJob']);
         Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
+        Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
     });
 
     Route::middleware(['role:customer,handyman,company'])->group(function () {

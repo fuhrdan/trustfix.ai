@@ -15,6 +15,38 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
+    public function myJobs()
+    {
+        $user = Auth::guard('api')->user();
+
+        $query = Job::with(['customer', 'handyman', 'changeOrders']);
+
+        if ($user->role === 'handyman') {
+            $query->where('handyman_id', $user->id);
+        } else {
+            $query->where('customer_id', $user->id);
+        }
+
+        return response()->json($query->latest()->get());
+    }
+
+    public function show($id)
+    {
+        $user = Auth::guard('api')->user();
+
+        $job = Job::with(['customer', 'handyman', 'changeOrders'])->findOrFail($id);
+
+        $isCustomer = $job->customer_id === $user->id;
+        $isAssignedHandyman = $job->handyman_id === $user->id;
+        $isAdmin = $user->role === 'admin';
+
+        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json($job);
+    }
+
     // Customer posts a job
     public function postJob(Request $request)
     {
@@ -28,6 +60,7 @@ class JobController extends Controller
 
         $job = Job::create([
             'customer_id' => Auth::guard('api')->id(),
+            'status' => 'posted',
             'address' => $validated['address'],
             'lat' => $validated['lat'],
             'lng' => $validated['lng'],
@@ -72,9 +105,73 @@ class JobController extends Controller
             return response()->json(['error' => 'Already assigned'], 409);
         }
 
+        if (!in_array($job->status, ['posted', 'requested'], true)) {
+            return response()->json(['error' => 'Job is not available'], 409);
+        }
+
         $job->handyman_id = $user->id;
         $job->status = 'accepted';
         $job->save();
+
+        return response()->json($job);
+    }
+
+    public function startJob($id)
+    {
+        $user = Auth::guard('api')->user();
+        $job = Job::findOrFail($id);
+
+        if ($job->handyman_id !== $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        if ($job->status !== 'accepted') {
+            return response()->json(['error' => 'Job must be accepted before it can start'], 409);
+        }
+
+        $job->update([
+            'status' => 'in_progress',
+        ]);
+
+        return response()->json($job);
+    }
+
+    public function completeJob($id)
+    {
+        $user = Auth::guard('api')->user();
+        $job = Job::findOrFail($id);
+
+        if ($job->handyman_id !== $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        if ($job->status !== 'in_progress') {
+            return response()->json(['error' => 'Job must be in progress before completion'], 409);
+        }
+
+        $job->update([
+            'status' => 'completed',
+        ]);
+
+        return response()->json($job);
+    }
+
+    public function cancelJob($id)
+    {
+        $user = Auth::guard('api')->user();
+        $job = Job::findOrFail($id);
+
+        if ($job->customer_id !== $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        if (in_array($job->status, ['completed', 'cancelled'], true)) {
+            return response()->json(['error' => 'Job cannot be cancelled'], 409);
+        }
+
+        $job->update([
+            'status' => 'cancelled',
+        ]);
 
         return response()->json($job);
     }
@@ -102,8 +199,9 @@ class JobController extends Controller
 
         $isCustomer = $job->customer_id === $user->id;
         $isAssignedHandyman = $job->handyman_id === $user->id;
+        $isAdmin = $user->role === 'admin';
 
-        if (!$isCustomer && !$isAssignedHandyman) {
+        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 

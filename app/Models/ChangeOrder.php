@@ -14,6 +14,10 @@ class ChangeOrder extends Model
         'status',
     ];
 
+    protected $casts = [
+        'price_delta' => 'decimal:2',
+    ];
+
     public function job()
     {
         return $this->belongsTo(Job::class);
