@@ -65,13 +65,14 @@ class JobController extends Controller
     // Handyman accepts job
     public function acceptJob($id)
     {
+        $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
 
         if ($job->handyman_id) {
             return response()->json(['error' => 'Already assigned'], 409);
         }
 
-        $job->handyman_id = Auth::guard('api')->id();
+        $job->handyman_id = $user->id;
         $job->status = 'accepted';
         $job->save();
 
@@ -96,7 +97,16 @@ class JobController extends Controller
             ],
         ]);
 
+        $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
+
+        $isCustomer = $job->customer_id === $user->id;
+        $isAssignedHandyman = $job->handyman_id === $user->id;
+
+        if (!$isCustomer && !$isAssignedHandyman) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
         $job->status = $validated['status'];
         $job->save();
 
