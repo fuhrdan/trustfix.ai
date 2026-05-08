@@ -101,4 +101,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(ProfileClaim::class, 'reviewed_by');
     }
+
+    public function reviewedDocuments()
+    {
+        return $this->hasMany(Document::class, 'reviewed_by');
+    }
 }

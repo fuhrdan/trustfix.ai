@@ -7,6 +7,7 @@
 //** APIs connect earth to sky
 //*****************************************************************************
 
+use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\HandymanController;
@@ -54,5 +55,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin/profile-claims/pending', [ProfileClaimController::class, 'pending']);
         Route::post('/admin/profile-claims/{id}/status', [ProfileClaimController::class, 'updateStatus']);
+
+        Route::get('/admin/documents', [AdminDocumentController::class, 'index']);
+        Route::get('/admin/documents/pending', [AdminDocumentController::class, 'pending']);
+        Route::get('/admin/documents/{id}', [AdminDocumentController::class, 'show']);
+        Route::post('/admin/documents/{id}/status', [AdminDocumentController::class, 'updateStatus']);
     });
 });
