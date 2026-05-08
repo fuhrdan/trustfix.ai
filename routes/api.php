@@ -22,13 +22,20 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
-    Route::get('/handyman/profile', [HandymanController::class, 'profile']);
-    Route::post('/handyman/profile', [HandymanController::class, 'updateProfile']);
-    Route::post('/handyman/skills', [HandymanController::class, 'updateSkills']);
-    Route::post('/handyman/documents', [HandymanController::class, 'uploadDocument']);
+    Route::middleware(['role:handyman'])->group(function () {
+        Route::get('/handyman/profile', [HandymanController::class, 'profile']);
+        Route::post('/handyman/profile', [HandymanController::class, 'updateProfile']);
+        Route::post('/handyman/skills', [HandymanController::class, 'updateSkills']);
+        Route::post('/handyman/documents', [HandymanController::class, 'uploadDocument']);
+        Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
+    });
 
-    Route::post('/jobs', [JobController::class, 'postJob']);
-    Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
-    Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
-    Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
+    Route::middleware(['role:customer,company'])->group(function () {
+        Route::post('/jobs', [JobController::class, 'postJob']);
+        Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
+    });
+
+    Route::middleware(['role:customer,handyman,company'])->group(function () {
+        Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
+    });
 });
