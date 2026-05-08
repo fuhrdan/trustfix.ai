@@ -17,6 +17,12 @@ class Job extends Model
         'agreed_price',
     ];
 
+    protected $casts = [
+        'lat' => 'decimal:7',
+        'lng' => 'decimal:7',
+        'agreed_price' => 'decimal:2',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(User::class, 'customer_id');
