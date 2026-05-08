@@ -16,11 +16,14 @@ return new class extends Migration
     {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
-	    $table->unsignedBigInteger('handyman_id');
-	    $table->string('file_path');
-	    $table->string('type');
-	    $table->boolean('verified')->default(false);
+            $table->foreignId('handyman_id')->constrained('users')->cascadeOnDelete();
+            $table->string('file_path');
+            $table->string('type');
+            $table->boolean('verified')->default(false);
             $table->timestamps();
+
+            $table->index(['handyman_id', 'type']);
+            $table->index('verified');
         });
     }
 
