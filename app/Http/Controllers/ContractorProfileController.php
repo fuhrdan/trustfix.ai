@@ -12,19 +12,59 @@ class ContractorProfileController extends Controller
     public function index(Request $request)
     {
         $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
             'service_area' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['approved'])],
+            'badge' => ['nullable', 'string', 'max:100'],
+            'min_years_experience' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'experience_high', 'experience_low', 'business_name'])],
         ]);
 
         $query = ContractorProfile::with(['user', 'badges'])
             ->where('status', 'approved')
             ->where('is_public', true);
 
+        if (!empty($validated['q'])) {
+            $search = $validated['q'];
+
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('business_name', 'like', '%' . $search . '%')
+                    ->orWhere('bio', 'like', '%' . $search . '%')
+                    ->orWhere('service_area', 'like', '%' . $search . '%')
+                    ->orWhere('license_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
         if (!empty($validated['service_area'])) {
             $query->where('service_area', 'like', '%' . $validated['service_area'] . '%');
         }
 
-        return response()->json($query->latest()->get());
+        if (!empty($validated['badge'])) {
+            $badge = $validated['badge'];
+
+            $query->whereHas('badges', function ($badgeQuery) use ($badge) {
+                $badgeQuery->where('slug', $badge)
+                    ->orWhere('name', 'like', '%' . $badge . '%');
+            });
+        }
+
+        if (array_key_exists('min_years_experience', $validated)) {
+            $query->where('years_experience', '>=', $validated['min_years_experience']);
+        }
+
+        $sort = $validated['sort'] ?? 'newest';
+
+        match ($sort) {
+            'oldest' => $query->oldest(),
+            'experience_high' => $query->orderByDesc('years_experience'),
+            'experience_low' => $query->orderBy('years_experience'),
+            'business_name' => $query->orderBy('business_name'),
+            default => $query->latest(),
+        };
+
+        return response()->json($query->paginate(20));
     }
 
     public function show($id)
