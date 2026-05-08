@@ -29,4 +29,9 @@ class ContractorProfile extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function claims()
+    {
+        return $this->hasMany(ProfileClaim::class);
+    }
 }
