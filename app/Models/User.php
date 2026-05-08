@@ -91,4 +91,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(ContractorProfile::class);
     }
+
+    public function profileClaims()
+    {
+        return $this->hasMany(ProfileClaim::class, 'claimant_user_id');
+    }
+
+    public function reviewedProfileClaims()
+    {
+        return $this->hasMany(ProfileClaim::class, 'reviewed_by');
+    }
 }

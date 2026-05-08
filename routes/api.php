@@ -11,6 +11,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\ProfileClaimController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -35,6 +36,9 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
         Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
 
+        Route::post('/contractors/{id}/claim', [ProfileClaimController::class, 'store']);
+        Route::get('/profile-claims/my', [ProfileClaimController::class, 'myClaims']);
+
         Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
     });
 
@@ -45,5 +49,10 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::middleware(['role:customer,handyman,company'])->group(function () {
         Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
+    });
+
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/admin/profile-claims/pending', [ProfileClaimController::class, 'pending']);
+        Route::post('/admin/profile-claims/{id}/status', [ProfileClaimController::class, 'updateStatus']);
     });
 });
