@@ -8,6 +8,7 @@
 //*****************************************************************************
 
 use App\Http\Controllers\AdminBadgeController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChangeOrderController;
@@ -76,6 +77,12 @@ Route::middleware(['auth:api'])->group(function () {
     });
 
     Route::middleware(['role:admin'])->group(function () {
+        Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
+        Route::get('/admin/dashboard/activity', [AdminDashboardController::class, 'activity']);
+        Route::get('/admin/users', [AdminDashboardController::class, 'users']);
+        Route::get('/admin/contractors', [AdminDashboardController::class, 'contractors']);
+        Route::get('/admin/jobs', [AdminDashboardController::class, 'jobs']);
+
         Route::get('/admin/profile-claims/pending', [ProfileClaimController::class, 'pending']);
         Route::post('/admin/profile-claims/{id}/status', [ProfileClaimController::class, 'updateStatus']);
 
