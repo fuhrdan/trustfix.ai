@@ -111,4 +111,19 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(ContractorBadge::class, 'assigned_by');
     }
+
+    public function customerReviews()
+    {
+        return $this->hasMany(Review::class, 'customer_id');
+    }
+
+    public function handymanReviews()
+    {
+        return $this->hasMany(Review::class, 'handyman_id');
+    }
+
+    public function moderatedReviews()
+    {
+        return $this->hasMany(Review::class, 'moderated_by');
+    }
 }

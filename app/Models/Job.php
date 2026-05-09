@@ -37,4 +37,9 @@ class Job extends Model
     {
         return $this->hasMany(ChangeOrder::class);
     }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
 }

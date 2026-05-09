@@ -15,6 +15,7 @@ use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\ProfileClaimController;
+use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -23,6 +24,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
+Route::get('/contractors/{id}/reviews', [ReviewController::class, 'contractorReviews']);
 
 // Protected routes
 Route::middleware(['auth:api'])->group(function () {
@@ -57,6 +59,8 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/jobs', [JobController::class, 'postJob']);
         Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
         Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
+        Route::post('/jobs/{id}/review', [ReviewController::class, 'store']);
+        Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
     });
 
     Route::middleware(['role:customer,handyman,company'])->group(function () {
@@ -76,5 +80,8 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/admin/badges', [AdminBadgeController::class, 'store']);
         Route::post('/admin/contractors/{id}/badges', [AdminBadgeController::class, 'assign']);
         Route::delete('/admin/contractors/{contractorProfileId}/badges/{badgeId}', [AdminBadgeController::class, 'remove']);
+
+        Route::get('/admin/reviews', [ReviewController::class, 'adminIndex']);
+        Route::post('/admin/reviews/{id}/visibility', [ReviewController::class, 'adminUpdateVisibility']);
     });
 });

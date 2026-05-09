@@ -46,4 +46,14 @@ class ContractorProfile extends Model
             ->withPivot(['assigned_by', 'assigned_at', 'admin_notes'])
             ->withTimestamps();
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function visibleReviews()
+    {
+        return $this->hasMany(Review::class)->where('is_visible', true);
+    }
 }
