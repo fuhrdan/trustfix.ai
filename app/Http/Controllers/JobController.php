@@ -19,7 +19,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $query = Job::with(['customer', 'handyman', 'changeOrders']);
+        $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes']);
 
         if ($user->role === 'handyman') {
             $query->where('handyman_id', $user->id);
@@ -34,7 +34,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'changeOrders'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports'])->findOrFail($id);
 
         $isCustomer = $job->customer_id === $user->id;
         $isAssignedHandyman = $job->handyman_id === $user->id;
@@ -190,6 +190,7 @@ class JobController extends Controller
                     'change_requested',
                     'completed',
                     'cancelled',
+                    'disputed',
                 ]),
             ],
         ]);

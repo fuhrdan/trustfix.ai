@@ -56,4 +56,9 @@ class ContractorProfile extends Model
     {
         return $this->hasMany(Review::class)->where('is_visible', true);
     }
+
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
+    }
 }

@@ -24,10 +24,16 @@ return new class extends Migration
             $table->foreignId('company_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('phone')->nullable();
             $table->string('address')->nullable();
+            $table->enum('account_status', ['active', 'suspended', 'banned'])->default('active');
+            $table->timestamp('suspended_at')->nullable();
+            $table->foreignId('suspended_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('suspension_reason')->nullable();
             $table->timestamps();
 
             $table->index('role');
             $table->index('company_id');
+            $table->index('account_status');
+            $table->index('suspended_by');
         });
     }
 

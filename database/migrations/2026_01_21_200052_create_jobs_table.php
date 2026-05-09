@@ -23,6 +23,7 @@ return new class extends Migration
                 'change_requested',
                 'completed',
                 'cancelled',
+                'disputed',
             ])->default('posted');
             $table->string('address');
             $table->decimal('lat', 10, 7);

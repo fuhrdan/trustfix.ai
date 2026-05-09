@@ -12,9 +12,11 @@ use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChangeOrderController;
 use App\Http\Controllers\ContractorProfileController;
+use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\ProfileClaimController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +39,12 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
     Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
+
+    Route::post('/reports', [ReportController::class, 'store']);
+    Route::get('/reports/my', [ReportController::class, 'myReports']);
+
+    Route::post('/jobs/{id}/disputes', [DisputeController::class, 'store']);
+    Route::get('/disputes/my', [DisputeController::class, 'myDisputes']);
 
     Route::middleware(['role:handyman'])->group(function () {
         Route::get('/handyman/profile', [HandymanController::class, 'profile']);
@@ -83,5 +91,13 @@ Route::middleware(['auth:api'])->group(function () {
 
         Route::get('/admin/reviews', [ReviewController::class, 'adminIndex']);
         Route::post('/admin/reviews/{id}/visibility', [ReviewController::class, 'adminUpdateVisibility']);
+
+        Route::get('/admin/reports', [ReportController::class, 'adminIndex']);
+        Route::post('/admin/reports/{id}/status', [ReportController::class, 'adminUpdateStatus']);
+        Route::post('/admin/users/{id}/account-status', [ReportController::class, 'adminSuspendUser']);
+        Route::post('/admin/contractor-profiles/{id}/status', [ReportController::class, 'adminUpdateContractorProfileStatus']);
+
+        Route::get('/admin/disputes', [DisputeController::class, 'adminIndex']);
+        Route::post('/admin/disputes/{id}/status', [DisputeController::class, 'adminUpdateStatus']);
     });
 });
