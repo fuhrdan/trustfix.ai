@@ -42,4 +42,14 @@ class Job extends Model
     {
         return $this->hasOne(Review::class);
     }
+
+    public function disputes()
+    {
+        return $this->hasMany(Dispute::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
+    }
 }
