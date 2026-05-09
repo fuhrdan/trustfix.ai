@@ -16,10 +16,15 @@ class ContractorProfileController extends Controller
             'service_area' => ['nullable', 'string', 'max:255'],
             'badge' => ['nullable', 'string', 'max:100'],
             'min_years_experience' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'experience_high', 'experience_low', 'business_name'])],
+            'min_rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
+            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'experience_high', 'experience_low', 'business_name', 'rating_high'])],
         ]);
 
         $query = ContractorProfile::with(['user', 'badges'])
+            ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
+                $reviewQuery->where('is_visible', true);
+            }], 'rating')
+            ->withCount(['visibleReviews as review_count'])
             ->where('status', 'approved')
             ->where('is_public', true);
 
@@ -54,6 +59,10 @@ class ContractorProfileController extends Controller
             $query->where('years_experience', '>=', $validated['min_years_experience']);
         }
 
+        if (!empty($validated['min_rating'])) {
+            $query->having('average_rating', '>=', $validated['min_rating']);
+        }
+
         $sort = $validated['sort'] ?? 'newest';
 
         match ($sort) {
@@ -61,6 +70,7 @@ class ContractorProfileController extends Controller
             'experience_high' => $query->orderByDesc('years_experience'),
             'experience_low' => $query->orderBy('years_experience'),
             'business_name' => $query->orderBy('business_name'),
+            'rating_high' => $query->orderByDesc('average_rating'),
             default => $query->latest(),
         };
 
@@ -69,7 +79,11 @@ class ContractorProfileController extends Controller
 
     public function show($id)
     {
-        $profile = ContractorProfile::with(['user', 'badges'])
+        $profile = ContractorProfile::with(['user', 'badges', 'visibleReviews.customer'])
+            ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
+                $reviewQuery->where('is_visible', true);
+            }], 'rating')
+            ->withCount(['visibleReviews as review_count'])
             ->where('status', 'approved')
             ->where('is_public', true)
             ->findOrFail($id);
@@ -82,6 +96,10 @@ class ContractorProfileController extends Controller
         $user = Auth::guard('api')->user();
 
         $profile = ContractorProfile::with('badges')
+            ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
+                $reviewQuery->where('is_visible', true);
+            }], 'rating')
+            ->withCount(['visibleReviews as review_count'])
             ->where('user_id', $user->id)
             ->first();
 
