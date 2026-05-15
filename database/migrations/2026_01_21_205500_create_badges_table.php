@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('handyman_skills', function (Blueprint $table) {
+        Schema::create('badges', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('handyman_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('skill_id')->constrained('skills')->cascadeOnDelete();
-            $table->unsignedTinyInteger('proficiency_level')->default(1);
+            $table->string('name')->unique();
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->unique(['handyman_id', 'skill_id']);
+            $table->index('is_active');
         });
     }
 
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('handyman_skills');
+        Schema::dropIfExists('badges');
     }
 };

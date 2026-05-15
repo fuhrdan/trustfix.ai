@@ -17,6 +17,12 @@ class Job extends Model
         'agreed_price',
     ];
 
+    protected $casts = [
+        'lat' => 'decimal:7',
+        'lng' => 'decimal:7',
+        'agreed_price' => 'decimal:2',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(User::class, 'customer_id');
@@ -30,5 +36,20 @@ class Job extends Model
     public function changeOrders()
     {
         return $this->hasMany(ChangeOrder::class);
+    }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
+
+    public function disputes()
+    {
+        return $this->hasMany(Dispute::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
     }
 }

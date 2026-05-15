@@ -31,6 +31,10 @@ class User extends Authenticatable implements JWTSubject
         'company_id',
         'phone',
         'address',
+        'account_status',
+        'suspended_at',
+        'suspended_by',
+        'suspension_reason',
     ];
 
     /**
@@ -52,6 +56,7 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'suspended_at' => 'datetime',
         ];
     }
 
@@ -85,5 +90,80 @@ class User extends Authenticatable implements JWTSubject
     public function handymanJobs()
     {
         return $this->hasMany(Job::class, 'handyman_id');
+    }
+
+    public function contractorProfile()
+    {
+        return $this->hasOne(ContractorProfile::class);
+    }
+
+    public function profileClaims()
+    {
+        return $this->hasMany(ProfileClaim::class, 'claimant_user_id');
+    }
+
+    public function reviewedProfileClaims()
+    {
+        return $this->hasMany(ProfileClaim::class, 'reviewed_by');
+    }
+
+    public function reviewedDocuments()
+    {
+        return $this->hasMany(Document::class, 'reviewed_by');
+    }
+
+    public function assignedContractorBadges()
+    {
+        return $this->hasMany(ContractorBadge::class, 'assigned_by');
+    }
+
+    public function customerReviews()
+    {
+        return $this->hasMany(Review::class, 'customer_id');
+    }
+
+    public function handymanReviews()
+    {
+        return $this->hasMany(Review::class, 'handyman_id');
+    }
+
+    public function moderatedReviews()
+    {
+        return $this->hasMany(Review::class, 'moderated_by');
+    }
+
+    public function reportsMade()
+    {
+        return $this->hasMany(Report::class, 'reporter_id');
+    }
+
+    public function reportsReceived()
+    {
+        return $this->hasMany(Report::class, 'reported_user_id');
+    }
+
+    public function reviewedReports()
+    {
+        return $this->hasMany(Report::class, 'reviewed_by');
+    }
+
+    public function disputesOpened()
+    {
+        return $this->hasMany(Dispute::class, 'opened_by');
+    }
+
+    public function disputesResolved()
+    {
+        return $this->hasMany(Dispute::class, 'resolved_by');
+    }
+
+    public function suspendedUsers()
+    {
+        return $this->hasMany(User::class, 'suspended_by');
+    }
+
+    public function suspendedBy()
+    {
+        return $this->belongsTo(User::class, 'suspended_by');
     }
 }
