@@ -5,6 +5,7 @@
 //** Each click a story the system will hold.
 //** A heartbeat of data in logic and soul. -Dan
 //*****************************************************************************
+
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -31,6 +32,8 @@ class User extends Authenticatable implements JWTSubject
         'company_id',
         'phone',
         'address',
+        'lat',
+        'lng',
         'account_status',
         'suspended_at',
         'suspended_by',
