@@ -10,8 +10,8 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 // use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Notifications\Notifiable;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -27,10 +27,10 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
-	'role',
-	'company_id',
-	'phone',
-	'address'
+        'role',
+        'company_id',
+        'phone',
+        'address',
     ];
 
     /**
@@ -57,24 +57,33 @@ class User extends Authenticatable implements JWTSubject
 
     public function getJWTIdentifier()
     {
-	return $this->getKey();
+        return $this->getKey();
     }
 
     public function getJWTCustomClaims()
     {
-	return [
-	    'role' => $this->role
-	];
+        return [
+            'role' => $this->role,
+        ];
     }
 
     public function skills()
     {
-	return $this->hasMany(HandymanSkill::class, 'handyman_id');
+        return $this->hasMany(HandymanSkill::class, 'handyman_id');
     }
 
     public function documents()
     {
-	return $this->hasMany(Document::class, 'handyman_id');
+        return $this->hasMany(Document::class, 'handyman_id');
+    }
+
+    public function customerJobs()
+    {
+        return $this->hasMany(Job::class, 'customer_id');
+    }
+
+    public function handymanJobs()
+    {
+        return $this->hasMany(Job::class, 'handyman_id');
     }
 }
-
