@@ -36,6 +36,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
+    Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
@@ -66,7 +67,6 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::middleware(['role:customer,company'])->group(function () {
         Route::post('/jobs', [JobController::class, 'postJob']);
-        Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
         Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
         Route::post('/jobs/{id}/review', [ReviewController::class, 'store']);
         Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
