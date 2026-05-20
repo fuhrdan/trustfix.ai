@@ -27,9 +27,13 @@ function apiRequest($method, $endpoint, $data = null)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
     $headers = [
-        'Content-Type: application/json'
+        'Content-Type: application/json',
+        'Accept: application/json'
     ];
 
     if (!empty($jwtToken)) {
@@ -51,8 +55,7 @@ function apiRequest($method, $endpoint, $data = null)
 
     $response = curl_exec($ch);
 
-    if (curl_errno($ch)) {
-
+    if ($response === false) {
         die(
             'Curl Error: ' .
             curl_error($ch)

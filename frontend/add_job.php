@@ -1,5 +1,8 @@
 <?php
 require 'config.php';
+
+requireLogin();
+
 include 'header.php';
 
 $message = '';
