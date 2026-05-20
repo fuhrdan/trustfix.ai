@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TrustFix Test UI</title>
+</head>
+<body>
+
+<h1>Contractors</h1>
+<button onclick="load()">Load Contractors</button>
+
+<pre id="out"></pre>
+
+<script>
+async function load()
+{
+    const res = await fetch('https://api.lakehousesoftware.com/api/contractors');
+    const data = await res.json();
+
+    document.getElementById('out').textContent =
+        JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
