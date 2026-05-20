@@ -1,0 +1,82 @@
+<?php
+
+session_start();
+
+$apiBase =
+'https://api.lakehousesoftware.com/api';
+
+$jwtToken =
+$_SESSION['jwt_token'] ?? '';
+
+function requireLogin()
+{
+    if (empty($_SESSION['jwt_token'])) {
+
+        header('Location: login.php');
+        exit;
+    }
+}
+
+function apiRequest($method, $endpoint, $data = null)
+{
+    global $apiBase, $jwtToken;
+
+    $url = $apiBase . $endpoint;
+
+    echo "API URL: " . $url . "<br>";
+
+    $ch = curl_init($url);
+
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $headers = [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ];
+
+    if (!empty($jwtToken)) {
+
+        $headers[] =
+            'Authorization: Bearer ' . $jwtToken;
+    }
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    if ($data !== null) {
+
+        curl_setopt(
+            $ch,
+            CURLOPT_POSTFIELDS,
+            json_encode($data)
+        );
+    }
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+
+        die(
+            'CURL ERROR: ' .
+            curl_error($ch)
+        );
+    }
+
+    $httpCode =
+        curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    echo "HTTP CODE: " . $httpCode . "<br>";
+
+    curl_close($ch);
+
+    echo "<pre>";
+    print_r($response);
+    echo "</pre>";
+
+    return json_decode($response, true);
+}

@@ -26,6 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload
     );
 
+// Find the erorr <sic>    
+echo "<pre>";
+print_r($result);
+echo "</pre>";
+exit;
+
     if (!empty($result['token'])) {
 
         $_SESSION['jwt_token'] = $result['token'];
