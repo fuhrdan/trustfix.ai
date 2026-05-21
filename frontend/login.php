@@ -10,6 +10,7 @@ if (!empty($_SESSION['jwt_token'])) {
 
 $error = '';
 
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $payload = [

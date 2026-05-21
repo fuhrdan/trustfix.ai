@@ -1,4 +1,9 @@
 <?php
+// Chocolate Martini Recipe
+// 2 Shots Vodka
+// 2 Shots Chocolate Liquer (Mozart Chocolate Creme)
+// 2 Shots Baily's
+// Shake in Shaker and serve in Martini Glass
 
 require 'config.php';
 
@@ -6,7 +11,14 @@ requireLogin();
 
 include 'header.php';
 
-$user = $_SESSION['user'] ?? [];
+// Trying something here
+// $user = $_SESSION['user'] ?? [];
+
+$user = apiRequest(
+    'GET',
+    '/me'
+);
+
 ?>
 
 <h1>Dashboard</h1>
@@ -49,6 +61,13 @@ $user = $_SESSION['user'] ?? [];
         <a href="list_contractors.php">
             View Contractors
         </a>
+
+        <br><br>
+
+        <a href="edit_contractor_profile.php">
+            Edit Contractors
+        </a>
+
     </div>
 
     <div

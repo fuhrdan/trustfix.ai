@@ -32,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 //echo "</pre>";
 //exit;
 
+session_start();
+
     if (!empty($result['token'])) {
 
         $_SESSION['jwt_token'] = $result['token'];

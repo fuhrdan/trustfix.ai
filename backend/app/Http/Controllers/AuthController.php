@@ -12,6 +12,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeMail;
 
 class AuthController extends Controller
 {
@@ -36,6 +38,10 @@ class AuthController extends Controller
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
         ]);
+        
+        Mail::to($user->email)->send(
+            new WelcomeMail($user)
+            );
 
         $token = auth('api')->login($user);
 
