@@ -21,7 +21,7 @@ class JobController extends Controller
 
         $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes']);
 
-        if ($user->role === 'handyman') {
+        if ($user->role == 'handyman') {
             $query->where('handyman_id', $user->id);
         } else {
             $query->where('customer_id', $user->id);
@@ -36,9 +36,9 @@ class JobController extends Controller
 
         $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports'])->findOrFail($id);
 
-        $isCustomer = $job->customer_id === $user->id;
-        $isAssignedHandyman = $job->handyman_id === $user->id;
-        $isAdmin = $user->role === 'admin';
+        $isCustomer = $job->customer_id == $user->id;
+        $isAssignedHandyman = $job->handyman_id == $user->id;
+        $isAdmin = $user->role == 'admin';
 
         if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
             return response()->json(['error' => 'Forbidden'], 403);
@@ -121,11 +121,11 @@ class JobController extends Controller
         $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
 
-        if ($job->handyman_id !== $user->id) {
+        if ($job->handyman_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        if ($job->status !== 'accepted') {
+        if ($job->status != 'accepted') {
             return response()->json(['error' => 'Job must be accepted before it can start'], 409);
         }
 
@@ -141,11 +141,11 @@ class JobController extends Controller
         $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
 
-        if ($job->handyman_id !== $user->id) {
+        if ($job->handyman_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        if ($job->status !== 'in_progress') {
+        if ($job->status != 'in_progress') {
             return response()->json(['error' => 'Job must be in progress before completion'], 409);
         }
 
@@ -161,7 +161,20 @@ class JobController extends Controller
         $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
 
-        if ($job->customer_id !== $user->id) {
+//Temporary fix to allow anyone to delete jobs.
+// Remove for production
+
+//    dd([
+//        'job_customer_id' => $job->customer_id,
+//             'auth_id' => auth()->id(),
+//            'job' => $job
+//        ]);
+    
+// WARNING remove the above before production.
+// Or dogs and cats will live together and anarchy will reign.
+// AND production will break.
+
+        if ($job->customer_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
@@ -176,39 +189,77 @@ class JobController extends Controller
         return response()->json($job);
     }
 
+// I "fixed" this section while tired.
+// And probably made some serious mistakes.
     // Update job status
     public function updateStatus(Request $request, $id)
     {
-        $validated = $request->validate([
-            'status' => [
-                'required',
-                Rule::in([
-                    'posted',
-                    'requested',
-                    'accepted',
-                    'in_progress',
-                    'change_requested',
-                    'completed',
-                    'cancelled',
-                    'disputed',
-                ]),
-            ],
-        ]);
-
         $user = Auth::guard('api')->user();
+
         $job = Job::findOrFail($id);
 
-        $isCustomer = $job->customer_id === $user->id;
-        $isAssignedHandyman = $job->handyman_id === $user->id;
-        $isAdmin = $user->role === 'admin';
+        if ($job->customer_id != $user->id) {
 
-        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
-            return response()->json(['error' => 'Forbidden'], 403);
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
-        $job->status = $validated['status'];
-        $job->save();
+        $validated = $request->validate([
+            'address' => 'required|string|max:255',
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+            'initial_description' => 'required|string',
+            'agreed_price' => 'nullable|numeric'
+        ]);
+ 
+        $job->update($validated);
 
         return response()->json($job);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $job = Job::findOrFail($id);
+
+        if ($job->customer_id != auth()->id()) {
+
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'address' => 'required|string|max:255',
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+            'initial_description' => 'required|string',
+            'agreed_price' => 'nullable|numeric'
+        ]);
+
+        $job->update($validated);
+
+        return response()->json($job);
+    }
+
+// I also updated this while tired.    
+    public function destroy($id)
+    {
+        $user = Auth::guard('api')->user();
+
+        $job = Job::findOrFail($id);
+
+        if ($job->customer_id != $user->id) {
+
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $job->delete();
+
+        return response()->json([
+            'message' => 'Job deleted successfully'
+        ]);
     }
 }

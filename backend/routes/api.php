@@ -74,6 +74,20 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::middleware(['role:customer,handyman,company'])->group(function () {
         Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
+        Route::put(
+            '/jobs/{id}',
+            [JobController::class, 'update']
+        );
+        Route::delete(
+            '/jobs/{id}',
+            [JobController::class, 'destroy']
+        );
+
+    Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
+
+    Route::post('/jobs/{id}/review', [ReviewController::class, 'store']);
+
+    Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
     });
 
     Route::middleware(['role:admin'])->group(function () {

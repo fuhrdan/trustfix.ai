@@ -9,6 +9,7 @@ $jobs = apiRequest('GET', '/jobs/my');
 
 <table>
     <tr>
+        <th>Edit</th>
         <th>ID</th>
         <th>Status</th>
         <th>Address</th>
@@ -19,6 +20,14 @@ $jobs = apiRequest('GET', '/jobs/my');
     foreach ($jobs as $job) {
     ?>
         <tr>
+            <td>
+                <p>
+                    <a href="edit_job.php?id=<?= $job['id'] ?>">
+                        Edit Job
+                    </a>
+                </p>
+            </td>
+            
             <td>
                 <?= $job['id'] ?>
             </td>

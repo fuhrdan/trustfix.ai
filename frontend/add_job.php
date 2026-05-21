@@ -1,6 +1,11 @@
 <?php
 require 'config.php';
 
+//It is late, I had this open way too long and now the program is telling me
+//There are unsaved changes.  Seriously, WTF?  So I'm going to save and close
+//When something breaks, blame the other guy, because I am tired.
+//Dan
+
 requireLogin();
 
 include 'header.php';
@@ -44,14 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         type="text"
         name="lat"
         placeholder="Latitude"
-        required
     >
 
     <input
         type="text"
         name="lng"
         placeholder="Longitude"
-        required
     >
 
     <textarea

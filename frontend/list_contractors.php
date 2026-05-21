@@ -1,6 +1,10 @@
 <?php
 require 'config.php';
+requireLogin();
+
 include 'header.php';
+
+
 
 $contractors = apiRequest('GET', '/contractors');
 ?>
@@ -15,6 +19,9 @@ $contractors = apiRequest('GET', '/contractors');
         <th>Rating</th>
     </tr>
 
+    <?php if (empty($contractors)) { ?>
+        <p>No Contractors found.</p>
+        
     <?php
     foreach ($contractors['data'] as $contractor) {
     ?>
