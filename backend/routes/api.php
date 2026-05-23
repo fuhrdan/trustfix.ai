@@ -24,6 +24,8 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);

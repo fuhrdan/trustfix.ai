@@ -75,4 +75,10 @@ include 'header.php';
     <a href="register.php">Register Here</a>
 </p>
 
+<p>
+    <a href="forgot_password.php">
+        Forgot Password?
+    </a>
+</p>
+
 <?php include 'footer.php'; ?>
