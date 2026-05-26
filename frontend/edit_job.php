@@ -15,13 +15,10 @@ $result = apiRequest(
 
 $job = $result ?? null;
 
-//Debugging section to show information
-
+// Remove before production
 echo '<pre>';
 print_r($job);
 echo '</pre>';
-
-//Comment out before production.
 
 if (!$job) {
 
@@ -36,13 +33,30 @@ $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $payload = [
-        'address' => $_POST['address'],
-        'lat' => (float)$_POST['lat'],
-        'lng' => (float)$_POST['lng'],
+
+        'address' =>
+            $_POST['address'],
+
+        'lat' =>
+            (float)$_POST['lat'],
+
+        'lng' =>
+            (float)$_POST['lng'],
+
         'initial_description' =>
             $_POST['initial_description'],
+
         'agreed_price' =>
-            (float)$_POST['agreed_price']
+            (float)$_POST['agreed_price'],
+
+        'onsite_contact_name' =>
+            $_POST['onsite_contact_name'],
+
+        'onsite_contact_phone' =>
+            $_POST['onsite_contact_phone'],
+
+        'skills' =>
+            $_POST['skills'] ?? []
     ];
 
     $updateResult = apiRequest(
@@ -59,40 +73,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $job = $updateResult;
 }
 
+$skills = $job['skills'] ?? [];
+
 ?>
 
 <h1>Edit Job</h1>
 
 <?= $message ?>
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
 
     <input
         type="text"
         name="address"
-        value="<?= htmlspecialchars($job['address']) ?>"
+        value="<?= htmlspecialchars($job['address'] ?? '') ?>"
+        placeholder="Address"
         required
     >
 
     <input
         type="text"
         name="lat"
-        value="<?= htmlspecialchars($job['lat']) ?>"
-        required
+        value="<?= htmlspecialchars($job['lat'] ?? '') ?>"
+        placeholder="Latitude"
     >
 
     <input
         type="text"
         name="lng"
-        value="<?= htmlspecialchars($job['lng']) ?>"
-        required
+        value="<?= htmlspecialchars($job['lng'] ?? '') ?>"
+        placeholder="Longitude"
     >
 
     <textarea
         name="initial_description"
+        placeholder="Job Description"
         required
     ><?= htmlspecialchars(
-        $job['initial_description']
+        $job['initial_description'] ?? ''
     ) ?></textarea>
 
     <input
@@ -100,8 +118,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         step="0.01"
         name="agreed_price"
         value="<?= htmlspecialchars(
-            $job['agreed_price']
+            $job['agreed_price'] ?? ''
         ) ?>"
+        placeholder="Price"
+    >
+
+    <input
+        type="text"
+        name="onsite_contact_name"
+        value="<?= htmlspecialchars(
+            $job['onsite_contact_name'] ?? ''
+        ) ?>"
+        placeholder="On-site Contact Name"
+    >
+
+    <input
+        type="text"
+        name="onsite_contact_phone"
+        value="<?= htmlspecialchars(
+            $job['onsite_contact_phone'] ?? ''
+        ) ?>"
+        placeholder="On-site Contact Phone"
+    >
+
+    <h3>Required Skills</h3>
+
+    <label>
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="electrical"
+            <?= in_array('electrical', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Electrical
+    </label>
+
+    <label>
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="plumbing"
+            <?= in_array('plumbing', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Plumbing
+    </label>
+
+    <label>
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="drywall"
+            <?= in_array('drywall', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Drywall
+    </label>
+
+    <label>
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="flooring"
+            <?= in_array('flooring', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Flooring
+    </label>
+
+    <label>
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="general"
+            <?= in_array('general', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        General
+    </label>
+
+    <h3>Upload Pictures</h3>
+
+    <input
+        type="file"
+        name="images[]"
+        multiple
+        accept="image/*"
     >
 
     <button type="submit">

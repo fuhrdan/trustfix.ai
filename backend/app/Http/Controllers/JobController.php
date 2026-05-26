@@ -9,8 +9,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Job;
 use App\Models\User;
+use App\Models\JobImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class JobController extends Controller
@@ -52,23 +54,40 @@ class JobController extends Controller
     {
         $validated = $request->validate([
             'address' => ['required', 'string', 'max:500'],
-            'lat' => ['required', 'numeric', 'between:-90,90'],
-            'lng' => ['required', 'numeric', 'between:-180,180'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'initial_description' => ['required', 'string', 'max:5000'],
             'agreed_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'onsite_contact_name' => ['nullable', 'string', 'max:255'],
+            'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
+            'skills' => ['nullable', 'array'],
+            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
 
         $job = Job::create([
             'customer_id' => Auth::guard('api')->id(),
             'status' => 'posted',
             'address' => $validated['address'],
-            'lat' => $validated['lat'],
-            'lng' => $validated['lng'],
+            'lat' => $validated['lat'] ?? 0,
+            'lng' => $validated['lng'] ?? 0,
             'initial_description' => $validated['initial_description'],
             'agreed_price' => $validated['agreed_price'] ?? null,
+            'onsite_contact_name' => $validated['onsite_contact_name'] ?? null,
+            'onsite_contact_phone'=> $validated['onsite_contact_phone'] ?? null,
+            'skills' => $validated['skills'] ?? []
         ]);
+        
+        if($request->hasFile('images')) {
+            foreach($request->file('images') as $image) {
+                $path = $image->store('jobs', 'public');
+                JobImage::create([
+                    'job_id' => $job->id,
+                    'image_path' => $path
+                ]);
+            }
+        }
 
-        return response()->json($job, 201);
+        return response()->json($job->load('images'), 201);
     }
 
     // Nearby handymen, simple radius filter
@@ -222,7 +241,7 @@ class JobController extends Controller
     {
         $job = Job::findOrFail($id);
 
-        if ($job->customer_id != auth()->id()) {
+        if ($job->customer_id != Auth::guard('api')->id()) {
 
             return response()->json([
                 'message' => 'Unauthorized'

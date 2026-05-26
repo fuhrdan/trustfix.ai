@@ -33,6 +33,11 @@ class Job extends Model
         return $this->belongsTo(User::class, 'handyman_id');
     }
 
+    public function images()
+    {
+        return $this->hasMany(JobImage::class);
+    }
+    
     public function changeOrders()
     {
         return $this->hasMany(ChangeOrder::class);
