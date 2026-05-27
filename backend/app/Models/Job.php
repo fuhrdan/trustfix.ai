@@ -15,12 +15,16 @@ class Job extends Model
         'lng',
         'initial_description',
         'agreed_price',
+        'onsite_contact_name',
+        'onsite_contact_phone',
+        'skills',
     ];
 
     protected $casts = [
         'lat' => 'decimal:7',
         'lng' => 'decimal:7',
         'agreed_price' => 'decimal:2',
+        'skills' => 'array',
     ];
 
     public function customer()

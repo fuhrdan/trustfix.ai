@@ -7,37 +7,62 @@ $jobs = apiRequest('GET', '/jobs/my');
 
 <h1>My Jobs</h1>
 
-<table>
+<table border="1" cellpadding="8">
+
     <tr>
-        <th>Edit</th>
+
         <th>ID</th>
+
         <th>Status</th>
+
+        <th>Contact Name</th>
+
+        <th>Contact Phone</th>
+
         <th>Address</th>
+
         <th>Price</th>
+
+        <th>Edit</th>
+
+        <th>Bid</th>
+
     </tr>
 
     <?php
     foreach ($jobs as $job) {
     ?>
+
         <tr>
-            <td>
-                <p>
-                    <a href="edit_job.php?id=<?= $job['id'] ?>">
-                        Edit Job
-                    </a>
-                </p>
-            </td>
-            
+
             <td>
                 <?= $job['id'] ?>
             </td>
 
             <td>
-                <?= htmlspecialchars($job['status']) ?>
+                <?= htmlspecialchars(
+                    $job['status']
+                ) ?>
             </td>
 
             <td>
-                <?= htmlspecialchars($job['address']) ?>
+                <?= htmlspecialchars(
+                    $job['onsite_contact_name']
+                    ?? ''
+                ) ?>
+            </td>
+
+            <td>
+                <?= htmlspecialchars(
+                    $job['onsite_contact_phone']
+                    ?? ''
+                ) ?>
+            </td>
+
+            <td>
+                <?= htmlspecialchars(
+                    $job['address']
+                ) ?>
             </td>
 
             <td>
@@ -46,7 +71,29 @@ $jobs = apiRequest('GET', '/jobs/my');
                     2
                 ) ?>
             </td>
+
+            <td>
+
+                <a href="edit_job.php?id=<?= $job['id'] ?>">
+
+                    Edit
+
+                </a>
+
+            </td>
+
+            <td>
+
+                <button type="button">
+
+                    Bid
+
+                </button>
+
+            </td>
+
         </tr>
+
     <?php
     }
     ?>

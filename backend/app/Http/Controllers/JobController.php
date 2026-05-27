@@ -253,7 +253,11 @@ class JobController extends Controller
             'lat' => 'required|numeric',
             'lng' => 'required|numeric',
             'initial_description' => 'required|string',
-            'agreed_price' => 'nullable|numeric'
+            'agreed_price' => 'nullable|numeric',
+            'onsite_contact_name' => 'nullable|string|max:255',
+            'onsite_contact_phone' => 'nullable|string|max:50',
+            'skills' => 'nullable|array',
+            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:5120',
         ]);
 
         $job->update($validated);
