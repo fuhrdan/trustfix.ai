@@ -22,8 +22,16 @@ $contractors = apiRequest('GET', '/contractors');
     <?php if (empty($contractors)) { ?>
         <p>No Contractors found.</p>
         
-    <?php
-    foreach ($contractors['data'] as $contractor) {
+    <?php } else { ?>
+
+        <tr>
+            <th>Business</th>
+            <th>Area</th>
+            <th>Experience</th>
+            <th>Rating</th>
+        </tr>
+        
+    <? foreach ($contractors['data'] as $contractor) {
     ?>
         <tr>
             <td>
