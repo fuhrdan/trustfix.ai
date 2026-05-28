@@ -57,6 +57,39 @@ class AuthController extends Controller
         ], 201);
     }
 
+    public function updateMe(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+
+            'name' =>
+                'required|string|max:255',
+
+            'email' =>
+                'required|email|max:255|unique:users,email,' . $user->id,
+
+            'phone' =>
+                'nullable|string|max:30'
+        ]);
+
+        $user->name =
+            $validated['name'];
+
+        $user->email =
+            $validated['email'];
+
+        $user->phone =
+            $validated['phone'];
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([

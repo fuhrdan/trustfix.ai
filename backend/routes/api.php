@@ -34,6 +34,7 @@ Route::get('/contractors/{id}/reviews', [ReviewController::class, 'contractorRev
 // Protected routes
 Route::middleware(['auth:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/me/update', [AuthController::class, 'updateMe']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
