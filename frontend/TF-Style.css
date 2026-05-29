@@ -1,0 +1,65 @@
+/* TF-Style.css */
+
+.skills-group
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin-bottom: 20px;
+}
+
+.skill-item
+{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 10px;
+
+    border: 1px solid #ddd;
+    border-radius: 6px;
+
+    background: #f9f9f9;
+
+    cursor: pointer;
+}
+
+.skill-item input[type="checkbox"]
+{
+    margin: 0;
+}
+
+.upload-block
+{
+    margin-bottom: 20px;
+}
+
+.upload-btn
+{
+    display: block;
+    margin-top: 10px;
+    padding: 10px 16px;
+    border: none;
+    background: #999;
+    color: white;
+    cursor: not-allowed;
+    border-radius: 6px;
+}
+
+.upload-btn.active
+{
+    background: #2d6cdf;
+    cursor: pointer;
+}
+
+.thumb
+{
+    margin-bottom: 20px;
+}
+
+.thumb img
+{
+    max-width: 220px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}

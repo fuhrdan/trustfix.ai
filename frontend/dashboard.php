@@ -46,6 +46,16 @@ $user = apiRequest(
             border-radius:8px;
         "
     >
+        <h3>My Profile</h3>
+        
+        <p>
+            Update your account.
+        </p>
+        
+        <a href="edit_profile.php">
+            Edit Profile
+        </a>
+        
         <h3>Contractors</h3>
 
         <p>

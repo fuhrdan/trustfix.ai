@@ -16,9 +16,11 @@ $result = apiRequest(
 $job = $result ?? null;
 
 // Remove before production
-echo '<pre>';
-print_r($job);
-echo '</pre>';
+// This is for debugging, leave it in, but don't use it.
+// The Friendzoned block of code.
+//echo '<pre>';
+//print_r($job);
+//echo '</pre>';
 
 if (!$job) {
 
@@ -77,6 +79,14 @@ $skills = $job['skills'] ?? [];
 
 ?>
 
+<head>
+    <title>Edit Jobs</title>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="TF-Style.css">
+</head>
+
+<body>
 <h1>Edit Job</h1>
 
 <?= $message ?>
@@ -143,7 +153,8 @@ $skills = $job['skills'] ?? [];
 
     <h3>Required Skills</h3>
 
-    <label>
+    <div class="skills-group">
+    <label class="skill-item">
         <input
             type="checkbox"
             name="skills[]"
@@ -155,7 +166,7 @@ $skills = $job['skills'] ?? [];
         Electrical
     </label>
 
-    <label>
+    <label class="skill-item">
         <input
             type="checkbox"
             name="skills[]"
@@ -167,7 +178,7 @@ $skills = $job['skills'] ?? [];
         Plumbing
     </label>
 
-    <label>
+    <label class="skill-item">
         <input
             type="checkbox"
             name="skills[]"
@@ -179,7 +190,7 @@ $skills = $job['skills'] ?? [];
         Drywall
     </label>
 
-    <label>
+    <label class="skill-item">
         <input
             type="checkbox"
             name="skills[]"
@@ -191,7 +202,7 @@ $skills = $job['skills'] ?? [];
         Flooring
     </label>
 
-    <label>
+    <label class="skill-item">
         <input
             type="checkbox"
             name="skills[]"
@@ -202,6 +213,8 @@ $skills = $job['skills'] ?? [];
         >
         General
     </label>
+    
+    </div>
 
     <h3>Upload Pictures</h3>
 
@@ -219,3 +232,5 @@ $skills = $job['skills'] ?? [];
 </form>
 
 <?php include 'footer.php'; ?>
+
+</body>

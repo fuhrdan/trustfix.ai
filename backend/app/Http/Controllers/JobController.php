@@ -36,7 +36,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports', 'images'])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
@@ -89,6 +89,43 @@ class JobController extends Controller
 
         return response()->json($job->load('images'), 201);
     }
+
+    public function uploadImages(Request $request, $id)
+    {
+        $job = Job::findOrFail($id);
+
+        $user = Auth::guard('api')->user();
+    
+    
+        if ($job->customer_id != $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $request->validate([
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:5120'
+        ]);
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('jobs', 'public');
+
+                JobImage::create([
+                    'job_id' => $job->id,
+                    'image_path' => $path
+                ]);
+            }
+        }
+
+        $job->refresh();
+        
+        return response()->json([
+            'success' => true,
+            'images' => $job->images()->get(),
+            'message' => 'Images uploaded successfully',
+            'job' => $job->load('images')
+        ]);
+    }
+
 
     // Nearby handymen, simple radius filter
     public function nearbyHandymen(Request $request)
@@ -247,20 +284,31 @@ class JobController extends Controller
                 'message' => 'Unauthorized'
             ], 403);
         }
-
         $validated = $request->validate([
-            'address' => 'required|string|max:255',
-            'lat' => 'required|numeric',
-            'lng' => 'required|numeric',
-            'initial_description' => 'required|string',
-            'agreed_price' => 'nullable|numeric',
-            'onsite_contact_name' => 'nullable|string|max:255',
-            'onsite_contact_phone' => 'nullable|string|max:50',
-            'skills' => 'nullable|array',
-            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:5120',
+            'address' => ['required', 'string', 'max:500'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'initial_description' => ['required', 'string', 'max:5000'],
+            'agreed_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'onsite_contact_name' => ['nullable', 'string', 'max:255'],
+            'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
+            'skills' => ['nullable', 'array'],
+            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
 
         $job->update($validated);
+
+        if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+
+                $path = $image->store('jobs', 'public');
+
+                JobImage::create([
+                    'job_id' => $job->id,
+                    'image_path' => $path
+                ]);
+            }
+        }
 
         return response()->json($job);
     }

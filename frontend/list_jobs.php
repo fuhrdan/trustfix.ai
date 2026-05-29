@@ -27,6 +27,7 @@ $jobs = apiRequest('GET', '/jobs/my');
 
         <th>Bid</th>
 
+        <th>Delete</th>
     </tr>
 
     <?php
@@ -91,6 +92,17 @@ $jobs = apiRequest('GET', '/jobs/my');
                 </button>
 
             </td>
+            
+            <td>
+                <form method="POST" action="delete_job.php" onsubmit="return confirm('Delete this job?');">
+                <input type="hidden" name="job_id" value="<?= $job['id'] ?>">
+                <button type="submit" style="color:red;">
+
+                    Delete
+                    
+                </button>
+    </form>
+</td>
 
         </tr>
 

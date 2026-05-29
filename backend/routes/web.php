@@ -19,5 +19,7 @@ Route::get(
 )->name('password.reset');
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome', [
+        'user' => auth()->user()
+    ]);
 });

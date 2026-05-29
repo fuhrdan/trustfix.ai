@@ -277,7 +277,11 @@
         <h1>Welcome to TrustFix</h1>
 
 <p>
-    Hi {{ $user->name }},
+    @if(isset($user))
+        Hi {{ $user->name }},
+    @else
+        Hi User,
+    @endif
 </p>
 
 <p>
