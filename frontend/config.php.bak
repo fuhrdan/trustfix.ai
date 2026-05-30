@@ -25,11 +25,14 @@ function apiRequest($method, $endpoint, $data = null)
     $ch = curl_init($url);
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
     $headers = [
+        'Content-Type: application/json',
         'Accept: application/json'
     ];
 
@@ -39,48 +42,16 @@ function apiRequest($method, $endpoint, $data = null)
             'Authorization: Bearer ' . $jwtToken;
     }
 
-    $isMultipart = false;
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-    if (is_array($data))
-    {
-        foreach ($data as $value)
-        {
-            if ($value instanceof CURLFile)
-            {
-                $isMultipart = true;
-                break;
-            }
-        }
+    if ($data !== null) {
+
+        curl_setopt(
+            $ch,
+            CURLOPT_POSTFIELDS,
+            json_encode($data)
+        );
     }
-
-    if ($data !== null)
-    {
-        if ($isMultipart)
-        {
-            curl_setopt(
-                $ch,
-                CURLOPT_POSTFIELDS,
-                $data
-            );
-        }
-        else
-        {
-            $headers[] =
-                'Content-Type: application/json';
-
-            curl_setopt(
-                $ch,
-                CURLOPT_POSTFIELDS,
-                json_encode($data)
-            );
-        }
-    }
-
-    curl_setopt(
-        $ch,
-        CURLOPT_HTTPHEADER,
-        $headers
-    );
 
     $response = curl_exec($ch);
 

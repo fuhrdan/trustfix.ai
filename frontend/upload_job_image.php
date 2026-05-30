@@ -16,12 +16,14 @@ if (
     && isset($_POST['ajax_upload'])
 ) {
 
+$debug = [];
+
     try {
 
         //-------------------------------------------------
         // Get/Create Draft Job
         //-------------------------------------------------
-        $jobId = $_SESSION['draft_job_id'] ?? null;
+        $jobId = $_SESSION['draft_job_id'];
 
         if (!$jobId) {
 
@@ -39,7 +41,9 @@ if (
                 $payload
             );
 
-            if (!isset($job['id'])) {
+$debug['create_job_raw'] = $job;
+
+            if (!is_array($job) || !isset($job['id'])) {
 
                 throw new Exception(
                     'Failed creating draft job: '
@@ -52,6 +56,8 @@ if (
             $_SESSION['draft_job_id'] = $jobId;
         }
 
+$debug['job_id'] = $jobId;
+
         //-------------------------------------------------
         // Validate Upload
         //-------------------------------------------------
@@ -63,6 +69,12 @@ if (
             throw new Exception('No uploaded file received');
         }
 
+        $debug['file'] = [
+            'name' => $_FILES['image']['name'],
+            'type' => $_FILES['image']['type'],
+            'size' => $_FILES['image']['size']
+        ];
+        
         //-------------------------------------------------
         // Build CURL File
         //-------------------------------------------------
@@ -83,42 +95,32 @@ if (
             ]
         );
 
-        //-------------------------------------------------
-        // DEBUG
-        //-------------------------------------------------
-        file_put_contents(
-            '/tmp/upload_result.txt',
-            print_r($uploadResult, true)
-        );
-
-if (
-    isset($uploadResult['error']) ||
-    isset($uploadResult['message'])
-) {
-
-    echo json_encode([
-        'success' => false,
-        'error' => $uploadResult
-    ]);
-
+        $debug['upload_result'] = $uploadResult;
+        
+        if (!is_array($uploadResult)) {
+            $debug['upload_result_type'] = gettype($uploadResult);
+        }
+        
 
         //-------------------------------------------------
         // Fetch Updated Job
         //-------------------------------------------------
-        $job = json_decode(apiRequest(
+        $job = apiRequest(
             'GET',
             "/jobs/$jobId"
-        ), true);
-
-/*
-        file_put_contents(
-            '/tmp/job_debug.txt',
-            print_r($job, true)
         );
-*/
-//NEXT DEBUG
-file_put_contents('/tmp/before_job_get.txt', "ABOUT TO CALL JOB GET\n");
-file_put_contents('/tmp/job_response_raw.txt', print_r($job, true));
+
+file_put_contents(
+    '/tmp/job_fetch.txt',
+    print_r($job, true),
+    FILE_APPEND
+);
+
+        if (!is_array($job)) {
+            throw new Exception(
+                "Job fetch failed. Response: " . print_r($jobResponse, true)
+            );
+        }
 
         //-------------------------------------------------
         // Build HTML
@@ -142,7 +144,7 @@ file_put_contents('/tmp/job_response_raw.txt', print_r($job, true));
                 // Full URL
                 //-----------------------------------------
                 $url =
-                    'https://trustfix.lakehousesoftware.com/storage/'
+                    '/storage/'
                     . ltrim($imagePath, '/');
 
                 $html .= "
@@ -156,7 +158,7 @@ file_put_contents('/tmp/job_response_raw.txt', print_r($job, true));
                                 border-radius:8px;
                             '
                         >
-
+                    {$imagePath}
                     </div>
                 ";
             }
@@ -168,23 +170,28 @@ file_put_contents('/tmp/job_response_raw.txt', print_r($job, true));
         echo json_encode([
             'success' => true,
             'html' => $html,
+            'debug' => $debug,
             'upload_result' => $uploadResult
         ]);
 
     } catch (Exception $e) {
 
-        http_response_code(500);
-
         echo json_encode([
             'success' => false,
-            'error' => $e->getMessage()
+            'error' => $e->getMessage(),
+            'debug' => $debug
         ]);
+
+        http_response_code(500);
     }
+
+$debug['upload_result'] = $uploadResult;
+
+file_put_contents(
+    '/tmp/upload_result.txt',
+    print_r($uploadResult, true),
+    FILE_APPEND
+);
 
     exit;
 }
-
-echo json_encode([
-    'success' => false,
-    'error' => 'Invalid request'
-]);
