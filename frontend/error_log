@@ -1,0 +1,522 @@
+[30-May-2026 15:30:48 UTC] Array
+(
+    [id] => 33
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 13 Spooner St.
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Another Job
+    [agreed_price] => 42.00
+    [created_at] => 2026-05-30T15:30:26.000000Z
+    [updated_at] => 2026-05-30T15:30:47.000000Z
+    [onsite_contact_name] => Dave
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+        )
+
+)
+
+[30-May-2026 15:31:55 UTC] Array
+(
+    [id] => 34
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 25 Garrison St.
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Testing Image creation and deletion
+    [agreed_price] => 12.00
+    [created_at] => 2026-05-30T15:31:06.000000Z
+    [updated_at] => 2026-05-30T15:31:55.000000Z
+    [onsite_contact_name] => Dan
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 12
+                    [job_id] => 34
+                    [image_path] => jobs/34/BK0u6tEUm3olg7KTtMN8dzaQH3hpR5TYNiRIumB3.jpg
+                    [created_at] => 2026-05-30T15:31:50.000000Z
+                    [updated_at] => 2026-05-30T15:31:50.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:25:33 UTC] 
+[30-May-2026 16:26:17 UTC] 
+[30-May-2026 16:28:45 UTC] Array
+(
+    [id] => 34
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 25 Garrison St.
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Testing Image creation and deletion
+    [agreed_price] => 25.00
+    [created_at] => 2026-05-30T15:31:06.000000Z
+    [updated_at] => 2026-05-30T16:28:45.000000Z
+    [onsite_contact_name] => Dan
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 12
+                    [job_id] => 34
+                    [image_path] => jobs/34/BK0u6tEUm3olg7KTtMN8dzaQH3hpR5TYNiRIumB3.jpg
+                    [created_at] => 2026-05-30T15:31:50.000000Z
+                    [updated_at] => 2026-05-30T15:31:50.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:29:19 UTC] Array
+(
+    [id] => 35
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => Draft Job
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Draft
+    [agreed_price] => 52.00
+    [created_at] => 2026-05-30T16:28:53.000000Z
+    [updated_at] => 2026-05-30T16:29:19.000000Z
+    [onsite_contact_name] => 
+    [onsite_contact_phone] => 
+    [skills] => Array
+        (
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 13
+                    [job_id] => 35
+                    [image_path] => jobs/35/Y9zi1j7kBpVhh3RsLaytqHugrAR2lY3MhS1xgve7.webp
+                    [created_at] => 2026-05-30T16:28:53.000000Z
+                    [updated_at] => 2026-05-30T16:28:53.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:29:33 UTC] Array
+(
+    [id] => 35
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 12 Street
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Test
+    [agreed_price] => 52.00
+    [created_at] => 2026-05-30T16:28:53.000000Z
+    [updated_at] => 2026-05-30T16:29:33.000000Z
+    [onsite_contact_name] => 
+    [onsite_contact_phone] => 
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 13
+                    [job_id] => 35
+                    [image_path] => jobs/35/Y9zi1j7kBpVhh3RsLaytqHugrAR2lY3MhS1xgve7.webp
+                    [created_at] => 2026-05-30T16:28:53.000000Z
+                    [updated_at] => 2026-05-30T16:28:53.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:30:37 UTC] Array
+(
+    [id] => 35
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 12 Street
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Test
+    [agreed_price] => 52.00
+    [created_at] => 2026-05-30T16:28:53.000000Z
+    [updated_at] => 2026-05-30T16:30:37.000000Z
+    [onsite_contact_name] => Dan
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 13
+                    [job_id] => 35
+                    [image_path] => jobs/35/Y9zi1j7kBpVhh3RsLaytqHugrAR2lY3MhS1xgve7.webp
+                    [created_at] => 2026-05-30T16:28:53.000000Z
+                    [updated_at] => 2026-05-30T16:28:53.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:36:47 UTC] Array
+(
+    [id] => 35
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 12 Street
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Test
+    [agreed_price] => 52.00
+    [created_at] => 2026-05-30T16:28:53.000000Z
+    [updated_at] => 2026-05-30T16:30:37.000000Z
+    [onsite_contact_name] => Dan
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 13
+                    [job_id] => 35
+                    [image_path] => jobs/35/Y9zi1j7kBpVhh3RsLaytqHugrAR2lY3MhS1xgve7.webp
+                    [created_at] => 2026-05-30T16:28:53.000000Z
+                    [updated_at] => 2026-05-30T16:28:53.000000Z
+                )
+
+            [1] => Array
+                (
+                    [id] => 14
+                    [job_id] => 35
+                    [image_path] => jobs/35/Gakws4WrHdlDIn71Pgk69zrwyQktBgox2lUKUs3M.jpg
+                    [created_at] => 2026-05-30T16:31:01.000000Z
+                    [updated_at] => 2026-05-30T16:31:01.000000Z
+                )
+
+        )
+
+)
+
+[30-May-2026 16:37:12 UTC] Array
+(
+    [id] => 32
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => Test Image
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Test Image
+    [agreed_price] => 4.00
+    [created_at] => 2026-05-30T15:01:49.000000Z
+    [updated_at] => 2026-05-30T15:07:36.000000Z
+    [onsite_contact_name] => 
+    [onsite_contact_phone] => 
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 10
+                    [job_id] => 32
+                    [image_path] => jobs/{$job->id}/lOAr3BqoaJ4a6VPrxIVuAW6gKv04S8KsrJw9ZxGo.webp
+                    [created_at] => 2026-05-30T15:02:07.000000Z
+                    [updated_at] => 2026-05-30T15:02:07.000000Z
+                )
+
+            [1] => Array
+                (
+                    [id] => 11
+                    [job_id] => 32
+                    [image_path] => jobs/32/18GF7fTPt0qfI1xk5QKpCE9F5OpE1ilTUblPlFyg.webp
+                    [created_at] => 2026-05-30T15:07:17.000000Z
+                    [updated_at] => 2026-05-30T15:07:17.000000Z
+                )
+
+        )
+
+)
+

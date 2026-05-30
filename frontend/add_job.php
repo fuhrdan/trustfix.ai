@@ -380,7 +380,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         }
     }
 
-    $message .= '<pre>' . print_r($result, true) . '</pre>';
+// This is the debugging message for testing.
+// Remove it for production.
+//    $message .= '<pre>' . print_r($result, true) . '</pre>';
+// Error log
+error_log(print_r($result, true));
 
     unset($_SESSION['draft_job_id']);
 }

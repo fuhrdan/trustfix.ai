@@ -110,12 +110,6 @@ $debug['job_id'] = $jobId;
             "/jobs/$jobId"
         );
 
-file_put_contents(
-    '/tmp/job_fetch.txt',
-    print_r($job, true),
-    FILE_APPEND
-);
-
         if (!is_array($job)) {
             throw new Exception(
                 "Job fetch failed. Response: " . print_r($jobResponse, true)
@@ -184,14 +178,6 @@ file_put_contents(
 
         http_response_code(500);
     }
-
-$debug['upload_result'] = $uploadResult;
-
-file_put_contents(
-    '/tmp/upload_result.txt',
-    print_r($uploadResult, true),
-    FILE_APPEND
-);
 
     exit;
 }

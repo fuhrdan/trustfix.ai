@@ -79,7 +79,7 @@ class JobController extends Controller
         
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
-                $path = $image->store('jobs', 'public');
+                $path = $image->store('jobs/' . $job->id, 'public');
                 JobImage::create([
                     'job_id' => $job->id,
                     'image_path' => $path
@@ -107,7 +107,7 @@ class JobController extends Controller
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs', 'public');
+                $path = $image->store('jobs/' . $job->id, 'public');
 
                 JobImage::create([
                     'job_id' => $job->id,
@@ -126,6 +126,47 @@ class JobController extends Controller
         ]);
     }
 
+public function deleteImage($jobId, $imageId)
+{
+    $user = auth()->user();
+
+    // Find job and ensure ownership/permission
+    $job = Job::findOrFail($jobId);
+
+    // SECURITY CHECK (adjust to your logic)
+    if ($job->user_id !== $user->id) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    // Find image belonging to this job
+    $image = JobImage::where('id', $imageId)
+        ->where('job_id', $jobId)
+        ->first();
+
+    if (!$image) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Image not found'
+        ], 404);
+    }
+
+    // Delete file from storage
+    $filePath = storage_path('app/public/' . $image->image_path);
+
+    if (file_exists($filePath)) {
+        unlink($filePath);
+    }
+
+    // Delete DB record
+    $image->delete();
+
+    return response()->json([
+        'success' => true
+    ]);
+}
 
     // Nearby handymen, simple radius filter
     public function nearbyHandymen(Request $request)
@@ -301,7 +342,7 @@ class JobController extends Controller
         if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
 
-                $path = $image->store('jobs', 'public');
+                $path = $image->store('jobs/' . $job->id, 'public');
 
                 JobImage::create([
                     'job_id' => $job->id,

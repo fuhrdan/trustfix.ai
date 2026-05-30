@@ -27,6 +27,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
+Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);

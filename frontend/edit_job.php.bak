@@ -1,0 +1,345 @@
+<?php
+
+require 'config.php';
+
+requireLogin();
+
+include 'header.php';
+
+$jobId = (int)($_GET['id'] ?? 0);
+
+$result = apiRequest(
+    'GET',
+    '/jobs/' . $jobId
+);
+
+//$job = $result ?? null;
+
+$job = $result ?? [];
+
+if (!is_array($job)) {
+    $job = [];
+}
+
+$job['skills'] = is_array($job['skills'] ?? null)
+    ? $job['skills']
+    : [];
+
+$job['images'] = is_array($job['images'] ?? null)
+    ? $job['images']
+    : [];
+    
+// Remove before production
+// This is for debugging, leave it in, but don't use it.
+// The Friendzoned block of code.
+//echo '<pre>';
+//print_r($job);
+//echo '</pre>';
+
+if (!$job) {
+
+    echo '<p>Job not found.</p>';
+
+    include 'footer.php';
+    exit;
+}
+
+$message = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+//--------------------------------------
+// DELETE IMAGE
+//--------------------------------------
+    if (!empty($_POST['delete_image_id'])) {
+
+        $imageId = (int)$_POST['delete_image_id'];
+
+        apiRequest(
+            'DELETE',
+            "/jobs/$jobId/images/$imageId"
+        );
+
+        header("Location: edit_job.php?id=$jobId");
+        exit;
+    }
+
+//--------------------------------------
+// UPDATE JOB
+//--------------------------------------
+    $payload = [
+
+        'address' =>
+            $_POST['address'],
+
+        'lat' =>
+            (float)$_POST['lat'],
+
+        'lng' =>
+            (float)$_POST['lng'],
+
+        'initial_description' =>
+            $_POST['initial_description'],
+
+        'agreed_price' =>
+            (float)$_POST['agreed_price'],
+
+        'onsite_contact_name' =>
+            $_POST['onsite_contact_name'],
+
+        'onsite_contact_phone' =>
+            $_POST['onsite_contact_phone'],
+
+        'skills' =>
+            $_POST['skills'] ?? []
+    ];
+
+    $updateResponse = apiRequest(
+        'PUT',
+        '/jobs/' . $jobId,
+        $payload
+    );
+
+    //--------------------------------------
+    // UPLOAD IMAGES 
+    //--------------------------------------
+    if (!empty($_FILES['images']['tmp_name'][0])) {
+
+        foreach ($_FILES['images']['tmp_name'] as $i => $tmp) {
+
+            if (!$tmp) continue;
+
+            $file = new CURLFile(
+                $tmp,
+                $_FILES['images']['type'][$i],
+                $_FILES['images']['name'][$i]
+            );
+
+            apiRequest(
+                'POST',
+                "/jobs/$jobId/images",
+                ['images[]' => $file]
+            );
+        }
+    }
+    
+
+    $job = apiRequest('GET', "/jobs/$jobId");
+    
+    $message =
+        '<p style="color:green;">
+            Job updated successfully.
+        </p>';
+}
+
+$skills = is_array($job['skills'] ?? null)
+    ? $job['skills']
+    : [];
+
+?>
+
+<head>
+    <title>Edit Jobs</title>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="TF-Style.css">
+</head>
+
+<body>
+<h1>Edit Job</h1>
+
+<?= $message ?>
+
+<form method="POST" enctype="multipart/form-data">
+
+    <input
+        type="text"
+        name="address"
+        value="<?= htmlspecialchars($job['address'] ?? '') ?>"
+        placeholder="Address"
+        required
+    >
+
+    <input
+        type="text"
+        name="lat"
+        value="<?= htmlspecialchars($job['lat'] ?? '') ?>"
+        placeholder="Latitude"
+    >
+
+    <input
+        type="text"
+        name="lng"
+        value="<?= htmlspecialchars($job['lng'] ?? '') ?>"
+        placeholder="Longitude"
+    >
+
+    <textarea
+        name="initial_description"
+        placeholder="Job Description"
+        required
+    ><?= htmlspecialchars(
+        $job['initial_description'] ?? ''
+    ) ?></textarea>
+
+    <input
+        type="number"
+        step="0.01"
+        name="agreed_price"
+        value="<?= htmlspecialchars(
+            $job['agreed_price'] ?? ''
+        ) ?>"
+        placeholder="Price"
+    >
+
+    <input
+        type="text"
+        name="onsite_contact_name"
+        value="<?= htmlspecialchars(
+            $job['onsite_contact_name'] ?? ''
+        ) ?>"
+        placeholder="On-site Contact Name"
+    >
+
+    <input
+        type="text"
+        name="onsite_contact_phone"
+        value="<?= htmlspecialchars(
+            $job['onsite_contact_phone'] ?? ''
+        ) ?>"
+        placeholder="On-site Contact Phone"
+    >
+
+    <h3>Required Skills</h3>
+
+    <div class="skills-group">
+    <label class="skill-item">
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="electrical"
+            <?= in_array('electrical', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Electrical
+    </label>
+
+    <label class="skill-item">
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="plumbing"
+            <?= in_array('plumbing', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Plumbing
+    </label>
+
+    <label class="skill-item">
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="drywall"
+            <?= in_array('drywall', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Drywall
+    </label>
+
+    <label class="skill-item">
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="flooring"
+            <?= in_array('flooring', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        Flooring
+    </label>
+
+    <label class="skill-item">
+        <input
+            type="checkbox"
+            name="skills[]"
+            value="general"
+            <?= in_array('general', $skills)
+                ? 'checked'
+                : '' ?>
+        >
+        General
+    </label>
+    
+    </div>
+
+    <h3>Current Images</h3>
+
+    <?php if (!empty($job['images'])): ?>
+
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+
+            <?php 
+                $images = is_array($job['images'] ?? null) ? $job['images'] : [];
+                foreach ($images as $img): ?>
+
+                <div style="position:relative; display:inline-block;">
+
+                    <img
+                        src="/storage/<?= htmlspecialchars($img['image_path']) ?>"
+                        style="
+                            max-width:180px;
+                            border:1px solid #ccc;
+                            border-radius:8px;
+                        "
+                    >
+
+                    <form
+                        method="POST"
+                        style="position:absolute; top:5px; right:5px;"
+                        onsubmit="return confirm('Delete this image?');"
+                    >
+                        <input type="hidden" name="delete_image_id" value="<?= $img['id'] ?>">
+                        <button type="submit" style="
+                            background:red;
+                            color:white;
+                            border:none;
+                            border-radius:4px;
+                            cursor:pointer;
+                        ">
+                            X
+                        </button>
+                    </form>
+
+                </div>
+
+            <?php endforeach; ?>
+
+        </div>
+
+    <?php else: ?>
+
+        <p>No images uploaded.</p>
+
+    <?php endif; ?>
+
+    <h3>Upload Pictures</h3>
+
+    <input
+        type="file"
+        name="images[]"
+        multiple
+        accept="image/*"
+    >
+
+    <button type="submit">
+        Update Job
+    </button>
+
+</form>
+
+<?php include 'footer.php'; ?>
+
+</body>
