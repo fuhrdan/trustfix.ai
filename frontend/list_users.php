@@ -5,10 +5,18 @@ include 'header.php';
 
 requireLogin();
 
-$users = apiRequest('GET', '/admin/users');
+$result = apiRequest('GET', '/admin/users');
+
+//***************************DEBUG*********************************************
+//echo '<pre>';
+//print_r($result);
+//echo '</pre>';
+//*************************END DEBUG*******************************************
+
+$users = $result['data'] ?? [];
 ?>
 
-<h1>Manage Users</h1>
+<h1>Manage Users (test)</h1>
 
 <table border="1" cellpadding="8">
 
@@ -19,6 +27,7 @@ $users = apiRequest('GET', '/admin/users');
     <th>Phone</th>
     <th>Address</th>
     <th>Business Name</th>
+    <th>Role</th>
     <th>Edit</th>
     <th>Delete</th>
 </tr>
@@ -42,6 +51,10 @@ $users = apiRequest('GET', '/admin/users');
             $user['contractor_profile']['business_name']
             ?? ''
         ) ?>
+    </td>
+
+    <td>
+        <?= htmlspecialchars($user['role'] ?? '') ?>
     </td>
 
     <td>

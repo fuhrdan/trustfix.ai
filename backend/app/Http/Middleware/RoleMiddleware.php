@@ -10,7 +10,9 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $user = $request->user('api');
+//        $user = $request->user('api');
+
+        $user = auth()->user();
 
         if (!$user) {
             return response()->json([

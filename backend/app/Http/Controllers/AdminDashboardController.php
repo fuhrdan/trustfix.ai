@@ -63,28 +63,20 @@ class AdminDashboardController extends Controller
     public function users(Request $request)
     {
         $validated = $request->validate([
-            'role' => ['nullable', Rule::in(['customer', 'handyman', 'admin', 'company'])],
-            'account_status' => ['nullable', Rule::in(['active', 'suspended', 'banned'])],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
         $query = User::query();
 
-        if (!empty($validated['role'])) {
-            $query->where('role', $validated['role']);
-        }
-
-        if (!empty($validated['account_status'])) {
-            $query->where('account_status', $validated['account_status']);
-        }
-
-        if (!empty($validated['q'])) {
+        if (!empty($validated['q']))
+        {
             $search = $validated['q'];
 
-            $query->where(function ($subQuery) use ($search) {
-                $subQuery->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhere('phone', 'like', '%' . $search . '%');
+            $query->where(function ($subQuery) use ($search)
+            {
+                $subQuery->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 

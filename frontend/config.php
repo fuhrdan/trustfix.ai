@@ -28,6 +28,7 @@ function apiRequest($method, $endpoint, $data = null)
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_COOKIE, session_name() . '=' . session_id());
 
     $headers = [
         'Accept: application/json'
@@ -81,6 +82,12 @@ function apiRequest($method, $endpoint, $data = null)
         CURLOPT_HTTPHEADER,
         $headers
     );
+
+//*************DEBUG*************
+//echo "<pre>";
+//print_r($headers);
+//echo "</pre>";
+//*********END DEBUG*************
 
     $response = curl_exec($ch);
 
