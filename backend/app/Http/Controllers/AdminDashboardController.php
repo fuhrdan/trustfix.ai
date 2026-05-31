@@ -91,6 +91,17 @@ class AdminDashboardController extends Controller
         return response()->json($query->latest()->paginate(20));
     }
 
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true
+        ]);
+    }
+
     public function contractors(Request $request)
     {
         $validated = $request->validate([

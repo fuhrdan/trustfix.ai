@@ -520,3 +520,67 @@
 
 )
 
+[31-May-2026 04:45:00 UTC] Array
+(
+    [id] => 34
+    [customer_id] => 10
+    [handyman_id] => 
+    [status] => posted
+    [address] => 25 Garrison St.
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Testing Image creation and deletion
+    [agreed_price] => 25.00
+    [created_at] => 2026-05-30T15:31:06.000000Z
+    [updated_at] => 2026-05-30T16:28:45.000000Z
+    [onsite_contact_name] => Dan
+    [onsite_contact_phone] => 555
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [email] => fuhrdan@gmail.com
+            [role] => customer
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 12
+                    [job_id] => 34
+                    [image_path] => jobs/34/BK0u6tEUm3olg7KTtMN8dzaQH3hpR5TYNiRIumB3.jpg
+                    [created_at] => 2026-05-30T15:31:50.000000Z
+                    [updated_at] => 2026-05-30T15:31:50.000000Z
+                )
+
+        )
+
+)
+

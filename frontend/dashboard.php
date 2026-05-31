@@ -56,11 +56,13 @@ $user = apiRequest(
             Edit Profile
         </a>
         
-        <h3>Contractors</h3>
+        <h3>Users</h3>
 
-        <p>
-            Manage contractor profiles.
-        </p>
+        <a href="list_users.php">
+            Manage Users
+        </a>
+
+        <h3>Contractors</h3>
 
         <a href="add_contractor.php">
             Add Contractor
