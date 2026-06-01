@@ -94,6 +94,41 @@ class AdminDashboardController extends Controller
         ]);
     }
 
+    public function getUser($id)
+    {   
+        return response()->json(
+            User::findOrFail($id)
+        );
+    }
+
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:255',
+            'role' => [
+                'required',
+                Rule::in([
+                    'customer',
+                    'handyman',
+                    'company',
+                    'admin'
+                ])
+            ]
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+
     public function contractors(Request $request)
     {
         $validated = $request->validate([

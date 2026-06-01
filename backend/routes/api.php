@@ -119,6 +119,16 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/admin/reviews', [ReviewController::class, 'adminIndex']);
         Route::post('/admin/reviews/{id}/visibility', [ReviewController::class, 'adminUpdateVisibility']);
 
+        Route::get(
+            '/admin/users/{id}',
+            [AdminDashboardController::class, 'getUser']
+        );
+
+        Route::put(
+            '/admin/users/{id}',
+            [AdminDashboardController::class, 'updateUser']
+        );
+
         Route::get('/admin/reports', [ReportController::class, 'adminIndex']);
         Route::post('/admin/reports/{id}/status', [ReportController::class, 'adminUpdateStatus']);
         Route::post('/admin/users/{id}/account-status', [ReportController::class, 'adminSuspendUser']);
