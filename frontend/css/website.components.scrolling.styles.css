@@ -1,0 +1,87 @@
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  z-index: auto;
+  background-color: transparent;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee h1,
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee p {
+  margin: 0;
+  min-height: 0;
+  line-height: 1.4 !important;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-svg {
+  display: block;
+  width: 100%;
+  height: 0;
+  overflow: visible;
+  font-size: inherit;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-hitbox {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-hitbox:focus .Marquee-path-hitbox-focus-outline {
+  stroke: currentColor;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-hitbox:focus:not(:focus-visible) .Marquee-path-hitbox-focus-outline {
+  stroke: initial;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-display {
+  flex-grow: 1;
+  flex-shrink: 0;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-display.fade-edges {
+  mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-measure {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  min-height: 1em;
+  visibility: hidden;
+  position: absolute;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-group {
+  display: flex;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-measure,
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-group {
+  /* ensure a minimum size */
+  min-width: 50px;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-track .Marquee-track-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+.sqs-block[data-definition-name="website.components.scrolling"] .Marquee-track-item .Marquee-item {
+  padding: 0;
+  transform: translate3d(-50%, calc(-50% - 0.4em), 0);
+}
+

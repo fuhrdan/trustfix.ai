@@ -1,0 +1,372 @@
+.sqs-block[data-definition-name="website.components.form"] .field-error {
+  border-radius: 2px;
+  background: #CC3B3B url('//assets.squarespace.com/universal/images-v6/standard/icon_close_7_light.png') no-repeat 9px 50%;
+  color: #fff;
+  display: inline-block;
+  font-size: 13px;
+  line-height: 23px;
+  margin: 12px 0;
+  padding: 5px 15px 3px 25px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-submission-text:focus:not(:focus-visible),
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-submission-html:focus:not(:focus-visible),
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-error:focus:not(:focus-visible) {
+  outline: none;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list {
+  line-height: normal;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list fieldset,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list legend {
+  padding: 0;
+  border: 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list textarea.medium {
+  min-height: 200px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list textarea.large {
+  min-height: 300px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .section {
+  margin: 2em 0;
+  padding-bottom: 0.3em;
+  font-size: 0.9em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .section.underline {
+  border-bottom: 1px solid #999;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .section:nth-child(1) {
+  margin: 0 0 2em 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .title {
+  display: block;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .description {
+  padding: 0.5em 0 0.5em;
+  font-size: 12px;
+  opacity: 0.7;
+  display: block;
+  white-space: pre-wrap;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .description.required {
+  padding: 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field {
+  position: relative;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .caption {
+  font-size: 12px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .caption .field-element {
+  font-size: 14px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .field-element {
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0 4px;
+  border: 1px solid #ccc;
+  background: #fafafa;
+  color: black;
+  font-family: sans-serif;
+  font-size: 12px;
+  line-height: normal;
+  box-sizing: border-box;
+  border-radius: 2px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .field-element:focus {
+  background: #fff;
+  transition: background 0.1s ease-in;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field select {
+  max-width: 100%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .prefix {
+  position: absolute;
+  bottom: 16px;
+  left: 8px;
+  color: #aaa;
+  font-family: sans-serif;
+  font-size: 13px;
+  line-height: 16px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.twitter .field-element {
+  padding-left: 22px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.currency.hassymbol .field-element {
+  padding-left: 20px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.website .field-element {
+  padding-left: 45px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.checkbox label,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.radio label {
+  cursor: pointer;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.checkbox input,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.radio input {
+  margin-right: 5px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field .option {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .item {
+  margin: 1.6em 0 1.6em 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .question {
+  margin: 0 0 0.5em 0;
+  font-size: 0.9em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .option {
+  width: 20%;
+  float: left;
+  text-align: left;
+  border-top: 1px solid #ddd;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .option label {
+  margin: 0;
+  padding: 0 0 0 1px;
+  font-size: 0.9em;
+  display: block;
+  cursor: pointer;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .option input {
+  margin: 10px 0;
+  display: block;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .field.likert .option:last-of-type {
+  border-right: none;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields .field.two-digits {
+  width: 3.5em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields .field.three-digits {
+  width: 4.2em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields .field.four-digits {
+  width: 4.8em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields .field.ampm {
+  width: 4.5em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.address1,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.address2 {
+  width: 98%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.city {
+  width: 70%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.state-province {
+  width: 26%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.zip {
+  width: 36%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.address .field.country {
+  width: 98%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.payment .field.card-expiry-month {
+  width: 40%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .fields.payment .field.card-expiry-year {
+  width: 40%;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error .caption,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error .title,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error .description {
+  color: #BD0000;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error input,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field-list .form-item.error textarea {
+  border: 1px solid #E99292;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-button-wrapper--align-left {
+  text-align: left;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-button-wrapper--align-center {
+  text-align: center;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-button-wrapper--align-right {
+  text-align: right;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper input[type=submit] {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  padding: 1em 2.5em;
+  color: #ffffff;
+  background-color: #272727;
+  border-width: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1em;
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: 0px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 14px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .form-submission-text {
+  margin-top: 20px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .field .field-error {
+  margin-bottom: 0.5em;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .submitting .field-list {
+  opacity: 0.7;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper .hidden,
+.sqs-block[data-definition-name="website.components.form"] .form-wrapper.hidden {
+  display: none;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-blockStatus--overlayMode[data-state="invalid"] {
+  border: 1px solid #DB3642;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-blockStatus--overlayMode[data-state="invalid"] .sqs-blockStatus-box-title {
+  font-weight: 500;
+  font-size: 9.75px;
+  line-height: 1rem;
+  letter-spacing: 0.75px;
+  margin-bottom: 11px;
+  color: #0E0E0E;
+  text-transform: uppercase;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-blockStatus--overlayMode[data-state="invalid"] .sqs-blockStatus-box-message {
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1rem;
+  color: #0E0E0E;
+  margin-bottom: 11px;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-blockStatus--overlayMode[data-state="invalid"] .sqs-blockStatus-alert-badge {
+  bottom: 11px;
+  top: unset;
+  color: #C32D38;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-blockStatus--overlayMode[data-state="invalid"] .sqs-blockStatus-box {
+  bottom: 6px;
+  top: unset;
+  min-width: unset;
+  padding-top: 16px;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-block .lightbox-handle-wrapper--align-left {
+  text-align: left;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-block .lightbox-handle-wrapper--align-center {
+  text-align: center;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-block .lightbox-handle-wrapper--align-right {
+  text-align: right;
+}
+.sqs-block[data-definition-name="website.components.form"] .form-block .lightbox-handle {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  padding: 1em 2.5em;
+  color: #ffffff;
+  background-color: #272727;
+  border-width: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1em;
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: 0px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 14px;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox {
+  width: 100%;
+  font-size: 14px;
+  text-transform: none;
+  font-style: normal;
+  text-decoration: none;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content {
+  z-index: 100000000;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-background {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  opacity: 0.4;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner {
+  position: fixed;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  top: 0;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content {
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+  padding: 40px;
+  background: white;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content .form-wrapper {
+  color: #222;
+  font-family: inherit;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content .form-wrapper .form-title {
+  font-size: 22px;
+  line-height: 1.2em;
+  margin-right: 22px;
+  color: #333;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content .form-wrapper .form-inner-wrapper form {
+  margin-top: 55px;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content .form-wrapper .form-inner-wrapper form .radio .option {
+  margin-left: 1px;
+}
+.sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox-content .lightbox-inner .lightbox-content .lightbox-close {
+  position: absolute;
+  color: #333;
+  font-size: 22px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-style: normal;
+  width: 22px;
+  line-height: 22px;
+  top: 40px;
+  right: 40px;
+  text-align: center;
+  cursor: pointer;
+}
+@media only screen and (max-width: 600px) {
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .sqs-modal-lightbox-content {
+    height: 100vh;
+  }
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .lightbox-inner {
+    background: white;
+  }
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .lightbox-inner .lightbox-content {
+    margin-top: 0 !important;
+  }
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .lightbox-inner .lightbox-content .form-wrapper input,
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .lightbox-inner .lightbox-content .form-wrapper select,
+  .sqs-block[data-definition-name="website.components.form"] .sqs-modal-lightbox .lightbox-inner .lightbox-content .form-wrapper textarea {
+    font-size: max(16px, 1rem) !important;
+  }
+}
+

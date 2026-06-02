@@ -1,0 +1,33 @@
+.sqs-block[data-definition-name="website.components.shape"] svg.sqs-shape {
+  fill: var(--shape-block-background-color);
+  stroke: var(--shape-block-stroke-color);
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-shape-rectangle {
+  background: var(--shape-block-background-color);
+  border-color: var(--shape-block-stroke-color);
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-block-content,
+.sqs-block[data-definition-name="website.components.shape"] .sqs-block-alignment-wrapper {
+  height: 100%;
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-shape {
+  display: block;
+  position: absolute;
+  overflow: visible;
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-shape-block-outer-container {
+  position: relative;
+  height: 100%;
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-shape-block-container {
+  position: relative;
+  color: var(--shape-block-dropshadow-color);
+  display: none;
+}
+.sqs-block[data-definition-name="website.components.shape"] .sqs-shape-block-container.hidden-stretch-block {
+  display: none;
+}
+.fe-block .fe-block .sqs-block[data-definition-name="website.components.shape"] .sqs-shape-block-container[data-stretched-to-fill] > .sqs-shape {
+  position: static;
+}
+
