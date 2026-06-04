@@ -13,6 +13,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+use App\Models\Property;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -73,6 +74,22 @@ class User extends Authenticatable implements JWTSubject
         return [
             'role' => $this->role,
         ];
+    }
+
+    public function ownedProperties()
+    {
+        return $this->hasMany(
+            Property::class,
+            'owner_user_id'
+        );
+    }
+
+    public function properties()
+    {
+        return $this->belongsToMany(
+            Property::class,
+            'property_users'
+        );
     }
 
     public function skills()

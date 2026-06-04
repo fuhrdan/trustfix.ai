@@ -19,6 +19,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\ProfileClaimController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\PropertyController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -27,6 +28,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
+Route::post('/properties/{id}/images', [PropertyController::class, 'uploadPropertyImages']);
+
+Route::delete('/properties/{id}/images', [PropertyController::class, 'deletePropertyImages']);
+
 Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']);
 
@@ -136,5 +141,15 @@ Route::middleware(['auth:api'])->group(function () {
 
         Route::get('/admin/disputes', [DisputeController::class, 'adminIndex']);
         Route::post('/admin/disputes/{id}/status', [DisputeController::class, 'adminUpdateStatus']);
+    });
+    
+    Route::middleware('auth:api')->group(function ()
+    {
+        Route::apiResource(
+            'properties',
+            PropertyController::class
+        );
+            Route::get('/properties', [PropertyController::class, 'myProperties']);
+                Route::delete('/properties/{id}', [PropertyController::class, 'destroy']);
     });
 });

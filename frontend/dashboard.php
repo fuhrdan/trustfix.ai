@@ -48,14 +48,22 @@ $user = apiRequest(
     >
         <h3>My Profile</h3>
         
-        <p>
-            Update your account.
-        </p>
-        
         <a href="edit_profile.php">
             Edit Profile
         </a>
         
+        <h3>My Properties</h3>
+        
+        <a href="add_property.php">
+            Add Property
+        </a>
+        
+        <BR><BR>
+
+        <a href="list_properties.php">
+            View Properties
+        </a>
+
         <h3>Users</h3>
 
         <a href="list_users.php">

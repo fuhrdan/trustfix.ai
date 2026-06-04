@@ -584,3 +584,83 @@
 
 )
 
+[03-Jun-2026 15:55:33 UTC] 
+[03-Jun-2026 16:09:39 UTC] 
+[03-Jun-2026 16:17:24 UTC] 
+[03-Jun-2026 16:22:08 UTC] 
+[03-Jun-2026 16:24:17 UTC] 
+[03-Jun-2026 16:31:48 UTC] 
+[03-Jun-2026 16:38:06 UTC] 
+[03-Jun-2026 16:42:30 UTC] 
+[03-Jun-2026 17:56:11 UTC] 
+[04-Jun-2026 15:30:32 UTC] Array
+(
+    [id] => 9
+    [owner_user_id] => 10
+    [street_address] => 25 Test Lane
+    [city] => Denver
+    [state] => CO
+    [zip] => 80122
+    [county] => Jefferson
+    [description] => Test house
+    [created_at] => 2026-06-04T15:30:14.000000Z
+    [updated_at] => 2026-06-04T15:30:32.000000Z
+)
+
+[04-Jun-2026 15:43:15 UTC] Array
+(
+    [id] => 10
+    [owner_user_id] => 10
+    [street_address] => 45 Quck Lane
+    [city] => Duckburg
+    [state] => Ohio
+    [zip] => 33445
+    [county] => Quack
+    [description] => Duckburg
+    [created_at] => 2026-06-04T15:42:49.000000Z
+    [updated_at] => 2026-06-04T15:43:14.000000Z
+)
+
+[04-Jun-2026 15:51:08 UTC] 
+[04-Jun-2026 15:52:47 UTC] Array
+(
+    [id] => 11
+    [owner_user_id] => 10
+    [street_address] => 909 Moog Lane
+    [city] => Danger
+    [state] => Nevada
+    [zip] => 45678
+    [county] => Mesa
+    [description] => Test House
+    [created_at] => 2026-06-04T15:52:20.000000Z
+    [updated_at] => 2026-06-04T15:52:47.000000Z
+)
+
+[04-Jun-2026 15:53:34 UTC] Array
+(
+    [id] => 12
+    [owner_user_id] => 10
+    [street_address] => 596 Lane
+    [city] => Test
+    [state] => Test
+    [zip] => Test
+    [county] => Test
+    [description] => Test
+    [created_at] => 2026-06-04T15:53:18.000000Z
+    [updated_at] => 2026-06-04T15:53:34.000000Z
+)
+
+[04-Jun-2026 15:55:19 UTC] Array
+(
+    [id] => 13
+    [owner_user_id] => 10
+    [street_address] => 111 Beverly Lane
+    [city] => Beverly Hills
+    [state] => CA
+    [zip] => 90210
+    [county] => Beverly Hills
+    [description] => Test House
+    [created_at] => 2026-06-04T15:54:46.000000Z
+    [updated_at] => 2026-06-04T15:55:18.000000Z
+)
+
