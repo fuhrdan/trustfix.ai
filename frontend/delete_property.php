@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('Missing property id');
     }
 
-    $result = apiRequest('DELETE', "/properties/$id");
+    $result = apiRequest('DELETE', "/properties/$propertyId");
 
     header("Location: list_properties.php");
     exit;

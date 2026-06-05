@@ -7,6 +7,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\PropertyImage;
 
 class Property extends Model
 {
@@ -36,4 +37,12 @@ class Property extends Model
             'property_users'
         );
     }
+    
+    public function images()
+    {
+        return $this->hasMany(
+            PropertyImage::class
+            );
+    }
+    
 }

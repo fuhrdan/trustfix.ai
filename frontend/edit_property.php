@@ -23,7 +23,7 @@ if (!$propertyId) {
 //-------------------------------------------------
 // Load existing job
 //-------------------------------------------------
-$property = apiRequest('GET', "/properies/$id");
+$property = apiRequest('GET', "/propertyId");
 
 if (!is_array($property)) {
     die("Property not found or invalid response");
@@ -38,21 +38,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     !isset($_POST['ajax_upload'])) {
 
     $payload = [
-        'Street Address' => $_POST['street_address'] ?? '',
-        'City' => (float)($_POST['city'] ?? 0),
-        'State' => (float)($_POST['state'] ?? 0),
-        'Zip' => $_POST['zip'] ?? '',
-        'County' => (float)($_POST['county'] ?? 0),
-        'Description' => $_POST['description'] ?? '',
+        'street_address' => $_POST['street_address'] ?? '',
+        'city' => (float)($_POST['city'] ?? 0),
+        'state' => (float)($_POST['state'] ?? 0),
+        'zip' => $_POST['zip'] ?? '',
+        'county' => (float)($_POST['county'] ?? 0),
+        'description' => $_POST['description'] ?? '',
     ];
 
     apiRequest(
         'PUT',
-        "/property/$id",
+        "/properties/$propertyId",
         $payload
     );
 
-    $result = apiRequest('GET', "/properies/$id");
+    $result = apiRequest('GET', "/propertyId");
 
     $message .= "
         <div style='
@@ -106,36 +106,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <input
         type="text"
-        name="Street Address"
+        name="street_address"
         placeholder="Street Address"
         required
-        value="<?= htmlspecialchars($job['street_address'] ?? '') ?>"
+        value="<?= htmlspecialchars($property['street_address'] ?? '') ?>"
     >
 
     <textarea
-        name="City"
-        placeholder="City"
+        name="city"
+        placeholder="city"
         required
-    ><?= htmlspecialchars($job['city'] ?? '') ?></textarea>
+    ><?= htmlspecialchars($property['city'] ?? '') ?></textarea>
 
     <input
-        name="State"
-        placeholder="State"
-        value="<?= htmlspecialchars($job['state'] ?? '') ?>"
+        name="state"
+        placeholder="state"
+        value="<?= htmlspecialchars($property['state'] ?? '') ?>"
     >
 
     <input
         type="text"
-        name="Zip"
-        placeholder="Zip"
-        value="<?= htmlspecialchars($job['zip'] ?? '') ?>"
+        name="zip"
+        placeholder="zip"
+        value="<?= htmlspecialchars($property['zip'] ?? '') ?>"
     >
 
     <input
         type="text"
-        name="Descriptione"
-        placeholder="Description"
-        value="<?= htmlspecialchars($job['description'] ?? '') ?>"
+        name="descriptione"
+        placeholder="description"
+        value="<?= htmlspecialchars($property['description'] ?? '') ?>"
     >
 
     <h3>Upload Pictures</h3>
