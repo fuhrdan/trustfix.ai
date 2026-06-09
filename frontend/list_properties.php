@@ -75,7 +75,7 @@ exit;
             </td>
 
             <td>
-                $<?= htmlspecialchars(
+                <?= htmlspecialchars(
                     $property['county'] 
                     ?? ''
                 ) ?>
