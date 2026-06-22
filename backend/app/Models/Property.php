@@ -15,6 +15,8 @@ class Property extends Model
     [
         'owner_user_id',
         'street_address',
+        'address_line_2',
+        'apartment',
         'city',
         'state',
         'zip',

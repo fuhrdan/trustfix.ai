@@ -23,6 +23,8 @@ if (!isset($_SESSION['draft_property_id'])) {
 
     $payload = [
         'street_address' => '123 Test St',
+        'address_line_2' => 'line 2',
+//        'apartment' = '101',
         'city' => 'Test',
         'state' => 'Insanity',
         'zip' => '12345',
@@ -69,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     $payload = [
         'street_address' => $_POST['street_address'],
+        'address_line_2' => $_POST['address_line_2'],
+        'apartment' => $_POST['apartment'],
         'city' => $_POST['city'],
         'state' => $_POST['state'],
         'zip' => $_POST['zip'],
@@ -166,6 +170,18 @@ error_log(print_r($result, true));
         name="street_address"
         placeholder="Street Address"
         required
+    >
+
+    <input
+        type="text"
+        name="address_line_2"
+        placeholder="Address Line 2"
+    >
+
+    <input
+        type="text"
+        name="apartment"
+        placeholder="Apartment / Unit"
     >
 
     <textarea

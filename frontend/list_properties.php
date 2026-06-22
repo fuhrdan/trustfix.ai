@@ -23,6 +23,8 @@ exit;
 
         <th>Address</th>
 
+        <th>Apartment</th>
+        
         <th>City</th>
 
         <th>State</th>
@@ -49,6 +51,13 @@ exit;
             <td>
                 <?= htmlspecialchars(
                     $property['street_address']
+                    ?? ''
+                ) ?>
+            </td>
+
+            <td>
+                <?= htmlspecialchars(
+                    $property['apartment']
                     ?? ''
                 ) ?>
             </td>

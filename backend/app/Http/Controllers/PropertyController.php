@@ -52,9 +52,11 @@ class PropertyController extends Controller
         
         $validated = $request->validate([
             'street_address' => ['nullable', 'string', 'max:500'],
+            'address_line_2' => ['nullable', 'string', 'max:500'],
+            'apartment' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:500'],
             'state' => ['nullable', 'string', 'max:500'],
-            'zip' => ['nullable', 'string', 'max:5'],
+            'zip' => ['nullable', 'string', 'max:20'],
             'county' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:500'], 
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
@@ -63,6 +65,8 @@ class PropertyController extends Controller
         $property = Property::create([
             'owner_user_id' => Auth::guard('api')->id(),
             'street_address' => $validated['street_address'] ?? '',
+            'address_line_2' => $validated['address_line_2'] ?? '',
+            'apartment' => $validated['apartment'] ?? '',
             'city' => $validated['city'] ?? '',
             'state' => $validated['state'] ?? '',
             'zip' => $validated['zip'] ?? '',
@@ -91,17 +95,32 @@ class PropertyController extends Controller
     
     public function uploadImage(Request $request, $id)
     {
-        $property = Property::where('owner_user_id', auth()->id())
-            ->findOrFail($id);
+        $request->validate([
+            'image' => [
+                'required',
+                'image',
+                'mimes:jpg,jpeg,png,webp,gif',
+                'max:5120'
+            ]
+        ]);
 
-        $path = $request->file('image')->store('properties', 'public');
+        $property = Property::where(
+            'owner_user_id',
+            Auth::guard('api')->id()
+        )->findOrFail($id);
 
-        $property->images()->create([
+        $path = $request->file('image')->store(
+            'properties/' . $property->id,
+            'public'
+        );
+
+        $image = $property->images()->create([
             'image_path' => $path
         ]);
 
         return response()->json([
             'success' => true,
+            'image' => $image,
             'path' => $path
         ]);
     }
@@ -145,6 +164,8 @@ class PropertyController extends Controller
 
         $property->update([
             'street_address' => $request->street_address,
+            'address_line_2' => $request->address_line_2,
+            'apartment' => $request->apartment,
             'city' => $request->city,
             'state' => $request->state,
             'zip' => $request->zip,

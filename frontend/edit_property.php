@@ -21,9 +21,12 @@ if (!$propertyId) {
 }
 
 //-------------------------------------------------
-// Load existing job
+// Load existing property
 //-------------------------------------------------
-$property = apiRequest('GET', "/propertyId");
+$property = apiRequest(
+    'GET', 
+    "/properties/$propertyId"
+    );
 
 if (!is_array($property)) {
     die("Property not found or invalid response");
@@ -39,10 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     $payload = [
         'street_address' => $_POST['street_address'] ?? '',
-        'city' => (float)($_POST['city'] ?? 0),
-        'state' => (float)($_POST['state'] ?? 0),
+        'address_line_2' => $_POST['address_line_2'] ?? '',
+        'apartment' => $_POST['apartment'] ?? '',
+        'city' => ($_POST['city'] ?? 0),
+        'state' => ($_POST['state'] ?? 0),
         'zip' => $_POST['zip'] ?? '',
-        'county' => (float)($_POST['county'] ?? 0),
+        'county' => ($_POST['county'] ?? 0),
         'description' => $_POST['description'] ?? '',
     ];
 
@@ -52,7 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         $payload
     );
 
-    $result = apiRequest('GET', "/propertyId");
+    $result = apiRequest(
+        'GET', 
+        "/properties/$propertyId"
+    );
 
     $message .= "
         <div style='
@@ -61,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
             border-radius:8px;
             margin-bottom:20px;
         '>
-            Job Updated Successfully
+            Property Updated Successfully
         </div>
     ";
 
@@ -98,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 <body>
 
-<h1>Edit Job</h1>
+<h1>Edit Property</h1>
 
 <?= $message ?>
 
@@ -110,6 +118,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         placeholder="Street Address"
         required
         value="<?= htmlspecialchars($property['street_address'] ?? '') ?>"
+    >
+
+    <input
+        type="text"
+        name="address_line_2"
+        placeholder="Address Line 2"
+        value="<?= htmlspecialchars($property['address_line_2'] ?? '') ?>"
+    >
+
+    <input
+        type="text"
+        name="apartment"
+        placeholder="Apartment / Unit"
+        value="<?= htmlspecialchars($property['apartment'] ?? '') ?>"
     >
 
     <textarea
@@ -133,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <input
         type="text"
-        name="descriptione"
+        name="description"
         placeholder="description"
         value="<?= htmlspecialchars($property['description'] ?? '') ?>"
     >
@@ -163,8 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     </div>
 
     <div id="uploadedImages">
-        <?php if (!empty($job['images'])): ?>
-            <?php foreach ($job['images'] as $img): ?>
+        <?php if (!empty($property['images'])): ?>
+            <?php foreach ($property['images'] as $img): ?>
 <div style="
     position:relative;
     display:inline-block;
@@ -213,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     <br>
 
     <button type="submit">
-        Update Job
+        Update Property
     </button>
 
 </form>
@@ -258,7 +280,7 @@ function wireUploadBlock(block)
 
         const xhr = new XMLHttpRequest();
 
-        xhr.open('POST', 'upload_job_image.php?job_id=<?= $jobId ?>', true);
+        xhr.open('POST', 'upload_property_image.php?property_id=<?= $propertyId ?>', true);
         xhr.withCredentials = true;
 
         xhr.upload.addEventListener('progress', function(e)
@@ -337,7 +359,7 @@ function deleteImage(imageId, btn)
 
     const xhr = new XMLHttpRequest();
 
-    xhr.open('POST', 'delete_job_image.php', true);
+    xhr.open('POST', 'delete_property_image.php', true);
 
     xhr.onload = function()
     {

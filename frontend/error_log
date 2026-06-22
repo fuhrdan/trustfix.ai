@@ -1,0 +1,65 @@
+[22-Jun-2026 13:58:55 UTC] Array
+(
+    [id] => 18
+    [owner_user_id] => 10
+    [street_address] => 234 Street
+    [address_line_2] => 
+    [apartment] => 102
+    [city] => Topeka
+    [state] => KS
+    [zip] => 66614
+    [county] => Hayford
+    [description] => House Test
+    [created_at] => 2026-06-22T13:16:48.000000Z
+    [updated_at] => 2026-06-22T13:58:54.000000Z
+)
+
+[22-Jun-2026 14:06:07 UTC] Array
+(
+    [id] => 18
+    [owner_user_id] => 10
+    [street_address] => 234 Street
+    [address_line_2] => 333 Lane
+    [apartment] => 210
+    [city] => Topeka
+    [state] => KS
+    [zip] => 66614
+    [county] => 0
+    [description] => House Test
+    [created_at] => 2026-06-22T13:16:48.000000Z
+    [updated_at] => 2026-06-22T14:06:07.000000Z
+)
+
+[22-Jun-2026 14:42:28 UTC] 
+[22-Jun-2026 14:44:13 UTC] Array
+(
+    [id] => 19
+    [owner_user_id] => 10
+    [street_address] => 3567 House St
+    [address_line_2] => Upper
+    [apartment] => 345
+    [city] => Happy City
+    [state] => HI
+    [zip] => 34567
+    [county] => Twilight
+    [description] => House for Test
+    [created_at] => 2026-06-22T14:43:34.000000Z
+    [updated_at] => 2026-06-22T14:44:13.000000Z
+)
+
+[22-Jun-2026 14:51:22 UTC] Array
+(
+    [id] => 20
+    [owner_user_id] => 10
+    [street_address] => Test House Image
+    [address_line_2] => Test House Image
+    [apartment] => Test House Image
+    [city] => Test House Image
+    [state] => Test House Image
+    [zip] => Test House Image
+    [county] => Test House Image
+    [description] => Test House Image
+    [created_at] => 2026-06-22T14:50:55.000000Z
+    [updated_at] => 2026-06-22T14:51:21.000000Z
+)
+
