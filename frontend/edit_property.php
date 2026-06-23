@@ -203,13 +203,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         "
     >
 
+<form
+    method="post"
+    action="delete_property_image.php"
+    style="
+        position:absolute;
+        top:6px;
+        right:6px;
+        margin:0;
+    "
+    onsubmit="return confirm('Delete this image?');"
+>
+    <input
+        type="hidden"
+        name="image_id"
+        value="<?= (int)$img['id'] ?>"
+    >
+
     <button
-        type="button"
-        onclick="deleteImage(<?= (int)$img['id'] ?>, this)"
+        type="submit"
         style="
-            position:absolute;
-            top:6px;
-            right:6px;
             width:32px;
             height:32px;
             background:#e53935;
@@ -226,6 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     >
         ×
     </button>
+</form>
 
 </div>
             <?php endforeach; ?>

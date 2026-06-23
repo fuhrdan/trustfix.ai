@@ -158,19 +158,22 @@ class PropertyController extends Controller
     
     }
 
-    public function deleteImage(
-        Request $request, 
-        $propertyId,
-        $imageId
-    )
+    public function deleteImage($imageId)
     {
-        $property = Property::where(
-            'owner_user_id',
-            Auth::guard('api')->id()
-        )->findOrFail($propertyId);
+        $user = Auth::guard('api')->user();
 
-        $image = $property->images()
-            ->findOrFail($imageId);
+        $image = PropertyImage::findOrFail($imageId);
+
+        $property = Property::findOrFail(
+            $image->property_id
+        );
+
+        if ($property->owner_user_id != $user->id)
+        {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
 
         Storage::disk('public')->delete(
             $image->image_path
@@ -181,6 +184,7 @@ class PropertyController extends Controller
         return response()->json([
             'success' => true
         ]);
+
     }
 
 /*

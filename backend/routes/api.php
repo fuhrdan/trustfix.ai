@@ -30,7 +30,10 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
 Route::post('/properties/{id}/images', [PropertyController::class, 'uploadImage']);
 
-Route::delete('/properties/{id}/images/{imageID}', [PropertyController::class, 'deleteImage']);
+Route::delete(
+    '/property-images/{imageId}',
+    [PropertyController::class, 'deleteImage']
+);
 
 Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']);
