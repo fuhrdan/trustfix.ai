@@ -324,7 +324,7 @@ function wireUploadBlock(block)
         const formData = new FormData();
 
         formData.append('ajax_upload', '1');
-        formData.append('images', input.files[0]);
+        formData.append('image', input.files[0]);
 
         //-----------------------------------------
         // Disable button

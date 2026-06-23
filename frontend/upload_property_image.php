@@ -91,7 +91,7 @@ $debug['property_id'] = $propertyId;
             'POST',
             "/properties/$propertyId/images",
             [
-                'images[]' => $file
+                'images' => $file
             ]
         );
 

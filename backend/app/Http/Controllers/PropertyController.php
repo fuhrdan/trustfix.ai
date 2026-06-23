@@ -34,22 +34,28 @@ class PropertyController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $properties = Property::query()->findOrFail($id);
+        $property = Property::with('images')
+            ->where('owner_user_id', $user->id)
+            ->findOrFail($id);
+
+//Old peice, without image support        
+//        $properties = Property::query()->findOrFail($id);
 
 // This throws an error, possibly delete or fix
 
-        $isCustomer = $properties->customer_id == $user->id;
-        $isAssignedHandyman = $properties->handyman_id == $user->id;
+// Currently commented out.
+//        $isCustomer = $properties->customer_id == $user->id;
+//        $isAssignedHandyman = $properties->handyman_id == $user->id;
 
 // Let's go back and revisit the code above another time.
 
-        $isAdmin = $user->role == 'admin';
+//        $isAdmin = $user->role == 'admin';
 
-        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
+//        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+//            return response()->json(['error' => 'Forbidden'], 403);
+//        }
 
-        return response()->json($properties);
+        return response()->json($property);
     }
 
     public function store(Request $request)
@@ -108,9 +114,13 @@ class PropertyController extends Controller
 //        'has_file' => $request->hasFile('image')
 //    ]);
 //*********END LOGGING*************************************
+        $property = Property::where(
+            'owner_user_id',
+            Auth::guard('api')->id()
+        )->findOrFail($id);
 
         $request->validate([
-            'images' => [
+            'images.*' => [
                 'required',
                 'image',
                 'mimes:jpg,jpeg,png,webp,gif',
@@ -118,15 +128,21 @@ class PropertyController extends Controller
             ]
         ]);
 
-        $property = Property::where(
-            'owner_user_id',
-            Auth::guard('api')->id()
-        )->findOrFail($id);
+        if ($request->hasFile('images'))
+        {
+            foreach ($request->file('images') as $image)
+            {
+                $path = $image->store(
+                    'properties/' . $property->id,
+                    'public'
+                );
 
-        $path = $request->file('images')->store(
-            'properties/' . $property->id,
-            'public'
-        );
+                $property->images()->create([
+                    'image_path' => $path
+                ]);
+            }
+        }
+
         
 //*********ERROR LOGGING***********************************
 //    \Log::info('File stored', [
@@ -134,15 +150,12 @@ class PropertyController extends Controller
 //    ]);
 //*********END LOGGING*************************************
     
-        $image = $property->images()->create([
-            'image_path' => $path
-        ]);
-
         return response()->json([
             'success' => true,
-            'images' => $image,
-            'path' => $path
+            'images' => $property->images()->get(),
+            'property' => $property->load('images')
         ]);
+    
     }
 
     public function deleteImage(
