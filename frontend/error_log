@@ -63,3 +63,35 @@
     [updated_at] => 2026-06-22T14:51:21.000000Z
 )
 
+[23-Jun-2026 15:08:25 UTC] Array
+(
+    [id] => 21
+    [owner_user_id] => 10
+    [street_address] => Street House
+    [address_line_2] => 
+    [apartment] => 
+    [city] => Detroit
+    [state] => MI
+    [zip] => 12345
+    [county] => Detroit
+    [description] => A test house with images.
+    [created_at] => 2026-06-23T15:07:43.000000Z
+    [updated_at] => 2026-06-23T15:08:24.000000Z
+)
+
+[23-Jun-2026 15:16:06 UTC] Array
+(
+    [id] => 22
+    [owner_user_id] => 10
+    [street_address] => Test Property
+    [address_line_2] => 
+    [apartment] => 
+    [city] => Applewood
+    [state] => CO
+    [zip] => 80128
+    [county] => Jefferson
+    [description] => Test Images
+    [created_at] => 2026-06-23T15:15:38.000000Z
+    [updated_at] => 2026-06-23T15:16:06.000000Z
+)
+

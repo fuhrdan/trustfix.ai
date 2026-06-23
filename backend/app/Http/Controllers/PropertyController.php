@@ -36,8 +36,13 @@ class PropertyController extends Controller
 
         $properties = Property::query()->findOrFail($id);
 
+// This throws an error, possibly delete or fix
+
         $isCustomer = $properties->customer_id == $user->id;
         $isAssignedHandyman = $properties->handyman_id == $user->id;
+
+// Let's go back and revisit the code above another time.
+
         $isAdmin = $user->role == 'admin';
 
         if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
@@ -59,7 +64,7 @@ class PropertyController extends Controller
             'zip' => ['nullable', 'string', 'max:20'],
             'county' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:500'], 
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images.*' => ['nullable', 'images', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
         
         $property = Property::create([
@@ -74,7 +79,7 @@ class PropertyController extends Controller
             'description' => $validated['description'] ?? ''
         ]);
 
-/*
+
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
                 $path = $image->store('properties/' . $property->id, 'public');
@@ -84,7 +89,7 @@ class PropertyController extends Controller
                 ]);
             }
         }
-*/
+
 //        return response()->json($property->load('images'), 201);
 
         return response()->json([
@@ -95,8 +100,17 @@ class PropertyController extends Controller
     
     public function uploadImage(Request $request, $id)
     {
+        
+//*********ERROR LOGGING***********************************
+//    \Log::info('Property image upload started', [
+//        'property_id' => $id,
+//        'user_id' => Auth::guard('api')->id(),
+//        'has_file' => $request->hasFile('image')
+//    ]);
+//*********END LOGGING*************************************
+
         $request->validate([
-            'image' => [
+            'images' => [
                 'required',
                 'image',
                 'mimes:jpg,jpeg,png,webp,gif',
@@ -109,36 +123,50 @@ class PropertyController extends Controller
             Auth::guard('api')->id()
         )->findOrFail($id);
 
-        $path = $request->file('image')->store(
+        $path = $request->file('images')->store(
             'properties/' . $property->id,
             'public'
         );
-
+        
+//*********ERROR LOGGING***********************************
+//    \Log::info('File stored', [
+//        'path' => $path
+//    ]);
+//*********END LOGGING*************************************
+    
         $image = $property->images()->create([
             'image_path' => $path
         ]);
 
         return response()->json([
             'success' => true,
-            'image' => $image,
+            'images' => $image,
             'path' => $path
         ]);
     }
 
-    public function deleteImage(Request $request, $id)
+    public function deleteImage(
+        Request $request, 
+        $propertyId,
+        $imageId
+    )
     {
-        $property = Property::where('owner_user_id', auth()->id())
-            ->findOrFail($id);
+        $property = Property::where(
+            'owner_user_id',
+            Auth::guard('api')->id()
+        )->findOrFail($propertyId);
 
-        $path = $request->file('image')->store('properties', 'public');
+        $image = $property->images()
+            ->findOrFail($imageId);
 
-        $property->images()->create([
-            'image_path' => $path
-        ]);
+        Storage::disk('public')->delete(
+            $image->image_path
+        );
+
+        $image->delete();
 
         return response()->json([
-            'success' => true,
-            'path' => $path
+            'success' => true
         ]);
     }
 
@@ -160,7 +188,13 @@ class PropertyController extends Controller
 
     public function update(Request $request, $id)
     {
-        $property = Property::findOrFail($id);
+// Update for security
+//        $property = Property::findOrFail($id);
+
+        $property = Property::where(
+            'owner_user_id',
+            Auth::guard('api')->id()
+        )->findOrFail($id);
 
         $property->update([
             'street_address' => $request->street_address,

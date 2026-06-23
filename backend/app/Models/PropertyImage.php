@@ -8,12 +8,13 @@ class PropertyImage extends Model
 {
     protected $fillable = [
         'property_id',
-        'image_path',
-        'timestamps'
+        'image_path'
     ];
 
-    public function job()
+    public function property()
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(
+            Property::class
+        );
     }
 }

@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     if (!empty($result['images'])) {
 
-        foreach ($result['images'] as $img) {
+        foreach ($result['image'] as $img) {
 
             $url = '/storage/' . $img['image_path'];
 
@@ -324,7 +324,7 @@ function wireUploadBlock(block)
         const formData = new FormData();
 
         formData.append('ajax_upload', '1');
-        formData.append('image', input.files[0]);
+        formData.append('images', input.files[0]);
 
         //-----------------------------------------
         // Disable button

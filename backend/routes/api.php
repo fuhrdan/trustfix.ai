@@ -28,9 +28,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
-Route::post('/properties/{id}/images', [PropertyController::class, 'uploadPropertyImages']);
+Route::post('/properties/{id}/images', [PropertyController::class, 'uploadImage']);
 
-Route::delete('/properties/{id}/images', [PropertyController::class, 'deletePropertyImages']);
+Route::delete('/properties/{id}/images/{imageID}', [PropertyController::class, 'deleteImage']);
 
 Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']);

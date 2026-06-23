@@ -1,0 +1,10 @@
+#29 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Http/Middleware/ValidatePathEncoding.php(26): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
+#30 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Http\\Middleware\\ValidatePathEncoding->handle()
+#31 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
+#32 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(175): Illuminate\\Pipeline\\Pipeline->then()
+#33 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(144): Illuminate\\Foundation\\Http\\Kernel->sendRequestThroughRouter()
+#34 /home/lakehous/handyman-api/backend/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1220): Illuminate\\Foundation\\Http\\Kernel->handle()
+#35 /home/lakehous/handyman-api/backend/public/index.php(20): Illuminate\\Foundation\\Application->handleRequest()
+#36 {main}
+"} 
+[2026-06-23 15:16:02] production.INFO: Property image upload started {"property_id":"22","user_id":"10","has_file":false} 
