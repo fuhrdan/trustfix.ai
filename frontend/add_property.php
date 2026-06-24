@@ -400,38 +400,14 @@ function wireUploadBlock(block)
                         'uploadedImages'
                     ).innerHTML = data.html;
 
-                    //---------------------------------
-                    // Create next upload block
-                    //---------------------------------
-                    const newBlock =
-                        document.createElement('div');
+                    input.value = '';
+                    button.disabled = true;
+                    button.innerText = 'Upload Image';
 
-                    newBlock.className =
-                        'upload-block';
-
-                    newBlock.style.marginTop = '20px';
-
-                    newBlock.innerHTML = `
-                        <input
-                            type="file"
-                            class="image-input"
-                            accept="image/*"
-                        >
-
-                        <button
-                            type="button"
-                            class="upload-btn"
-                            disabled
-                        >
-                            Upload Image
-                        </button>
-                    `;
-
-                    document
-                        .getElementById('uploadArea')
-                        .appendChild(newBlock);
-
-                    wireUploadBlock(newBlock);
+                    setTimeout(function()
+                    {
+                        progressContainer.remove();
+                    }, 1000);
 
                 } else {
 
@@ -464,6 +440,42 @@ function wireUploadBlock(block)
 
 document.querySelectorAll('.upload-block')
     .forEach(wireUploadBlock);
+
+
+function deleteImage(imageId, btn)
+{
+    if (!confirm('Delete this image?')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('image_id', imageId);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'delete_property_image.php', true);
+
+    xhr.onload = function()
+    {
+        if (xhr.status == 200) {
+            try {
+                const res = JSON.parse(xhr.responseText);
+
+                if (res.success) {
+                    const wrapper = btn.closest('div');
+                    wrapper.remove();
+                } else {
+                    alert('Delete failed');
+                }
+            } catch (e) {
+                alert('Invalid server response');
+            }
+        } else {
+            alert('HTTP error: ' + xhr.status);
+        }
+    };
+
+    xhr.send(formData);
+}
 
 </script>
 

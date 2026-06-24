@@ -187,61 +187,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     <div id="uploadedImages">
         <?php if (!empty($property['images'])): ?>
             <?php foreach ($property['images'] as $img): ?>
-<div style="
-    position:relative;
-    display:inline-block;
-    margin-bottom:15px;
-">
+                <div style="
+                    position:relative;
+                    display:inline-block;
+                    margin:0 15px 15px 0;
+                ">
+                    <img
+                        src="/storage/<?= htmlspecialchars($img['image_path']) ?>"
+                        style="
+                            max-width:200px;
+                            border:1px solid #ccc;
+                            border-radius:8px;
+                            display:block;
+                        "
+                    >
 
-    <img
-        src="/storage/<?= htmlspecialchars($img['image_path']) ?>"
-        style="
-            max-width:200px;
-            border:1px solid #ccc;
-            border-radius:8px;
-            display:block;
-        "
-    >
-
-<form
-    method="post"
-    action="delete_property_image.php"
-    style="
-        position:absolute;
-        top:6px;
-        right:6px;
-        margin:0;
-    "
-    onsubmit="return confirm('Delete this image?');"
->
-    <input
-        type="hidden"
-        name="image_id"
-        value="<?= (int)$img['id'] ?>"
-    >
-
-    <button
-        type="submit"
-        style="
-            width:32px;
-            height:32px;
-            background:#e53935;
-            color:white;
-            border:none;
-            border-radius:10px;
-            font-size:18px;
-            font-weight:bold;
-            cursor:pointer;
-            line-height:32px;
-            text-align:center;
-        "
-        title="Delete image"
-    >
-        ×
-    </button>
-</form>
-
-</div>
+                    <button
+                        type="button"
+                        onclick="deleteImage(<?= (int)$img['id'] ?>, this)"
+                        style="
+                            position:absolute;
+                            top:6px;
+                            right:6px;
+                            width:32px;
+                            height:32px;
+                            background:#e53935;
+                            color:white;
+                            border:none;
+                            border-radius:10px;
+                            font-size:18px;
+                            font-weight:bold;
+                            cursor:pointer;
+                            line-height:32px;
+                            text-align:center;
+                        "
+                        title="Delete image"
+                    >×</button>
+                </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
@@ -329,17 +311,14 @@ function wireUploadBlock(block)
 
                     document.getElementById('uploadedImages').innerHTML = data.html;
 
-                    const newBlock = document.createElement('div');
-                    newBlock.className = 'upload-block';
-                    newBlock.style.marginTop = '20px';
+                    input.value = '';
+                    button.disabled = true;
+                    button.innerText = 'Upload Image';
 
-                    newBlock.innerHTML = `
-                        <input type="file" class="image-input" accept="image/*">
-                        <button type="button" class="upload-btn" disabled>Upload Image</button>
-                    `;
-
-                    document.getElementById('uploadArea').appendChild(newBlock);
-                    wireUploadBlock(newBlock);
+                    setTimeout(function()
+                    {
+                        progressContainer.remove();
+                    }, 1000);
 
                 } else {
                     progressText.innerText = 'Upload failed';

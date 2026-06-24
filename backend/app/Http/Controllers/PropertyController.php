@@ -120,6 +120,10 @@ class PropertyController extends Controller
         )->findOrFail($id);
 
         $request->validate([
+            'images' => [
+                'required',
+                'array'
+            ],
             'images.*' => [
                 'required',
                 'image',

@@ -21,42 +21,15 @@ $debug = [];
     try {
 
         //-------------------------------------------------
-        // Get/Create Draft Property
+        // Get Current Property ID
         //-------------------------------------------------
-        $propertyId = $_SESSION['draft_property_id'];
+        $propertyId = (int)($_GET['property_id'] ?? 0);
 
         if (!$propertyId) {
-
-            $payload = [
-                'address' => 'Draft Property',
-                'lat' => 0,
-                'lng' => 0,
-                'initial_description' => 'Draft',
-                'agreed_price' => 0
-            ];
-
-            $property = apiRequest(
-                'POST',
-                '/properties',
-                $payload
-            );
-
-$debug['create_property_raw'] = $property;
-
-            if (!is_array($property) || !isset($property['id'])) {
-
-                throw new Exception(
-                    'Failed creating draft property: '
-                    . print_r($property, true)
-                );
-            }
-
-            $propertyId = $property['id'];
-
-            $_SESSION['draft_property_id'] = $propertyId;
+            throw new Exception('Missing property_id');
         }
 
-$debug['property_id'] = $propertyId;
+        $debug['property_id'] = $propertyId;
 
         //-------------------------------------------------
         // Validate Upload
@@ -91,7 +64,7 @@ $debug['property_id'] = $propertyId;
             'POST',
             "/properties/$propertyId/images",
             [
-                'images' => $file
+                'images[]' => $file
             ]
         );
 
@@ -141,18 +114,43 @@ $debug['property_id'] = $propertyId;
                     '/storage/'
                     . ltrim($imagePath, '/');
 
-                $html .= "
-                    <div style='margin-bottom:15px;'>
+                $imageId = (int)($img['id'] ?? 0);
+                $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+                $safePath = htmlspecialchars($imagePath, ENT_QUOTES, 'UTF-8');
 
+                $html .= "
+                    <div style='position:relative;display:inline-block;margin:0 15px 15px 0;'>
                         <img
-                            src='{$url}'
+                            src='{$safeUrl}'
                             style='
                                 max-width:200px;
                                 border:1px solid #ccc;
                                 border-radius:8px;
+                                display:block;
                             '
                         >
-                    {$imagePath}
+                        <button
+                            type='button'
+                            onclick='deleteImage({$imageId}, this)'
+                            style='
+                                position:absolute;
+                                top:6px;
+                                right:6px;
+                                width:32px;
+                                height:32px;
+                                background:#e53935;
+                                color:white;
+                                border:none;
+                                border-radius:10px;
+                                font-size:18px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                line-height:32px;
+                                text-align:center;
+                            '
+                            title='Delete image'
+                        >×</button>
+                        <div style='font-size:12px;margin-top:4px;'>{$safePath}</div>
                     </div>
                 ";
             }

@@ -1,35 +1,45 @@
 <?php
 
-require_once 'includes/auth.php';
+require 'config.php';
 
-$imageId = $_POST['image_id'];
+requireLogin();
 
-$url =
-    API_BASE_URL .
-    "/property-images/" .
-    $imageId;
+header('Content-Type: application/json');
 
-$ch = curl_init($url);
+$imageId = (int)($_POST['image_id'] ?? 0);
 
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+if (!$imageId)
+{
+    http_response_code(400);
 
-curl_setopt(
-    $ch,
-    CURLOPT_HTTPHEADER,
-    [
-        "Authorization: Bearer " .
-        $_SESSION['token']
-    ]
+    echo json_encode([
+        'success' => false,
+        'message' => 'Missing image_id'
+    ]);
+
+    exit;
+}
+
+$result = apiRequest(
+    'DELETE',
+    "/property-images/$imageId"
 );
 
-$response = curl_exec($ch);
+if (is_array($result) && !empty($result['success']))
+{
+    echo json_encode([
+        'success' => true
+    ]);
 
-curl_close($ch);
+    exit;
+}
 
-header(
-    "Location: " .
-    $_SERVER['HTTP_REFERER']
-);
+http_response_code(500);
+
+echo json_encode([
+    'success' => false,
+    'message' => 'Delete failed',
+    'api_response' => $result
+]);
 
 exit;
