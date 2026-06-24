@@ -15,9 +15,9 @@ class ContractorProfileController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
             'service_area' => ['nullable', 'string', 'max:255'],
             'badge' => ['nullable', 'string', 'max:100'],
-            'min_years_experience' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'year_established' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
             'min_rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
-            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'experience_high', 'experience_low', 'business_name', 'rating_high'])],
+            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'established_oldest', 'established_newest', 'business_name', 'rating_high'])],
         ]);
 
         $query = ContractorProfile::with(['user', 'badges'])
@@ -36,6 +36,8 @@ class ContractorProfileController extends Controller
                     ->orWhere('bio', 'like', '%' . $search . '%')
                     ->orWhere('service_area', 'like', '%' . $search . '%')
                     ->orWhere('license_number', 'like', '%' . $search . '%')
+                    ->orWhere('state_license', 'like', '%' . $search . '%')
+                    ->orWhere('local_license', 'like', '%' . $search . '%')
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', '%' . $search . '%');
                     });
@@ -55,8 +57,8 @@ class ContractorProfileController extends Controller
             });
         }
 
-        if (array_key_exists('min_years_experience', $validated)) {
-            $query->where('years_experience', '>=', $validated['min_years_experience']);
+        if (!empty($validated['year_established'])) {
+            $query->where('year_established', '<=', $validated['year_established']);
         }
 
         if (!empty($validated['min_rating'])) {
@@ -67,8 +69,8 @@ class ContractorProfileController extends Controller
 
         match ($sort) {
             'oldest' => $query->oldest(),
-            'experience_high' => $query->orderByDesc('years_experience'),
-            'experience_low' => $query->orderBy('years_experience'),
+            'established_oldest' => $query->orderBy('year_established'),
+            'established_newest' => $query->orderByDesc('year_established'),
             'business_name' => $query->orderBy('business_name'),
             'rating_high' => $query->orderByDesc('average_rating'),
             default => $query->latest(),
@@ -108,14 +110,28 @@ class ContractorProfileController extends Controller
 
     public function storeOrUpdate(Request $request)
     {
+        $currentYear = (int) date('Y');
+
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
+            'business_address' => ['nullable', 'string', 'max:500'],
+            'business_phone' => ['nullable', 'string', 'max:30'],
             'bio' => ['nullable', 'string', 'max:5000'],
             'service_area' => ['nullable', 'string', 'max:255'],
+            'emergency_availability' => ['nullable', 'boolean'],
             'phone' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'url', 'max:255'],
+            'year_established' => ['nullable', 'integer', 'min:1800', 'max:' . $currentYear],
+            'business_type' => ['nullable', Rule::in(['individual', 'company'])],
             'license_number' => ['nullable', 'string', 'max:100'],
-            'years_experience' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'state_license' => ['nullable', 'string', 'max:100'],
+            'local_license' => ['nullable', 'string', 'max:100'],
+            'sales_tax_license' => ['nullable', 'string', 'max:100'],
+            'license_expiration_date' => ['nullable', 'date'],
+            'coi_path' => ['nullable', 'string', 'max:500'],
+            'insurance_expiration_date' => ['nullable', 'date'],
+            'surety_bond_path' => ['nullable', 'string', 'max:500'],
+            'service_agreement' => ['nullable', 'string', 'max:10000'],
             'profile_photo_path' => ['nullable', 'string', 'max:500'],
             'is_public' => ['nullable', 'boolean'],
         ]);
@@ -126,18 +142,30 @@ class ContractorProfileController extends Controller
             ['user_id' => $user->id],
             [
                 'business_name' => $validated['business_name'],
+                'business_address' => $validated['business_address'] ?? null,
+                'business_phone' => $validated['business_phone'] ?? null,
                 'bio' => $validated['bio'] ?? null,
                 'service_area' => $validated['service_area'] ?? null,
+                'emergency_availability' => $validated['emergency_availability'] ?? false,
                 'phone' => $validated['phone'] ?? null,
                 'website' => $validated['website'] ?? null,
+                'year_established' => $validated['year_established'] ?? null,
+                'business_type' => $validated['business_type'] ?? null,
                 'license_number' => $validated['license_number'] ?? null,
-                'years_experience' => $validated['years_experience'] ?? null,
+                'state_license' => $validated['state_license'] ?? null,
+                'local_license' => $validated['local_license'] ?? null,
+                'sales_tax_license' => $validated['sales_tax_license'] ?? null,
+                'license_expiration_date' => $validated['license_expiration_date'] ?? null,
+                'coi_path' => $validated['coi_path'] ?? null,
+                'insurance_expiration_date' => $validated['insurance_expiration_date'] ?? null,
+                'surety_bond_path' => $validated['surety_bond_path'] ?? null,
+                'service_agreement' => $validated['service_agreement'] ?? null,
                 'profile_photo_path' => $validated['profile_photo_path'] ?? null,
                 'is_public' => $validated['is_public'] ?? false,
                 'status' => 'pending',
             ]
         );
 
-        return response()->json($profile->load('badges'), 200);
+        return response()->json($profile->load(['badges', 'employees']), 200);
     }
 }

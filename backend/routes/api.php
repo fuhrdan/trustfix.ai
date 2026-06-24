@@ -53,6 +53,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 
+    Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
+    Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
+
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
     Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
 
@@ -67,9 +70,6 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/handyman/profile', [HandymanController::class, 'updateProfile']);
         Route::post('/handyman/skills', [HandymanController::class, 'updateSkills']);
         Route::post('/handyman/documents', [HandymanController::class, 'uploadDocument']);
-
-        Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
-        Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
 
         Route::post('/contractors/{id}/claim', [ProfileClaimController::class, 'store']);
         Route::get('/profile-claims/my', [ProfileClaimController::class, 'myClaims']);

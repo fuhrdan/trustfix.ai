@@ -30,6 +30,7 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'role' => ['nullable', Rule::in(['customer', 'handyman', 'admin', 'company'])],
             'company_id' => ['nullable', 'integer', 'exists:users,id'],
+            'username' => ['nullable', 'string', 'max:255', 'unique:users,username'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
         ]);
@@ -37,6 +38,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'username' => $validated['username'] ?? null,
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'] ?? 'customer',
             'company_id' => $validated['company_id'] ?? null,
@@ -66,21 +68,33 @@ class AuthController extends Controller
             'name' =>
                 'required|string|max:255',
 
+            'username' =>
+                'nullable|string|max:255|unique:users,username,' . $user->id,
+
             'email' =>
                 'required|email|max:255|unique:users,email,' . $user->id,
 
             'phone' =>
-                'nullable|string|max:30'
+                'nullable|string|max:30',
+
+            'address' =>
+                'nullable|string|max:500'
         ]);
 
         $user->name =
             $validated['name'];
 
+        $user->username =
+            $validated['username'] ?? null;
+
         $user->email =
             $validated['email'];
 
         $user->phone =
-            $validated['phone'];
+            $validated['phone'] ?? null;
+
+        $user->address =
+            $validated['address'] ?? null;
 
         $user->save();
 
