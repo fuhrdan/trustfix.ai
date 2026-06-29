@@ -8,224 +8,47 @@ require 'config.php';
 //Dan
 
 session_start();
-
-//-------------------------------------------------
-// Create draft job if one does not exist
-//-------------------------------------------------
-if (!isset($_SESSION['draft_job_id'])) {
-
-    $payload = [
-        'address' => '',
-        'lat' => 0,
-        'lng' => 0,
-        'initial_description' => 'Draft Job',
-        'agreed_price' => 0
-    ];
-
-    $draftJob = apiRequest(
-        'POST',
-        '/jobs',
-        $payload
-    );
-
-    $_SESSION['draft_job_id'] =
-        $draftJob['id'];
-}
-
-$draftJobId =
-    $_SESSION['draft_job_id'];
-
 requireLogin();
-
-/*
-if (
-    $_SERVER['REQUEST_METHOD'] === 'POST'
-    && isset($_POST['ajax_upload'])
-) {
-
-    header('Content-Type: application/json');
-
-    $jobId = $_SESSION['temp_job_id'] ?? null;
-
-    if (!$jobId) {
-
-        $payload = [
-            'address' => 'Draft Job',
-            'lat' => 0,
-            'lng' => 0,
-            'initial_description' => 'Draft',
-            'agreed_price' => 0
-        ];
-
-        $job = apiRequest('POST', '/jobs', $payload);
-
-        $jobId = $job['id'];
-
-        $_SESSION['temp_job_id'] = $jobId;
-    }
-
-    $file = new CURLFile(
-        $_FILES['image']['tmp_name'],
-        $_FILES['image']['type'],
-        $_FILES['image']['name']
-    );
-
-    apiRequest(
-        'POST',
-        "/jobs/$jobId/images",
-        [
-            'images[]' => $file
-        ]
-    );
-
-    $job = apiRequest('GET', "/jobs/$jobId");
-
-    $html = '';
-
-    if (!empty($job['images'])) {
-
-        foreach ($job['images'] as $img) {
-
-            $url =
-                'https://trustfix.lakehousesoftware.com/storage/' . $img['image_path'];
-
-            $html .= "
-                <div style='margin-bottom:15px;'>
-                    <img
-                        src='{$url}'
-                        style='max-width:200px;
-                               border:1px solid #ccc;
-                               border-radius:8px;'
-                    >
-                </div>
-            ";
-        }
-    }
-
-    echo json_encode([
-        'success' => true,
-        'html' => $html
-    ]);
-
-    exit;
-}
-*/
-
-//***************************************************************************
-// TEST DEBUG
-//***************************************************************************
-/*
-if (
-    $_SERVER['REQUEST_METHOD'] === 'POST'
-    && isset($_POST['ajax_upload'])
-) {
-
-    header('Content-Type: application/json');
-
-    try {
-
-        $jobId = $_SESSION['temp_job_id'] ?? null;
-
-        if (!$jobId) {
-
-            $payload = [
-                'address' => 'Draft Job',
-                'lat' => 0,
-                'lng' => 0,
-                'initial_description' => 'Draft',
-                'agreed_price' => 0
-            ];
-
-            $job = apiRequest('POST', '/jobs', $payload);
-
-            if (!isset($job['id'])) {
-                throw new Exception("Job creation failed: " . json_encode($job));
-            }
-
-            $jobId = $job['id'];
-            $_SESSION['temp_job_id'] = $jobId;
-        }
-
-        //---------------------------------
-        // DEBUG FILE CHECK
-        //---------------------------------
-        if (!isset($_FILES['image'])) {
-            throw new Exception("No file received");
-        }
-
-        $file = new CURLFile(
-            $_FILES['image']['tmp_name'],
-            $_FILES['image']['type'],
-            $_FILES['image']['name']
-        );
-
-        //---------------------------------
-        // UPLOAD IMAGE
-        //---------------------------------
-        $uploadResponse = apiRequest(
-            'POST',
-            "/jobs/$jobId/images",
-            ['images[]' => $file]
-        );
-
-        if (!$uploadResponse) {
-            throw new Exception("Upload returned empty response");
-        }
-
-        //---------------------------------
-        // GET JOB
-        //---------------------------------
-        $job = apiRequest('GET', "/jobs/$jobId");
-
-        if (!is_array($job)) {
-            throw new Exception("Job fetch failed (non-JSON response)");
-        }
-
-        $html = '';
-
-        if (!empty($job['images'])) {
-
-            foreach ($job['images'] as $img) {
-
-                $url = '/storage/' . $img['image_path'];
-
-                $html .= "
-                    <div style='margin-top:10px'>
-                        <img src='{$url}' style='max-width:200px;border:1px solid #ccc'>
-                    </div>
-                ";
-            }
-        }
-
-        echo json_encode([
-            'success' => true,
-            'html' => $html
-        ]);
-
-    } catch (Exception $e) {
-
-        http_response_code(500);
-
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage()
-        ]);
-    }
-
-    exit;
-}
-*/
-//***************************************************************************
-// END TEST
-//***************************************************************************
 
 include 'header.php';
 
 $message = '';
+//-------------------------------------------------
+// Load addresses/properties available to this user
+//-------------------------------------------------
+$properties = apiRequest('GET', '/properties');
 
-//=========================================================
-// Create placeholder job immediately
-//=========================================================
+if (!is_array($properties)) {
+
+    $properties = [];
+}
+
+function buildPropertyAddress($property)
+{
+    $parts = [];
+
+    foreach ([
+        'street_address',
+        'address_line_2',
+        'apartment',
+        'city',
+        'state',
+        'zip'
+    ] as $field) {
+
+        if (!empty($property[$field])) {
+
+            $parts[] = $property[$field];
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
+//-------------------------------------------------
+// Create placeholder job immediately so pictures can
+// still be uploaded before the final Save Job click.
+//-------------------------------------------------
 if (!isset($_SESSION['draft_job_id'])) {
 
     $draftPayload = [
@@ -238,62 +61,94 @@ if (!isset($_SESSION['draft_job_id'])) {
 
     $draftJob = apiRequest('POST', '/jobs', $draftPayload);
 
-    $_SESSION['draft_job_id'] = $draftJob['id'];
+    $_SESSION['draft_job_id'] = $draftJob['id'] ?? null;
 }
 
 $jobId = $_SESSION['draft_job_id'];
+$draftJobId = $jobId;
 
 //=========================================================
-// AJAX IMAGE UPLOAD
+// FINAL SAVE
 //=========================================================
-/*
-if (
-    isset($_POST['ajax_upload']) &&
-    $_POST['ajax_upload'] == '1'
-) {
 
-    header('Content-Type: application/json');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+    !isset($_POST['ajax_upload'])) {
 
-    if (!empty($_FILES['image']['tmp_name'])) {
+    $selectedPropertyId = $_POST['property_id'] ?? '';
+    $selectedAddress = '';
 
-        $file = new CURLFile(
-            $_FILES['image']['tmp_name'],
-            $_FILES['image']['type'],
-            $_FILES['image']['name']
+    foreach ($properties as $property) {
+
+        if ((string)($property['id'] ?? '') === (string)$selectedPropertyId) {
+
+            $selectedAddress = buildPropertyAddress($property);
+            break;
+        }
+    }
+
+    if ($selectedAddress === '') {
+
+        $message .= "
+            <div style='
+                background:#f2dede;
+                padding:15px;
+                border-radius:8px;
+                margin-bottom:20px;
+            '>
+                Please choose a saved property address before saving the job.
+            </div>
+        ";
+    }
+    else {
+
+        $payload = [
+            'address' => $selectedAddress,
+            'lat' => 0,
+            'lng' => 0,
+            'initial_description' => $_POST['initial_description'],
+            'agreed_price' => (float)($_POST['agreed_price'] ?? 0),
+            'onsite_contact_name' => $_POST['onsite_contact_name'] ?? null,
+            'onsite_contact_phone' => $_POST['onsite_contact_phone'] ?? null,
+            'skills' => $_POST['skills'] ?? []
+        ];
+
+        apiRequest(
+            'PUT',
+            "/jobs/$jobId",
+            $payload
         );
 
-        $uploadResult = apiRequest(
-            'POST',
-            "/jobs/$jobId/images",
-            [
-                'images[]' => $file
-            ]
-        );
-
-        $latestJob = apiRequest(
+        $result = apiRequest(
             'GET',
             "/jobs/$jobId"
         );
 
-        $html = '';
+        $message .= "
+            <div style='
+                background:#dff0d8;
+                padding:15px;
+                border-radius:8px;
+                margin-bottom:20px;
+            '>
+                Job Saved Successfully
+            </div>
+        ";
 
-        if (!empty($latestJob['images'])) {
+        if (!empty($result['images'])) {
 
-            foreach ($latestJob['images'] as $img) {
+            foreach ($result['images'] as $img) {
 
                 $url = '/storage/' . $img['image_path'];
 
-                $html .= "
-                    <div style='margin-top:15px;'>
+                $message .= "
+                    <div style='margin-bottom:15px;'>
 
                         <img
                             src='{$url}'
                             style='
                                 max-width:200px;
-                                border:1px solid #999;
+                                border:1px solid #ccc;
                                 border-radius:8px;
-                                display:block;
-                                margin-bottom:10px;
                             '
                         >
 
@@ -302,91 +157,10 @@ if (
             }
         }
 
-        echo json_encode([
-            'success' => true,
-            'html' => $html
-        ]);
+        error_log(print_r($result, true));
 
-        exit;
+        unset($_SESSION['draft_job_id']);
     }
-
-    echo json_encode([
-        'success' => false
-    ]);
-
-    exit;
-}
-*/
-//=========================================================
-// FINAL SAVE
-//=========================================================
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
-    !isset($_POST['ajax_upload'])) {
-
-    $payload = [
-        'address' => $_POST['address'],
-        'lat' => (float)$_POST['lat'],
-        'lng' => (float)$_POST['lng'],
-        'initial_description' => $_POST['initial_description'],
-        'agreed_price' => (float)$_POST['agreed_price'],
-        'onsite_contact_name' => $_POST['onsite_contact_name'],
-        'onsite_contact_phone' => $_POST['onsite_contact_phone'],
-        'skills' => $_POST['skills'] ?? []
-    ];
-
-    apiRequest(
-        'PUT',
-        "/jobs/$jobId",
-        $payload
-    );
-
-    $result = apiRequest(
-        'GET',
-        "/jobs/$jobId"
-    );
-
-    $message .= "
-        <div style='
-            background:#dff0d8;
-            padding:15px;
-            border-radius:8px;
-            margin-bottom:20px;
-        '>
-            Job Saved Successfully
-        </div>
-    ";
-
-    if (!empty($result['images'])) {
-
-        foreach ($result['images'] as $img) {
-
-            $url = '/storage/' . $img['image_path'];
-
-            $message .= "
-                <div style='margin-bottom:15px;'>
-
-                    <img
-                        src='{$url}'
-                        style='
-                            max-width:200px;
-                            border:1px solid #ccc;
-                            border-radius:8px;
-                        '
-                    >
-
-                </div>
-            ";
-        }
-    }
-
-// This is the debugging message for testing.
-// Remove it for production.
-//    $message .= '<pre>' . print_r($result, true) . '</pre>';
-// Error log
-error_log(print_r($result, true));
-
-    unset($_SESSION['draft_job_id']);
 }
 ?>
 
@@ -405,12 +179,42 @@ error_log(print_r($result, true));
 
 <form method="POST">
 
-    <input
-        type="text"
-        name="address"
-        placeholder="Address"
+    <label for="property_id">
+        Job Address
+    </label>
+
+    <select
+        name="property_id"
+        id="property_id"
         required
     >
+        <option value="">
+            Select a saved property address
+        </option>
+
+        <?php foreach ($properties as $property) { ?>
+
+            <?php $addressLabel = buildPropertyAddress($property); ?>
+
+            <?php if ($addressLabel !== '') { ?>
+
+                <option value="<?= htmlspecialchars($property['id']) ?>">
+                    <?= htmlspecialchars($addressLabel) ?>
+                </option>
+
+            <?php } ?>
+
+        <?php } ?>
+    </select>
+
+    <?php if (empty($properties)) { ?>
+
+        <div style="margin:10px 0;color:#a94442;">
+            No saved property addresses found.
+            <a href="add_property.php">Add a property first</a>.
+        </div>
+
+    <?php } ?>
 
     <textarea
         name="initial_description"
