@@ -61,9 +61,36 @@ $jobs = apiRequest('GET', '/jobs/my');
             </td>
 
             <td>
-                <?= htmlspecialchars(
-                    $job['address']
-                ) ?>
+                <?php
+                    $jobAddress = $job['address'] ?? '';
+
+                    if (!empty($job['property'])) {
+
+                        $addressParts = [];
+
+                        foreach ([
+                            'street_address',
+                            'address_line_2',
+                            'apartment',
+                            'city',
+                            'state',
+                            'zip'
+                        ] as $field) {
+
+                            if (!empty($job['property'][$field])) {
+
+                                $addressParts[] = $job['property'][$field];
+                            }
+                        }
+
+                        if (!empty($addressParts)) {
+
+                            $jobAddress = implode(', ', $addressParts);
+                        }
+                    }
+                ?>
+
+                <?= htmlspecialchars($jobAddress) ?>
             </td>
 
             <td>

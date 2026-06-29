@@ -9,6 +9,7 @@ class Job extends Model
     protected $fillable = [
         'customer_id',
         'handyman_id',
+        'property_id',
         'status',
         'address',
         'lat',
@@ -25,7 +26,13 @@ class Job extends Model
         'lng' => 'decimal:7',
         'agreed_price' => 'decimal:2',
         'skills' => 'array',
+        'property_id' => 'integer',
     ];
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
+    }
 
     public function customer()
     {

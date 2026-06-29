@@ -13,6 +13,7 @@ requireLogin();
 include 'header.php';
 
 $message = '';
+
 //-------------------------------------------------
 // Load addresses/properties available to this user
 //-------------------------------------------------
@@ -102,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     else {
 
         $payload = [
+            'property_id' => (int)$selectedPropertyId,
             'address' => $selectedAddress,
             'lat' => 0,
             'lng' => 0,
@@ -112,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
             'skills' => $_POST['skills'] ?? []
         ];
 
-        apiRequest(
+        $saveResult = apiRequest(
             'PUT',
             "/jobs/$jobId",
             $payload
@@ -123,7 +125,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
             "/jobs/$jobId"
         );
 
-        $message .= "
+        if (!is_array($saveResult) || empty($saveResult['id'])) {
+
+            $message .= "
+                <div style='
+                    background:#f2dede;
+                    padding:15px;
+                    border-radius:8px;
+                    margin-bottom:20px;
+                '>
+                    Job save failed. Please check the backend log/API response.
+                </div>
+            ";
+
+            error_log('Job save failed: ' . print_r($saveResult, true));
+        }
+        else {
+
+            $message .= "
             <div style='
                 background:#dff0d8;
                 padding:15px;
@@ -159,7 +178,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
         error_log(print_r($result, true));
 
-        unset($_SESSION['draft_job_id']);
+            unset($_SESSION['draft_job_id']);
+        }
     }
 }
 ?>

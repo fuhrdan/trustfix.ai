@@ -10,6 +10,7 @@ namespace App\Http\Controllers;
 use App\Models\Job;
 use App\Models\User;
 use App\Models\JobImage;
+use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -17,11 +18,53 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
+        private function propertyAddress(Property $property)
+    {
+        $parts = [];
+
+        foreach ([
+            'street_address',
+            'address_line_2',
+            'apartment',
+            'city',
+            'state',
+            'zip'
+        ] as $field) {
+
+            if (!empty($property->{$field})) {
+
+                $parts[] = $property->{$field};
+            }
+        }
+
+        return implode(', ', $parts);
+    }
+
+    private function accessibleProperty($propertyId, $userId)
+    {
+        if (empty($propertyId)) {
+
+            return null;
+        }
+
+        return Property::query()
+            ->where('id', $propertyId)
+            ->where(function ($query) use ($userId) {
+
+                $query->where('owner_user_id', $userId)
+                    ->orWhereHas('users', function ($query) use ($userId) {
+
+                        $query->where('users.id', $userId);
+                    });
+            })
+            ->firstOrFail();
+    }
+
     public function myJobs()
     {
         $user = Auth::guard('api')->user();
 
-        $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes']);
+        $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'property']);
 
         if ($user->role == 'handyman') {
             $query->where('handyman_id', $user->id);
@@ -36,7 +79,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports', 'images'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports', 'images', 'property'])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
@@ -53,6 +96,7 @@ class JobController extends Controller
     public function postJob(Request $request)
     {
         $validated = $request->validate([
+            'property_id' => ['nullable', 'integer'],
             'address' => ['required', 'string', 'max:500'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
@@ -64,10 +108,20 @@ class JobController extends Controller
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
 
+        $property = $this->accessibleProperty(
+            $validated['property_id'] ?? null,
+            Auth::guard('api')->id()
+        );
+
+        $jobAddress = $property
+            ? $this->propertyAddress($property)
+            : $validated['address'];
+
         $job = Job::create([
             'customer_id' => Auth::guard('api')->id(),
+            'property_id' => $property->id ?? null,
             'status' => 'posted',
-            'address' => $validated['address'],
+            'address' => $jobAddress,
             'lat' => $validated['lat'] ?? 0,
             'lng' => $validated['lng'] ?? 0,
             'initial_description' => $validated['initial_description'],
@@ -326,7 +380,8 @@ public function deleteImage($jobId, $imageId)
             ], 403);
         }
         $validated = $request->validate([
-            'address' => ['required', 'string', 'max:500'],
+            'property_id' => ['nullable', 'integer'],
+            'address' => ['required_without:property_id', 'nullable', 'string', 'max:500'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'initial_description' => ['required', 'string', 'max:5000'],
@@ -336,6 +391,19 @@ public function deleteImage($jobId, $imageId)
             'skills' => ['nullable', 'array'],
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
+
+        $property = $this->accessibleProperty(
+            $validated['property_id'] ?? null,
+            Auth::guard('api')->id()
+        );
+
+        if ($property) {
+
+            $validated['property_id'] = $property->id;
+            $validated['address'] = $this->propertyAddress($property);
+            $validated['lat'] = $validated['lat'] ?? $job->lat ?? 0;
+            $validated['lng'] = $validated['lng'] ?? $job->lng ?? 0;
+        }
 
         $job->update($validated);
 
