@@ -35,6 +35,16 @@ if (!is_array($contractor))
     $contractor = [];
 }
 
+$contractorDocuments = apiRequest(
+    'GET',
+    '/contractor/documents'
+);
+
+if (!is_array($contractorDocuments))
+{
+    $contractorDocuments = [];
+}
+
 /*
 |--------------------------------------------------------------------------
 | Save Updates
@@ -152,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             '/contractor/profile',
             $contractorPayload
         );
+
     }
 
     /*
@@ -175,6 +186,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $contractor = [];
     }
 
+    $contractorDocuments = apiRequest(
+        'GET',
+        '/contractor/documents'
+    );
+
+    if (!is_array($contractorDocuments))
+    {
+        $contractorDocuments = [];
+    }
+
     if (!empty($userResult['errors']) || !empty($contractorResult['errors']))
     {
         $message =
@@ -190,13 +211,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 $hasContractorProfile =
     !empty($contractor['id']);
 
+function contractorDocumentStatus($documents, $type)
+{
+    if (empty($documents[$type]) || !is_array($documents[$type]))
+    {
+        return [
+            'label' => 'Not uploaded',
+            'style' => 'color:#777;',
+            'verified' => false
+        ];
+    }
+
+    $document = $documents[$type];
+    $status = $document['status'] ?? 'pending';
+    $verified = !empty($document['verified']) || $status === 'approved';
+
+    if ($verified)
+    {
+        return [
+            'label' => '✓ Verified by admin',
+            'style' => 'color:green; font-weight:bold;',
+            'verified' => true
+        ];
+    }
+
+    if ($status === 'rejected')
+    {
+        return [
+            'label' => 'Rejected - upload a replacement',
+            'style' => 'color:red;',
+            'verified' => false
+        ];
+    }
+
+    return [
+        'label' => 'Uploaded - pending admin verification',
+        'style' => 'color:#b36b00;',
+        'verified' => false
+    ];
+}
+
+function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
+{
+    $status = contractorDocumentStatus($documents, $type);
+    $inputId = 'contractor_document_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $type);
+    $buttonId = $inputId . '_button';
+    $statusId = $inputId . '_status';
+    ?>
+        <div
+            class="contractor-document-upload"
+            data-document-type="<?= htmlspecialchars($type) ?>"
+            style="margin:12px 0 18px 0; padding:10px; border:1px solid #ddd; border-radius:6px;"
+        >
+            <label for="<?= htmlspecialchars($inputId) ?>"><?= htmlspecialchars($label) ?></label>
+
+            <input
+                id="<?= htmlspecialchars($inputId) ?>"
+                class="contractor-document-file"
+                type="file"
+                name="<?= htmlspecialchars($fieldName) ?>"
+                accept=".pdf,image/jpeg,image/png,image/webp"
+            >
+
+            <button
+                id="<?= htmlspecialchars($buttonId) ?>"
+                class="contractor-document-upload-button"
+                type="button"
+                style="display:none; margin-top:8px;"
+            >
+                Upload
+            </button>
+
+            <div
+                id="<?= htmlspecialchars($statusId) ?>"
+                class="contractor-document-status"
+                style="<?= $status['style'] ?> margin-top:6px;"
+            >
+                <?= htmlspecialchars($status['label']) ?>
+            </div>
+        </div>
+    <?php
+}
+
 ?>
 
 <h1>Edit Profile</h1>
 
 <?= $message ?>
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
 
     <h2>Account Information</h2>
 
@@ -372,6 +475,13 @@ $hasContractorProfile =
             ) ?>"
         >
 
+        <?php renderContractorDocumentUpload(
+            $contractorDocuments,
+            'state_license',
+            'state_license_file',
+            'State License Document'
+        ); ?>
+
         <label>Local Licenses</label>
         <input
             type="text"
@@ -394,6 +504,13 @@ $hasContractorProfile =
             ) ?>"
         >
 
+        <?php renderContractorDocumentUpload(
+            $contractorDocuments,
+            'sales_tax_license',
+            'sales_tax_license_file',
+            'Sales Tax License Document'
+        ); ?>
+
         <label>License Expiration Date</label>
         <input
             type="date"
@@ -403,16 +520,13 @@ $hasContractorProfile =
             ) ?>"
         >
 
-        <label>Certificate of Liability Insurance (COI)</label>
-        <input
-            type="text"
-            name="coi_path"
-            placeholder="COI file path or reference for now"
-            value="<?= htmlspecialchars(
-                $contractor['coi_path']
-                ?? ''
-            ) ?>"
-        >
+        <?php renderContractorDocumentUpload(
+            $contractorDocuments,
+            'certificate_of_liability_insurance',
+            'coi_file',
+            'Certificate of Liability Insurance (COI)'
+        ); ?>
+        <input type="hidden" name="coi_path" value="<?= htmlspecialchars($contractor['coi_path'] ?? '') ?>">
 
         <label>Insurance Expiration Date</label>
         <input
@@ -423,16 +537,13 @@ $hasContractorProfile =
             ) ?>"
         >
 
-        <label>Surety Bond</label>
-        <input
-            type="text"
-            name="surety_bond_path"
-            placeholder="Surety bond file path or reference for now"
-            value="<?= htmlspecialchars(
-                $contractor['surety_bond_path']
-                ?? ''
-            ) ?>"
-        >
+        <?php renderContractorDocumentUpload(
+            $contractorDocuments,
+            'surety_bond',
+            'surety_bond_file',
+            'Surety Bond'
+        ); ?>
+        <input type="hidden" name="surety_bond_path" value="<?= htmlspecialchars($contractor['surety_bond_path'] ?? '') ?>">
 
         <label>Contract / Service Agreement Area</label>
         <textarea
@@ -442,6 +553,13 @@ $hasContractorProfile =
             $contractor['service_agreement']
             ?? ''
         ) ?></textarea>
+
+        <?php renderContractorDocumentUpload(
+            $contractorDocuments,
+            'service_agreement',
+            'service_agreement_file',
+            'Contract / Service Agreement File'
+        ); ?>
 
         <label>Business Bio</label>
         <textarea
@@ -491,6 +609,79 @@ function toggleContractorFields()
 
 contractorCheckbox.addEventListener('change', toggleContractorFields);
 toggleContractorFields();
+
+document.querySelectorAll('.contractor-document-upload').forEach(function (wrapper)
+{
+    const fileInput = wrapper.querySelector('.contractor-document-file');
+    const uploadButton = wrapper.querySelector('.contractor-document-upload-button');
+    const statusBox = wrapper.querySelector('.contractor-document-status');
+    const documentType = wrapper.dataset.documentType;
+
+    fileInput.addEventListener('change', function ()
+    {
+        if (fileInput.files.length > 0)
+        {
+            uploadButton.style.display = 'inline-block';
+            statusBox.style.color = '#555';
+            statusBox.style.fontWeight = 'normal';
+            statusBox.textContent = 'Selected: ' + fileInput.files[0].name;
+        }
+        else
+        {
+            uploadButton.style.display = 'none';
+        }
+    });
+
+    uploadButton.addEventListener('click', async function ()
+    {
+        if (fileInput.files.length === 0)
+        {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('document_type', documentType);
+        formData.append('file', fileInput.files[0]);
+
+        uploadButton.disabled = true;
+        statusBox.style.color = '#555';
+        statusBox.style.fontWeight = 'normal';
+        statusBox.textContent = 'Uploading...';
+
+        try
+        {
+            const response = await fetch('upload_contractor_document.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success)
+            {
+                statusBox.style.color = 'green';
+                statusBox.style.fontWeight = 'bold';
+                statusBox.textContent = 'Upload successful - pending admin verification';
+                uploadButton.style.display = 'none';
+                fileInput.value = '';
+            }
+            else
+            {
+                statusBox.style.color = 'red';
+                statusBox.style.fontWeight = 'normal';
+                statusBox.textContent = result.error || 'Upload failed';
+                uploadButton.disabled = false;
+            }
+        }
+        catch (error)
+        {
+            statusBox.style.color = 'red';
+            statusBox.style.fontWeight = 'normal';
+            statusBox.textContent = 'Upload failed: ' + error.message;
+            uploadButton.disabled = false;
+        }
+    });
+});
 </script>
 
 <?php include 'footer.php'; ?>

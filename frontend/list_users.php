@@ -7,16 +7,10 @@ requireLogin();
 
 $result = apiRequest('GET', '/admin/users');
 
-//***************************DEBUG*********************************************
-//echo '<pre>';
-//print_r($result);
-//echo '</pre>';
-//*************************END DEBUG*******************************************
-
 $users = $result['data'] ?? [];
 ?>
 
-<h1>Manage Users (test)</h1>
+<h1>Manage Users</h1>
 
 <table border="1" cellpadding="8">
 
@@ -27,12 +21,20 @@ $users = $result['data'] ?? [];
     <th>Phone</th>
     <th>Address</th>
     <th>Business Name</th>
+    <th>Pending Approvals</th>
     <th>Role</th>
     <th>Edit</th>
     <th>Delete</th>
 </tr>
 
 <?php foreach ($users as $user): ?>
+
+<?php
+    $pendingApprovals = (int)(
+        $user['pending_contractor_document_count']
+        ?? 0
+    );
+?>
 
 <tr>
 
@@ -51,6 +53,16 @@ $users = $result['data'] ?? [];
             $user['contractor_profile']['business_name']
             ?? ''
         ) ?>
+    </td>
+
+    <td>
+        <?php if ($pendingApprovals > 0): ?>
+            <strong style="color:#b36b00;">
+                <?= $pendingApprovals ?> pending
+            </strong>
+        <?php else: ?>
+            <span style="color:#4b7f2a;">0 pending</span>
+        <?php endif; ?>
     </td>
 
     <td>

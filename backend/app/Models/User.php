@@ -117,6 +117,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasOne(ContractorProfile::class);
     }
 
+    public function contractorDocuments()
+    {
+        return $this->hasMany(ContractorDocument::class);
+    }
+
     public function profileClaims()
     {
         return $this->hasMany(ProfileClaim::class, 'claimant_user_id');

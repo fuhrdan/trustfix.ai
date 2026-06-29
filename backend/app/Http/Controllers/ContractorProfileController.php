@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContractorProfile;
+use App\Models\ContractorDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -97,7 +98,7 @@ class ContractorProfileController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $profile = ContractorProfile::with('badges')
+        $profile = ContractorProfile::with(['badges', 'user.documents'])
             ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
                 $reviewQuery->where('is_visible', true);
             }], 'rating')
@@ -106,6 +107,75 @@ class ContractorProfileController extends Controller
             ->first();
 
         return response()->json($profile);
+    }
+
+
+    public function myDocuments()
+    {
+        $user = Auth::guard('api')->user();
+
+        $documentTypes = [
+            'state_license',
+            'sales_tax_license',
+            'certificate_of_liability_insurance',
+            'surety_bond',
+            'service_agreement',
+        ];
+
+        $documents = ContractorDocument::where('user_id', $user->id)
+            ->whereIn('document_type', $documentTypes)
+            ->latest()
+            ->get()
+            ->groupBy('document_type')
+            ->map(function ($items) {
+                return $items->first();
+            });
+
+        return response()->json($documents);
+    }
+
+    public function uploadDocument(Request $request)
+    {
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'type' => ['required', Rule::in([
+                'state_license',
+                'sales_tax_license',
+                'certificate_of_liability_insurance',
+                'surety_bond',
+                'service_agreement',
+            ])],
+        ]);
+
+        $user = Auth::guard('api')->user();
+
+        ContractorProfile::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'business_name' => $user->name ?? 'Contractor Profile',
+                'status' => 'pending',
+                'is_public' => false,
+            ]
+        );
+
+        $file = $request->file('file');
+
+        $path = $file->store("contractors/user_{$user->id}/documents", 'public');
+
+        $document = ContractorDocument::create([
+            'user_id' => $user->id,
+            'document_type' => $validated['type'],
+            'original_filename' => $file->getClientOriginalName(),
+            'stored_filename' => $path,
+            'mime_type' => $file->getClientMimeType(),
+            'file_size' => $file->getSize(),
+            'verification_status' => 0,
+            'verified_by' => null,
+            'verified_at' => null,
+            'notes' => null,
+        ]);
+
+        return response()->json($document, 201);
     }
 
     public function storeOrUpdate(Request $request)

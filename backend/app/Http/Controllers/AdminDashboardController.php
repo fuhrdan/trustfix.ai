@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Badge;
 use App\Models\ContractorProfile;
+use App\Models\ContractorDocument;
 use App\Models\Dispute;
 use App\Models\Document;
 use App\Models\Job;
@@ -66,7 +67,13 @@ class AdminDashboardController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $query = User::query();
+        $query = User::query()
+            ->with(['contractorProfile'])
+            ->withCount([
+                'contractorDocuments as pending_contractor_document_count' => function ($documentQuery) {
+                    $documentQuery->where('verification_status', 0);
+                },
+            ]);
 
         if (!empty($validated['q']))
         {
@@ -95,9 +102,14 @@ class AdminDashboardController extends Controller
     }
 
     public function getUser($id)
-    {   
+    {
         return response()->json(
-            User::findOrFail($id)
+            User::with([
+                'contractorProfile',
+                'contractorDocuments' => function ($documentQuery) {
+                    $documentQuery->latest();
+                },
+            ])->findOrFail($id)
         );
     }
 
@@ -126,6 +138,37 @@ class AdminDashboardController extends Controller
         return response()->json([
             'success' => true,
             'user' => $user
+        ]);
+    }
+
+
+    public function updateContractorDocumentStatus(Request $request, $id)
+    {
+        $admin = auth('api')->user();
+
+        $validated = $request->validate([
+            'verification_status' => ['required', Rule::in([0, 1, 2])],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $document = ContractorDocument::findOrFail($id);
+
+        $document->verification_status = (int) $validated['verification_status'];
+        $document->notes = $validated['notes'] ?? $document->notes;
+
+        if ((int) $validated['verification_status'] === 1) {
+            $document->verified_by = $admin?->id;
+            $document->verified_at = now();
+        } else {
+            $document->verified_by = null;
+            $document->verified_at = null;
+        }
+
+        $document->save();
+
+        return response()->json([
+            'success' => true,
+            'document' => $document->load(['user', 'verifier']),
         ]);
     }
 

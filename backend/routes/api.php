@@ -60,6 +60,8 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
     Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
+    Route::get('/contractor/documents', [ContractorProfileController::class, 'myDocuments']);
+    Route::post('/contractor/documents', [ContractorProfileController::class, 'uploadDocument']);
 
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
     Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
@@ -118,6 +120,7 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/admin/documents/pending', [AdminDocumentController::class, 'pending']);
         Route::get('/admin/documents/{id}', [AdminDocumentController::class, 'show']);
         Route::post('/admin/documents/{id}/status', [AdminDocumentController::class, 'updateStatus']);
+        Route::post('/admin/contractor-documents/{id}/status', [AdminDashboardController::class, 'updateContractorDocumentStatus']);
 
         Route::get('/admin/badges', [AdminBadgeController::class, 'index']);
         Route::post('/admin/badges', [AdminBadgeController::class, 'store']);
