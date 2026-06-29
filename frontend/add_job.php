@@ -1,192 +1,133 @@
 <?php
 
 require 'config.php';
-
-//It is late, I had this open way too long and now the program is telling me
-//There are unsaved changes.  Seriously, WTF?  So I'm going to save and close
-//When something breaks, blame the other guy, because I am tired.
-//Dan
-
-session_start();
 requireLogin();
 
 include 'header.php';
 
 $message = '';
-
-//-------------------------------------------------
-// Load addresses/properties available to this user
-//-------------------------------------------------
 $properties = apiRequest('GET', '/properties');
 
 if (!is_array($properties)) {
-
     $properties = [];
 }
 
-function buildPropertyAddress($property)
+function jobPropertyAddress($property)
 {
     $parts = [];
 
-    foreach ([
-        'street_address',
-        'address_line_2',
-        'apartment',
-        'city',
-        'state',
-        'zip'
-    ] as $field) {
-
-        if (!empty($property[$field])) {
-
-            $parts[] = $property[$field];
-        }
+    if (!empty($property['street_address'])) {
+        $parts[] = $property['street_address'];
     }
 
-    return implode(', ', $parts);
+    if (!empty($property['address_line_2'])) {
+        $parts[] = $property['address_line_2'];
+    }
+
+    if (!empty($property['apartment'])) {
+        $parts[] = 'Apt/Unit ' . $property['apartment'];
+    }
+
+    $cityStateZip = trim(
+        ($property['city'] ?? '') . ', ' .
+        ($property['state'] ?? '') . ' ' .
+        ($property['zip'] ?? '')
+    );
+
+    if ($cityStateZip !== ',') {
+        $parts[] = $cityStateZip;
+    }
+
+    return implode(', ', array_filter($parts));
 }
 
 //-------------------------------------------------
-// Create placeholder job immediately so pictures can
-// still be uploaded before the final Save Job click.
+// Draft jobs are now created only when the user uploads
+// an image. Creating a draft on page-load failed because
+// no selected property/address had been sent yet.
 //-------------------------------------------------
-if (!isset($_SESSION['draft_job_id'])) {
+$draftJobId = $_SESSION['draft_job_id'] ?? 0;
 
-    $draftPayload = [
-        'address' => 'Draft Job',
-        'lat' => 0,
-        'lng' => 0,
-        'initial_description' => 'Draft',
-        'agreed_price' => 0
-    ];
-
-    $draftJob = apiRequest('POST', '/jobs', $draftPayload);
-
-    $_SESSION['draft_job_id'] = $draftJob['id'] ?? null;
-}
-
-$jobId = $_SESSION['draft_job_id'];
-$draftJobId = $jobId;
-
-//=========================================================
+//-------------------------------------------------
 // FINAL SAVE
-//=========================================================
+//-------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
-    !isset($_POST['ajax_upload'])) {
-
-    $selectedPropertyId = $_POST['property_id'] ?? '';
+    $selectedPropertyId = (int)($_POST['property_id'] ?? 0);
     $selectedAddress = '';
 
     foreach ($properties as $property) {
-
-        if ((string)($property['id'] ?? '') === (string)$selectedPropertyId) {
-
-            $selectedAddress = buildPropertyAddress($property);
+        if ((int)($property['id'] ?? 0) === $selectedPropertyId) {
+            $selectedAddress = jobPropertyAddress($property);
             break;
         }
     }
 
-    if ($selectedAddress === '') {
+    $payload = [
+        'property_id' => $selectedPropertyId ?: null,
+        'address' => $selectedAddress ?: 'Draft Job',
+        'lat' => 0,
+        'lng' => 0,
+        'initial_description' => $_POST['initial_description'] ?? '',
+        'agreed_price' => ($_POST['agreed_price'] === '' ? null : (float)($_POST['agreed_price'] ?? 0)),
+        'onsite_contact_name' => $_POST['onsite_contact_name'] ?? null,
+        'onsite_contact_phone' => $_POST['onsite_contact_phone'] ?? null,
+        'skills' => $_POST['skills'] ?? []
+    ];
 
-        $message .= "
-            <div style='
-                background:#f2dede;
-                padding:15px;
-                border-radius:8px;
-                margin-bottom:20px;
-            '>
-                Please choose a saved property address before saving the job.
-            </div>
-        ";
-    }
-    else {
-
-        $payload = [
-            'property_id' => (int)$selectedPropertyId,
-            'address' => $selectedAddress,
-            'lat' => 0,
-            'lng' => 0,
-            'initial_description' => $_POST['initial_description'],
-            'agreed_price' => (float)($_POST['agreed_price'] ?? 0),
-            'onsite_contact_name' => $_POST['onsite_contact_name'] ?? null,
-            'onsite_contact_phone' => $_POST['onsite_contact_phone'] ?? null,
-            'skills' => $_POST['skills'] ?? []
-        ];
-
+    if (!empty($draftJobId)) {
         $saveResult = apiRequest(
             'PUT',
-            "/jobs/$jobId",
+            "/jobs/$draftJobId",
             $payload
         );
-
-        $result = apiRequest(
-            'GET',
-            "/jobs/$jobId"
+    } else {
+        $saveResult = apiRequest(
+            'POST',
+            '/jobs',
+            $payload
         );
+    }
 
-        if (!is_array($saveResult) || empty($saveResult['id'])) {
+    if (is_array($saveResult) && isset($saveResult['id'])) {
 
-            $message .= "
-                <div style='
-                    background:#f2dede;
-                    padding:15px;
-                    border-radius:8px;
-                    margin-bottom:20px;
-                '>
-                    Job save failed. Please check the backend log/API response.
-                </div>
-            ";
-
-            error_log('Job save failed: ' . print_r($saveResult, true));
-        }
-        else {
-
-            $message .= "
-            <div style='
-                background:#dff0d8;
-                padding:15px;
-                border-radius:8px;
-                margin-bottom:20px;
-            '>
+        $message .= "
+            <div style='background:#dff0d8;padding:15px;border-radius:8px;margin-bottom:20px;'>
                 Job Saved Successfully
             </div>
         ";
 
-        if (!empty($result['images'])) {
-
-            foreach ($result['images'] as $img) {
-
-                $url = '/storage/' . $img['image_path'];
+        if (!empty($saveResult['images'])) {
+            foreach ($saveResult['images'] as $img) {
+                $imagePath = $img['image_path'] ?? '';
+                $url = '/storage/' . ltrim($imagePath, '/');
 
                 $message .= "
                     <div style='margin-bottom:15px;'>
-
-                        <img
-                            src='{$url}'
-                            style='
-                                max-width:200px;
-                                border:1px solid #ccc;
-                                border-radius:8px;
-                            '
-                        >
-
+                        <img src='" . htmlspecialchars($url) . "'
+                             style='max-width:200px;border:1px solid #ccc;border-radius:8px;'>
                     </div>
                 ";
             }
         }
 
-        error_log(print_r($result, true));
+        unset($_SESSION['draft_job_id']);
+        $draftJobId = 0;
 
-            unset($_SESSION['draft_job_id']);
-        }
+    } else {
+
+        $message .= "
+            <div style='background:#f8d7da;padding:15px;border-radius:8px;margin-bottom:20px;'>
+                Job save failed. Backend/API response:<br><br>
+                <pre style='white-space:pre-wrap;'>" . htmlspecialchars(print_r($saveResult, true)) . "</pre>
+            </div>
+        ";
     }
 }
 ?>
 
 <head>
     <title>Add Job</title>
-
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="TF-Style.css">
 </head>
@@ -197,44 +138,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 <?= $message ?>
 
+<?php if (empty($properties)) { ?>
+
+    <div style="background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:20px;">
+        No saved addresses were found. Please add a property/address before adding a job.
+    </div>
+
+<?php } ?>
+
 <form method="POST">
 
-    <label for="property_id">
-        Job Address
-    </label>
-
-    <select
-        name="property_id"
-        id="property_id"
-        required
-    >
-        <option value="">
-            Select a saved property address
-        </option>
-
+    <label for="property_id">Job Address</label>
+    <select name="property_id" id="property_id" required>
+        <option value="">Select an address</option>
         <?php foreach ($properties as $property) { ?>
-
-            <?php $addressLabel = buildPropertyAddress($property); ?>
-
-            <?php if ($addressLabel !== '') { ?>
-
-                <option value="<?= htmlspecialchars($property['id']) ?>">
-                    <?= htmlspecialchars($addressLabel) ?>
-                </option>
-
-            <?php } ?>
-
+            <?php $address = jobPropertyAddress($property); ?>
+            <option value="<?= htmlspecialchars($property['id']) ?>">
+                <?= htmlspecialchars($address) ?>
+            </option>
         <?php } ?>
     </select>
-
-    <?php if (empty($properties)) { ?>
-
-        <div style="margin:10px 0;color:#a94442;">
-            No saved property addresses found.
-            <a href="add_property.php">Add a property first</a>.
-        </div>
-
-    <?php } ?>
 
     <textarea
         name="initial_description"
@@ -264,70 +187,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     <h3>Required Skills</h3>
 
     <div class="skills-group">
-
-        <label class="skill-item">
-            <input type="checkbox" name="skills[]" value="electrical">
-            Electrical
-        </label>
-
-        <label class="skill-item">
-            <input type="checkbox" name="skills[]" value="plumbing">
-            Plumbing
-        </label>
-
-        <label class="skill-item">
-            <input type="checkbox" name="skills[]" value="drywall">
-            Drywall
-        </label>
-
-        <label class="skill-item">
-            <input type="checkbox" name="skills[]" value="flooring">
-            Flooring
-        </label>
-
-        <label class="skill-item">
-            <input type="checkbox" name="skills[]" value="general">
-            General
-        </label>
-
+        <label class="skill-item"><input type="checkbox" name="skills[]" value="electrical"> Electrical</label>
+        <label class="skill-item"><input type="checkbox" name="skills[]" value="plumbing"> Plumbing</label>
+        <label class="skill-item"><input type="checkbox" name="skills[]" value="drywall"> Drywall</label>
+        <label class="skill-item"><input type="checkbox" name="skills[]" value="flooring"> Flooring</label>
+        <label class="skill-item"><input type="checkbox" name="skills[]" value="general"> General</label>
     </div>
 
     <h3>Upload Pictures</h3>
 
     <div id="uploadArea">
-
         <div class="upload-block">
-
-            <input
-                type="file"
-                class="image-input"
-                accept="image/*"
-            >
-
-            <button
-                type="button"
-                class="upload-btn"
-                disabled
-            >
-                Upload Image
-            </button>
-
+            <input type="file" class="image-input" accept="image/*">
+            <button type="button" class="upload-btn" disabled>Upload Image</button>
         </div>
-
     </div>
 
     <div id="uploadedImages"></div>
 
     <br>
 
-    <button type="submit">
+    <button type="submit" <?= empty($properties) ? 'disabled' : '' ?>>
         Save Job
     </button>
 
 </form>
 
 <script>
-
 function wireUploadBlock(block)
 {
     const input = block.querySelector('.image-input');
@@ -344,201 +230,93 @@ function wireUploadBlock(block)
             return;
         }
 
-        //-----------------------------------------
-        // Progress UI
-        //-----------------------------------------
+        const propertySelect = document.getElementById('property_id');
+
+        if (!propertySelect.value) {
+            alert('Please select a job address before uploading pictures.');
+            return;
+        }
+
         const progressContainer = document.createElement('div');
-
         progressContainer.style.marginTop = '10px';
-
         progressContainer.innerHTML = `
-            <div
-                style="
-                    width:300px;
-                    height:20px;
-                    border:1px solid #999;
-                    border-radius:6px;
-                    overflow:hidden;
-                    background:#eee;
-                "
-            >
-                <div
-                    class="progress-fill"
-                    style="
-                        width:0%;
-                        height:100%;
-                        background:#4caf50;
-                        transition:width 0.2s;
-                    "
-                ></div>
+            <div style="width:300px;height:20px;border:1px solid #999;border-radius:6px;overflow:hidden;background:#eee;">
+                <div class="progress-fill" style="width:0%;height:100%;background:#4caf50;transition:width 0.2s;"></div>
             </div>
-
-            <div
-                class="progress-text"
-                style="
-                    margin-top:5px;
-                    font-size:14px;
-                "
-            >
-                Preparing upload...
-            </div>
+            <div class="progress-text" style="margin-top:5px;font-size:14px;">Preparing upload...</div>
         `;
 
         block.appendChild(progressContainer);
 
-        const progressFill =
-            progressContainer.querySelector('.progress-fill');
-
-        const progressText =
-            progressContainer.querySelector('.progress-text');
-
-        //-----------------------------------------
-        // Build form data
-        //-----------------------------------------
+        const progressFill = progressContainer.querySelector('.progress-fill');
+        const progressText = progressContainer.querySelector('.progress-text');
         const formData = new FormData();
 
         formData.append('ajax_upload', '1');
         formData.append('image', input.files[0]);
+        formData.append('property_id', document.getElementById('property_id').value);
 
-        //-----------------------------------------
-        // Disable button
-        //-----------------------------------------
         button.disabled = true;
         button.innerText = 'Uploading...';
 
-        //-----------------------------------------
-        // AJAX Upload
-        //-----------------------------------------
         const xhr = new XMLHttpRequest();
-
-        xhr.open('POST', 'upload_job_image.php?job_id=<?= $draftJobId ?>', true);
-
+        xhr.open('POST', 'upload_job_image.php', true);
         xhr.withCredentials = true;
-        
-        //-----------------------------------------
-        // Upload progress
-        //-----------------------------------------
+
         xhr.upload.addEventListener('progress', function(e)
         {
             if (e.lengthComputable) {
-
-                const percent =
-                    Math.round((e.loaded / e.total) * 100);
-
-                progressFill.style.width =
-                    percent + '%';
-
-                progressText.innerText =
-                    'Uploading... ' + percent + '%';
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressFill.style.width = percent + '%';
+                progressText.innerText = 'Uploading... ' + percent + '%';
             }
         });
 
-        //-----------------------------------------
-        // Upload completed
-        //-----------------------------------------
         xhr.onload = function()
         {
-            if (xhr.status == 200) {
+            let data = {};
 
-                let data = {};
+            try {
+                data = JSON.parse(xhr.responseText);
+            } catch(err) {
+                progressText.innerHTML =
+                    '<div style="color:red;">Server returned invalid JSON<br><br>' +
+                    '<pre style="white-space:pre-wrap;">' + xhr.responseText + '</pre></div>';
+                return;
+            }
 
-                try {
-    
-                    console.log(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                progressFill.style.width = '100%';
+                progressText.innerText = 'Upload Complete';
+                document.getElementById('uploadedImages').innerHTML = data.html;
 
-                    data = JSON.parse(xhr.responseText);
+                const newBlock = document.createElement('div');
+                newBlock.className = 'upload-block';
+                newBlock.style.marginTop = '20px';
+                newBlock.innerHTML = `
+                    <input type="file" class="image-input" accept="image/*">
+                    <button type="button" class="upload-btn" disabled>Upload Image</button>
+                `;
 
-                } catch(err) {
-
-                    progressText.innerHTML =
-                        '<div style="color:red;">' +
-                        'Server returned invalid JSON<br><br>' +
-                        '<pre style="white-space:pre-wrap;">' +
-                        xhr.responseText +
-                        '</pre></div>';
-
-                    return;
-                }
-
-                if (data.success) {
-
-                    progressFill.style.width = '100%';
-
-                    progressText.innerText =
-                        'Upload Complete';
-
-                    //---------------------------------
-                    // Show images
-                    //---------------------------------
-                    document.getElementById(
-                        'uploadedImages'
-                    ).innerHTML = data.html;
-
-                    //---------------------------------
-                    // Create next upload block
-                    //---------------------------------
-                    const newBlock =
-                        document.createElement('div');
-
-                    newBlock.className =
-                        'upload-block';
-
-                    newBlock.style.marginTop = '20px';
-
-                    newBlock.innerHTML = `
-                        <input
-                            type="file"
-                            class="image-input"
-                            accept="image/*"
-                        >
-
-                        <button
-                            type="button"
-                            class="upload-btn"
-                            disabled
-                        >
-                            Upload Image
-                        </button>
-                    `;
-
-                    document
-                        .getElementById('uploadArea')
-                        .appendChild(newBlock);
-
-                    wireUploadBlock(newBlock);
-
-                } else {
-
-                    progressText.innerText =
-                        'Upload failed';
-                }
-
+                document.getElementById('uploadArea').appendChild(newBlock);
+                wireUploadBlock(newBlock);
             } else {
-
-                progressText.innerText =
-                    'HTTP Error: ' + xhr.status;
+                progressText.innerHTML =
+                    '<div style="color:red;">Upload failed<br><br>' +
+                    '<pre style="white-space:pre-wrap;">' + JSON.stringify(data, null, 2) + '</pre></div>';
             }
         };
 
-        //-----------------------------------------
-        // Upload error
-        //-----------------------------------------
         xhr.onerror = function()
         {
-            progressText.innerText =
-                'Network error during upload';
+            progressText.innerText = 'Network error during upload';
         };
 
-        //-----------------------------------------
-        // Start upload
-        //-----------------------------------------
         xhr.send(formData);
     });
 }
 
-document.querySelectorAll('.upload-block')
-    .forEach(wireUploadBlock);
-
+document.querySelectorAll('.upload-block').forEach(wireUploadBlock);
 </script>
 
 <?php include 'footer.php'; ?>

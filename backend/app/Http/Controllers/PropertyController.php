@@ -24,9 +24,15 @@ class PropertyController extends Controller
             ], 401);
         }
     
-        $query = Property::query()->where('owner_user_id', $user->id);
-        
-        return response()->json($query->latest()->get());
+        $properties = Property::with('images')
+            ->where('owner_user_id', $user->id)
+            ->orWhereHas('users', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->latest()
+            ->get();
+
+        return response()->json($properties);
     }
 
 

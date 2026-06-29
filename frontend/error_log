@@ -269,3 +269,110 @@
 [29-Jun-2026 17:57:16 UTC] Job save failed: 
 [29-Jun-2026 17:59:28 UTC] Job save failed: 
 [29-Jun-2026 18:03:40 UTC] Job save failed: 
+[29-Jun-2026 19:26:08 UTC] Array
+(
+    [id] => 27
+    [owner_user_id] => 10
+    [street_address] => Another house with pictures
+    [address_line_2] => 123
+    [apartment] => 65783A
+    [city] => Lakewood
+    [state] => CO
+    [zip] => 80122
+    [county] => 0
+    [description] => A test house with pictures (plural)
+    [created_at] => 2026-06-23T17:58:46.000000Z
+    [updated_at] => 2026-06-24T16:57:09.000000Z
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 3
+                    [property_id] => 27
+                    [image_path] => properties/27/rHYuw9HryLRstWyIzSEZto5E5xWmyXvEeTLISzKG.jpg
+                    [created_at] => 2026-06-24T19:28:12.000000Z
+                    [updated_at] => 2026-06-24T19:28:12.000000Z
+                )
+
+            [1] => Array
+                (
+                    [id] => 4
+                    [property_id] => 27
+                    [image_path] => properties/27/uHOaRDIMYFmpzucY3TlDuUmYNT2EQXxWUdO6Z2BU.jpg
+                    [created_at] => 2026-06-29T19:26:03.000000Z
+                    [updated_at] => 2026-06-29T19:26:03.000000Z
+                )
+
+        )
+
+    [_http_code] => 200
+)
+
+[29-Jun-2026 19:35:09 UTC] Array
+(
+    [id] => 36
+    [customer_id] => 10
+    [handyman_id] => 
+    [property_id] => 
+    [status] => posted
+    [address] => Picture House, Apt/Unit 101, House with Picture, CO 80128
+    [lat] => 0.0000000
+    [lng] => 0.0000000
+    [initial_description] => Test job with pictures
+    [agreed_price] => 303.00
+    [created_at] => 2026-06-29T19:34:55.000000Z
+    [updated_at] => 2026-06-29T19:35:09.000000Z
+    [onsite_contact_name] => Doug
+    [onsite_contact_phone] => 303
+    [skills] => Array
+        (
+            [0] => general
+        )
+
+    [customer] => Array
+        (
+            [id] => 10
+            [name] => Daniel Fuhr
+            [username] => 
+            [email] => fuhrdan@gmail.com
+            [role] => admin
+            [company_id] => 
+            [phone] => 3033969722
+            [address] => 
+            [lat] => 
+            [lng] => 
+            [created_at] => 2026-05-21T16:27:20.000000Z
+            [updated_at] => 2026-05-28T22:04:24.000000Z
+            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
+        )
+
+    [handyman] => 
+    [property] => 
+    [change_orders] => Array
+        (
+        )
+
+    [disputes] => Array
+        (
+        )
+
+    [reports] => Array
+        (
+        )
+
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 15
+                    [job_id] => 36
+                    [image_path] => jobs/36/o5uXnoYXRnxuDTwu9dCE6coDFw8rqlQuRnpAXvjs.jpg
+                    [created_at] => 2026-06-29T19:34:55.000000Z
+                    [updated_at] => 2026-06-29T19:34:55.000000Z
+                )
+
+        )
+
+    [_http_code] => 200
+)
+

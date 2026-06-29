@@ -26,13 +26,7 @@ class Job extends Model
         'lng' => 'decimal:7',
         'agreed_price' => 'decimal:2',
         'skills' => 'array',
-        'property_id' => 'integer',
     ];
-
-    public function property()
-    {
-        return $this->belongsTo(Property::class);
-    }
 
     public function customer()
     {
@@ -42,6 +36,11 @@ class Job extends Model
     public function handyman()
     {
         return $this->belongsTo(User::class, 'handyman_id');
+    }
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
     }
 
     public function images()

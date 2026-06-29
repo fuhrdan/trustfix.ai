@@ -10,11 +10,7 @@ return new class extends Migration
     {
         Schema::table('jobs', function (Blueprint $table) {
             if (!Schema::hasColumn('jobs', 'property_id')) {
-                $table->foreignId('property_id')
-                    ->nullable()
-                    ->after('handyman_id')
-                    ->constrained('properties')
-                    ->nullOnDelete();
+                $table->unsignedBigInteger('property_id')->nullable()->after('user_id');
             }
         });
     }
@@ -23,7 +19,7 @@ return new class extends Migration
     {
         Schema::table('jobs', function (Blueprint $table) {
             if (Schema::hasColumn('jobs', 'property_id')) {
-                $table->dropConstrainedForeignId('property_id');
+                $table->dropColumn('property_id');
             }
         });
     }

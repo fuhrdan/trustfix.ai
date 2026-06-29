@@ -92,13 +92,33 @@ function apiRequest($method, $endpoint, $data = null)
     $response = curl_exec($ch);
 
     if ($response === false) {
-        die(
-            'Curl Error: ' .
-            curl_error($ch)
-        );
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        return [
+            'success' => false,
+            'message' => 'Curl Error: ' . $error
+        ];
     }
+
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     curl_close($ch);
 
-    return json_decode($response, true);
+    $decoded = json_decode($response, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return [
+            'success' => false,
+            'http_code' => $httpCode,
+            'message' => 'API returned non-JSON response',
+            'raw_response' => $response
+        ];
+    }
+
+    if (is_array($decoded)) {
+        $decoded['_http_code'] = $httpCode;
+    }
+
+    return $decoded;
 }

@@ -14,57 +14,16 @@ use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
-        private function propertyAddress(Property $property)
-    {
-        $parts = [];
-
-        foreach ([
-            'street_address',
-            'address_line_2',
-            'apartment',
-            'city',
-            'state',
-            'zip'
-        ] as $field) {
-
-            if (!empty($property->{$field})) {
-
-                $parts[] = $property->{$field};
-            }
-        }
-
-        return implode(', ', $parts);
-    }
-
-    private function accessibleProperty($propertyId, $userId)
-    {
-        if (empty($propertyId)) {
-
-            return null;
-        }
-
-        return Property::query()
-            ->where('id', $propertyId)
-            ->where(function ($query) use ($userId) {
-
-                $query->where('owner_user_id', $userId)
-                    ->orWhereHas('users', function ($query) use ($userId) {
-
-                        $query->where('users.id', $userId);
-                    });
-            })
-            ->firstOrFail();
-    }
-
     public function myJobs()
     {
         $user = Auth::guard('api')->user();
 
-        $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'property']);
+        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images']);
 
         if ($user->role == 'handyman') {
             $query->where('handyman_id', $user->id);
@@ -79,7 +38,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'changeOrders', 'disputes', 'reports', 'images', 'property'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images'])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
@@ -92,12 +51,58 @@ class JobController extends Controller
         return response()->json($job);
     }
 
+    private function getAccessibleProperty($propertyId)
+    {
+        if (!$propertyId) {
+            return null;
+        }
+
+        $user = Auth::guard('api')->user();
+
+        return Property::where('id', $propertyId)
+            ->where(function ($query) use ($user) {
+                $query->where('owner_user_id', $user->id)
+                    ->orWhereHas('users', function ($query) use ($user) {
+                        $query->where('users.id', $user->id);
+                    });
+            })
+            ->firstOrFail();
+    }
+
+    private function formatPropertyAddress(Property $property)
+    {
+        $line1 = trim($property->street_address ?? '');
+        $line2 = trim($property->address_line_2 ?? '');
+        $apartment = trim($property->apartment ?? '');
+
+        $cityStateZip = trim(
+            trim($property->city ?? '') . ', ' .
+            trim($property->state ?? '') . ' ' .
+            trim($property->zip ?? '')
+        );
+
+        $parts = array_filter([
+            $line1,
+            $line2,
+            $apartment ? 'Apt/Unit ' . $apartment : '',
+            $cityStateZip
+        ]);
+
+        return implode(', ', $parts);
+    }
+
     // Customer posts a job
     public function postJob(Request $request)
     {
+        $user = Auth::guard('api')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
         $validated = $request->validate([
             'property_id' => ['nullable', 'integer'],
-            'address' => ['required', 'string', 'max:500'],
+            'address' => ['nullable', 'string', 'max:500'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'initial_description' => ['required', 'string', 'max:5000'],
@@ -108,20 +113,22 @@ class JobController extends Controller
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
 
-        $property = $this->accessibleProperty(
-            $validated['property_id'] ?? null,
-            Auth::guard('api')->id()
-        );
+        $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
 
-        $jobAddress = $property
-            ? $this->propertyAddress($property)
-            : $validated['address'];
+        $address = $property
+            ? $this->formatPropertyAddress($property)
+            : trim($validated['address'] ?? '');
 
-        $job = Job::create([
-            'customer_id' => Auth::guard('api')->id(),
-            'property_id' => $property->id ?? null,
+        if ($address === '') {
+            return response()->json([
+                'message' => 'An address or property_id is required.'
+            ], 422);
+        }
+
+        $createData = [
+            'customer_id' => $user->id,
             'status' => 'posted',
-            'address' => $jobAddress,
+            'address' => $address,
             'lat' => $validated['lat'] ?? 0,
             'lng' => $validated['lng'] ?? 0,
             'initial_description' => $validated['initial_description'],
@@ -129,7 +136,13 @@ class JobController extends Controller
             'onsite_contact_name' => $validated['onsite_contact_name'] ?? null,
             'onsite_contact_phone'=> $validated['onsite_contact_phone'] ?? null,
             'skills' => $validated['skills'] ?? []
-        ]);
+        ];
+
+        if ($property && Schema::hasColumn('jobs', 'property_id')) {
+            $createData['property_id'] = $property->id;
+        }
+
+        $job = Job::create($createData);
         
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
@@ -141,7 +154,7 @@ class JobController extends Controller
             }
         }
 
-        return response()->json($job->load('images'), 201);
+        return response()->json($job->load(['images', 'property']), 201);
     }
 
     public function uploadImages(Request $request, $id)
@@ -149,8 +162,11 @@ class JobController extends Controller
         $job = Job::findOrFail($id);
 
         $user = Auth::guard('api')->user();
-    
-    
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
         if ($job->customer_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
@@ -182,13 +198,13 @@ class JobController extends Controller
 
 public function deleteImage($jobId, $imageId)
 {
-    $user = auth()->user();
+    $user = Auth::guard('api')->user();
 
     // Find job and ensure ownership/permission
     $job = Job::findOrFail($jobId);
 
     // SECURITY CHECK (adjust to your logic)
-    if ($job->user_id !== $user->id) {
+    if (!$user || $job->customer_id != $user->id) {
         return response()->json([
             'success' => false,
             'message' => 'Unauthorized'
@@ -371,17 +387,24 @@ public function deleteImage($jobId, $imageId)
 
     public function update(Request $request, $id)
     {
+        $user = Auth::guard('api')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
         $job = Job::findOrFail($id);
 
-        if ($job->customer_id != Auth::guard('api')->id()) {
+        if ($job->customer_id != $user->id) {
 
             return response()->json([
                 'message' => 'Unauthorized'
             ], 403);
         }
+
         $validated = $request->validate([
             'property_id' => ['nullable', 'integer'],
-            'address' => ['required_without:property_id', 'nullable', 'string', 'max:500'],
+            'address' => ['nullable', 'string', 'max:500'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'initial_description' => ['required', 'string', 'max:5000'],
@@ -392,24 +415,37 @@ public function deleteImage($jobId, $imageId)
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
 
-        $property = $this->accessibleProperty(
-            $validated['property_id'] ?? null,
-            Auth::guard('api')->id()
-        );
+        $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
 
-        if ($property) {
+        $address = $property
+            ? $this->formatPropertyAddress($property)
+            : trim($validated['address'] ?? '');
 
-            $validated['property_id'] = $property->id;
-            $validated['address'] = $this->propertyAddress($property);
-            $validated['lat'] = $validated['lat'] ?? $job->lat ?? 0;
-            $validated['lng'] = $validated['lng'] ?? $job->lng ?? 0;
+        if ($address === '') {
+            return response()->json([
+                'message' => 'An address or property_id is required.'
+            ], 422);
         }
 
-        $job->update($validated);
+        $updateData = [
+            'address' => $address,
+            'lat' => $validated['lat'] ?? 0,
+            'lng' => $validated['lng'] ?? 0,
+            'initial_description' => $validated['initial_description'],
+            'agreed_price' => $validated['agreed_price'] ?? null,
+            'onsite_contact_name' => $validated['onsite_contact_name'] ?? null,
+            'onsite_contact_phone' => $validated['onsite_contact_phone'] ?? null,
+            'skills' => $validated['skills'] ?? []
+        ];
+
+        if (Schema::hasColumn('jobs', 'property_id')) {
+            $updateData['property_id'] = $property ? $property->id : null;
+        }
+
+        $job->update($updateData);
 
         if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-
+            foreach ($request->file('images') as $image) {
                 $path = $image->store('jobs/' . $job->id, 'public');
 
                 JobImage::create([
@@ -419,7 +455,7 @@ public function deleteImage($jobId, $imageId)
             }
         }
 
-        return response()->json($job);
+        return response()->json($job->load(['images', 'property']));
     }
 
 // I also updated this while tired.    

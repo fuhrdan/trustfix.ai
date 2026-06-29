@@ -27,7 +27,6 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
 Route::post('/properties/{id}/images', [PropertyController::class, 'uploadImage']);
 
 Route::delete(
@@ -35,7 +34,6 @@ Route::delete(
     [PropertyController::class, 'deleteImage']
 );
 
-Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']);
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
@@ -52,6 +50,13 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
     Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
     Route::get('/jobs/{id}', [JobController::class, 'show']);
+
+    // Job creation and image upload are authenticated-user actions.
+    // The controller still checks ownership for update/upload/delete.
+    Route::post('/jobs', [JobController::class, 'postJob']);
+    Route::put('/jobs/{id}', [JobController::class, 'update']);
+    Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
+    Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
 
     Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
     Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
@@ -80,7 +85,6 @@ Route::middleware(['auth:api'])->group(function () {
     });
 
     Route::middleware(['role:customer,company'])->group(function () {
-        Route::post('/jobs', [JobController::class, 'postJob']);
         Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
         Route::post('/jobs/{id}/review', [ReviewController::class, 'store']);
         Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
@@ -88,10 +92,6 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::middleware(['role:customer,handyman,company'])->group(function () {
         Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
-        Route::put(
-            '/jobs/{id}',
-            [JobController::class, 'update']
-        );
         Route::delete(
             '/jobs/{id}',
             [JobController::class, 'destroy']
