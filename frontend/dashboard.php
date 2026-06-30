@@ -109,8 +109,14 @@ $user = apiRequest(
 
         <br><br>
 
-        <a href="list_jobs.php">
-            View Jobs
+        <a href="available_jobs.php">
+            Available Jobs
+        </a>
+
+        <br><br>
+
+        <a href="my_jobs.php">
+            My Jobs
         </a>
     </div>
 

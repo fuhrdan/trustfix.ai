@@ -122,3 +122,20 @@ function apiRequest($method, $endpoint, $data = null)
 
     return $decoded;
 }
+
+function storageUrl($path)
+{
+    global $apiBase;
+
+    if (empty($path)) {
+        return '';
+    }
+
+    if (preg_match('/^https?:\/\//', $path)) {
+        return $path;
+    }
+
+    $base = preg_replace('/\/api\/?$/', '', rtrim($apiBase, '/'));
+
+    return $base . '/storage/' . ltrim($path, '/');
+}

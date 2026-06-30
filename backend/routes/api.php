@@ -48,6 +48,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
+    Route::get('/jobs/available', [JobController::class, 'availableJobs']);
     Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 

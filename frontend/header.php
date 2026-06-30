@@ -68,8 +68,12 @@
         Contractors
     </a>
 
-    <a href="list_jobs.php">
-        Jobs
+    <a href="available_jobs.php">
+        Available Jobs
+    </a>
+
+    <a href="my_jobs.php">
+        My Jobs
     </a>
 
     <?php if (empty($_SESSION['jwt_token'])) { ?>
@@ -93,3 +97,17 @@
 </nav>
 
 <div class="container">
+
+<?php if (!empty($_SESSION['flash_success'])) { ?>
+    <div style="background:#d1e7dd;color:#0f5132;padding:15px;border-radius:8px;margin-bottom:20px;">
+        <?= htmlspecialchars($_SESSION['flash_success']) ?>
+    </div>
+    <?php unset($_SESSION['flash_success']); ?>
+<?php } ?>
+
+<?php if (!empty($_SESSION['flash_error'])) { ?>
+    <div style="background:#f8d7da;color:#842029;padding:15px;border-radius:8px;margin-bottom:20px;">
+        <?= htmlspecialchars($_SESSION['flash_error']) ?>
+    </div>
+    <?php unset($_SESSION['flash_error']); ?>
+<?php } ?>

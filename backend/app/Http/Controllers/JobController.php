@@ -15,10 +15,93 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
+
+    public function availableJobs(Request $request)
+    {
+        $user = Auth::guard('api')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'budget' => ['nullable', 'string', 'in:any,under_100,100_250,250_500,500_plus'],
+            'sort' => ['nullable', 'string', 'in:newest,oldest,highest_budget,lowest_budget'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $query = Job::with(['customer', 'property', 'images'])
+            ->whereNull('handyman_id')
+            ->whereIn('status', ['posted', 'requested']);
+
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
+
+            $query->where(function ($query) use ($search) {
+                $query->where('initial_description', 'like', '%' . $search . '%')
+                    ->orWhere('address', 'like', '%' . $search . '%')
+                    ->orWhere('onsite_contact_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        if (!empty($validated['category'])) {
+            $category = $validated['category'];
+
+            $query->where('skills', 'like', '%' . $category . '%');
+        }
+
+        switch ($validated['budget'] ?? 'any') {
+            case 'under_100':
+                $query->whereNotNull('agreed_price')
+                    ->where('agreed_price', '<', 100);
+                break;
+
+            case '100_250':
+                $query->whereBetween('agreed_price', [100, 250]);
+                break;
+
+            case '250_500':
+                $query->whereBetween('agreed_price', [250, 500]);
+                break;
+
+            case '500_plus':
+                $query->where('agreed_price', '>=', 500);
+                break;
+        }
+
+        switch ($validated['sort'] ?? 'newest') {
+            case 'oldest':
+                $query->oldest();
+                break;
+
+            case 'highest_budget':
+                $query->orderByRaw('agreed_price IS NULL ASC')
+                    ->orderByDesc('agreed_price');
+                break;
+
+            case 'lowest_budget':
+                $query->orderByRaw('agreed_price IS NULL ASC')
+                    ->orderBy('agreed_price');
+                break;
+
+            case 'newest':
+            default:
+                $query->latest();
+                break;
+        }
+
+        return response()->json(
+            $query->paginate($validated['per_page'] ?? 20)
+        );
+    }
+
     public function myJobs()
     {
         $user = Auth::guard('api')->user();
@@ -42,9 +125,12 @@ class JobController extends Controller
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
+        $isAvailableForHandyman = $user->role == 'handyman'
+            && !$job->handyman_id
+            && in_array($job->status, ['posted', 'requested'], true);
         $isAdmin = $user->role == 'admin';
 
-        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+        if (!$isCustomer && !$isAssignedHandyman && !$isAvailableForHandyman && !$isAdmin) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
@@ -266,21 +352,36 @@ public function deleteImage($jobId, $imageId)
     public function acceptJob($id)
     {
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($id);
 
-        if ($job->handyman_id) {
-            return response()->json(['error' => 'Already assigned'], 409);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if (!in_array($job->status, ['posted', 'requested'], true)) {
-            return response()->json(['error' => 'Job is not available'], 409);
+        $updated = DB::transaction(function () use ($id, $user) {
+            $job = Job::where('id', $id)
+                ->whereNull('handyman_id')
+                ->whereIn('status', ['posted', 'requested'])
+                ->lockForUpdate()
+                ->first();
+
+            if (!$job) {
+                return null;
+            }
+
+            $job->handyman_id = $user->id;
+            $job->status = 'accepted';
+            $job->save();
+
+            return $job->load(['customer', 'handyman', 'property', 'images']);
+        });
+
+        if (!$updated) {
+            return response()->json([
+                'error' => 'Job is no longer available'
+            ], 409);
         }
 
-        $job->handyman_id = $user->id;
-        $job->status = 'accepted';
-        $job->save();
-
-        return response()->json($job);
+        return response()->json($updated);
     }
 
     public function startJob($id)
