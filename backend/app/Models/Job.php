@@ -67,4 +67,14 @@ class Job extends Model
     {
         return $this->hasMany(Report::class);
     }
+
+    public function messages()
+    {
+        return $this->hasMany(JobMessage::class);
+    }
+
+    public function activities()
+    {
+        return $this->hasMany(JobActivity::class);
+    }
 }

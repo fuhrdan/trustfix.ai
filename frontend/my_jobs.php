@@ -229,6 +229,10 @@ include 'header.php';
                             Updated <?= jobText($job['updated_at'] ?? '', 'recently') ?>
                         </div>
 
+                        <a href="job_workspace.php?id=<?= $jobId ?>" style="display:block;text-align:center;background:#0d6efd;color:white;padding:10px;border-radius:8px;text-decoration:none;margin-bottom:10px;">
+                            Open Workspace
+                        </a>
+
                         <a href="job_detail.php?id=<?= $jobId ?>" style="display:block;text-align:center;background:#333;color:white;padding:10px;border-radius:8px;text-decoration:none;margin-bottom:10px;">
                             View Details
                         </a>

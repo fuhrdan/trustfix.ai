@@ -10,6 +10,8 @@ namespace App\Http\Controllers;
 use App\Models\Job;
 use App\Models\User;
 use App\Models\JobImage;
+use App\Models\JobActivity;
+use App\Models\JobMessage;
 use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +22,23 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
+
+    private function logJobEvent(Job $job, ?User $user, string $type, string $description): void
+    {
+        JobActivity::create([
+            'job_id' => $job->id,
+            'user_id' => $user ? $user->id : null,
+            'activity_type' => $type,
+            'description' => $description,
+        ]);
+
+        JobMessage::create([
+            'job_id' => $job->id,
+            'sender_user_id' => null,
+            'message' => $description,
+            'message_type' => 'system',
+        ]);
+    }
 
     public function availableJobs(Request $request)
     {
@@ -37,7 +56,7 @@ class JobController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        $query = Job::with(['customer', 'property', 'images'])
+        $query = Job::with(['customer', 'property', 'images', 'messages', 'activities'])
             ->whereNull('handyman_id')
             ->whereIn('status', ['posted', 'requested']);
 
@@ -106,7 +125,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images']);
+        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images', 'messages', 'activities']);
 
         if ($user->role == 'handyman') {
             $query->where('handyman_id', $user->id);
@@ -121,7 +140,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images', 'messages.sender', 'activities.user'])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
@@ -240,7 +259,9 @@ class JobController extends Controller
             }
         }
 
-        return response()->json($job->load(['images', 'property']), 201);
+        $this->logJobEvent($job, $user, 'job_posted', 'Job was posted by ' . $user->name . '.');
+
+        return response()->json($job->load(['images', 'property', 'messages', 'activities']), 201);
     }
 
     public function uploadImages(Request $request, $id)
@@ -372,7 +393,9 @@ public function deleteImage($jobId, $imageId)
             $job->status = 'accepted';
             $job->save();
 
-            return $job->load(['customer', 'handyman', 'property', 'images']);
+            $this->logJobEvent($job, $user, 'job_accepted', $user->name . ' accepted this job.');
+
+            return $job->load(['customer', 'handyman', 'property', 'images', 'messages', 'activities']);
         });
 
         if (!$updated) {
@@ -401,7 +424,9 @@ public function deleteImage($jobId, $imageId)
             'status' => 'in_progress',
         ]);
 
-        return response()->json($job);
+        $this->logJobEvent($job, $user, 'job_started', $user->name . ' started this job.');
+
+        return response()->json($job->load(['messages', 'activities']));
     }
 
     public function completeJob($id)
@@ -421,7 +446,9 @@ public function deleteImage($jobId, $imageId)
             'status' => 'completed',
         ]);
 
-        return response()->json($job);
+        $this->logJobEvent($job, $user, 'job_completed', $user->name . ' marked this job complete.');
+
+        return response()->json($job->load(['messages', 'activities']));
     }
 
     public function cancelJob($id)
@@ -454,7 +481,9 @@ public function deleteImage($jobId, $imageId)
             'status' => 'cancelled',
         ]);
 
-        return response()->json($job);
+        $this->logJobEvent($job, $user, 'job_cancelled', $user->name . ' cancelled this job.');
+
+        return response()->json($job->load(['messages', 'activities']));
     }
 
 // I "fixed" this section while tired.

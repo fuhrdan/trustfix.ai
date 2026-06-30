@@ -176,6 +176,10 @@ $canAccept = empty($job['handyman_id'])
 
 <p>
     <a href="available_jobs.php">&larr; Back to Available Jobs</a>
+    &nbsp; | &nbsp;
+    <a href="my_jobs.php">My Jobs</a>
+    &nbsp; | &nbsp;
+    <a href="job_workspace.php?id=<?= (int)$job['id'] ?>">Open Workspace</a>
 </p>
 
 <div class="tf-detail-grid">
