@@ -1,0 +1,140 @@
+<?php
+session_start();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustFix Technology Corp | Discover Top Tech Solutions</title>
+    <meta name="description" content="Explore innovative technology services and products to enhance efficiency and connectivity for your business with TrustFix Technology Corp.">
+    <link rel="stylesheet" href="TF-Style.css">
+</head>
+<body class="tf-home-page">
+
+<header class="tf-site-header tf-home-header">
+    <a class="tf-brand" href="index.php" aria-label="TrustFix home">
+        <img src="images/7749CCB4-A449-4A1E-961A-6D6A38CE5E12.png" alt="TrustFix Technology Corp logo" width="48" height="48">
+        <span>TrustFix</span>
+    </a>
+
+    <nav class="tf-nav" aria-label="Main navigation">
+        <a href="index.php">Home</a>
+        <a href="#about">About</a>
+        <a href="#why-trustfix">Why TrustFix</a>
+        <a href="#mission">Our Mission</a>
+        <a href="#vision">Our Vision</a>
+        <a href="#lets-fix">Let's Fix</a>
+        <a href="login.php">Log In</a>
+        <a class="tf-nav-cta" href="register.php">Register Now</a>
+    </nav>
+</header>
+
+<main>
+    <section class="tf-hero">
+        <div class="tf-hero-overlay"></div>
+        <div class="tf-hero-content">
+            <img class="tf-hero-logo" src="images/7749CCB4-A449-4A1E-961A-6D6A38CE5E12.png" alt="TrustFix Technology Corp logo" width="180">
+            <p class="tf-eyebrow">Trust starts here</p>
+            <h1>Fix Everything, Fairly.</h1>
+            <p>TrustFix is the AI-powered platform connecting you with licensed professionals for fast, honest, human-centered property repairs.</p>
+            <div class="tf-hero-actions">
+                <a class="tf-button tf-button-primary" href="register.php">Register Now</a>
+                <a class="tf-button tf-button-secondary" href="login.php">Log In</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="tf-section tf-split-section">
+        <div>
+            <p class="tf-eyebrow">Built for Repair</p>
+            <h2>Powered by Trust.</h2>
+            <p>TrustFix is a revolutionary repair platform powered by AI but driven by people.</p>
+            <p>We connect families, landlords, and communities with licensed professionals, not just to fix what’s broken, but to restore what’s been lost: trust.</p>
+            <p>From the first tap to the final fix, our mission is to make repairs simple, secure, and truly fair.</p>
+            <p><strong>This isn’t just another app. It’s the beginning of a repair revolution.</strong></p>
+        </div>
+        <img src="images/20250720_2324_Home+Hub+Dashboard_remix_01k0ntd3r4ezp94gh1bczrxg4h.png" alt="TrustFix repair dashboard concept">
+    </section>
+
+    <section id="why-trustfix" class="tf-section tf-blue-section">
+        <h2>Why Thousands Trust TrustFix</h2>
+        <div class="tf-feature-grid">
+            <article>
+                <h3>Smart Estimates, Real Results</h3>
+                <p>Use technology to make repair requests clearer, faster, and easier to quote.</p>
+            </article>
+            <article>
+                <h3>Verified Pros, Protected Payments</h3>
+                <p>Connect with licensed professionals while keeping expectations and payments transparent.</p>
+            </article>
+            <article>
+                <h3>Trust-Built System with Rewards</h3>
+                <p>Reward great service, referrals, accountability, and long-term customer trust.</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="mission" class="tf-section tf-card-section">
+        <div class="tf-info-card">
+            <h2>Our Mission</h2>
+            <p>To restore trust in the repair industry, and create real economic opportunity while doing it.</p>
+            <p>TrustFix empowers everyday people with fast, reliable repair solutions so no one’s left waiting, overpaying, or feeling helpless when something breaks.</p>
+        </div>
+    </section>
+
+    <section id="vision" class="tf-section tf-card-section tf-card-section-alt">
+        <div class="tf-info-card">
+            <h2>Our Vision</h2>
+            <p>To become the world’s most trusted platform for repair and restoration, built on transparency, accountability, and results.</p>
+            <p>We’re creating a global standard for how repairs should be done: ethically, efficiently, and built to last.</p>
+        </div>
+    </section>
+
+    <section id="lets-fix" class="tf-section tf-split-section">
+        <img src="images/20250707_1042_Futuristic+Repair+Control+Center_simple_compose_01jzjzmx1gew3rx8tn74zpwrhx.png" alt="TrustFix repair control center concept">
+        <div>
+            <h2>No Stress. No Surprises. Just Trusted Repairs.</h2>
+            <p>Whether you own, rent, or manage property, TrustFix gives you the control you need.</p>
+            <ul class="tf-check-list">
+                <li>Fair & secure payments for all parties.</li>
+                <li>Contractor profiles with transparent credentials and growth tools.</li>
+                <li>Loyalty and referral rewards for clients and pros alike.</li>
+                <li>In-app resolution support that works for everyone.</li>
+            </ul>
+            <h3>We are not a repair service!</h3>
+            <p>We are the platform where quality licensed contractors and repair experts connect with homeowners, renters, landlords, and businesses for reliable, affordable, and efficient property repairs.</p>
+            <div class="tf-hero-actions">
+                <a class="tf-button tf-button-primary" href="register.php">Join as a Pro</a>
+                <a class="tf-button tf-button-secondary" href="register.php">Book a Repair</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="tf-section tf-waitlist-section">
+        <h2>Be First in Line for TrustFix!</h2>
+        <p>We're gearing up to launch something exciting, and you can be among the first to know when we go live.</p>
+        <p>Whether you're eager to book your first repair, explore how TrustFix works, or simply want early access, joining the waitlist ensures you won't miss a thing.</p>
+        <a class="tf-button tf-button-primary" href="register.php">Join Wait List</a>
+    </section>
+</main>
+
+<footer class="tf-site-footer tf-home-footer">
+    <div class="tf-footer-inner">
+        <div class="tf-footer-brand">
+            <img src="images/7749CCB4-A449-4A1E-961A-6D6A38CE5E12.png" alt="TrustFix Technology Corp logo" width="48" height="48">
+            <div>
+                <strong>TRUSTFIX TECHNOLOGY CORP</strong>
+                <p>TrustFix is launching nationwide with a global scalability plan already in motion.</p>
+            </div>
+        </div>
+
+        <div class="tf-footer-contact">
+            <a href="mailto:t.tyler@trustfixai.com">t.tyler@trustfixai.com</a>
+            <p>Copyright ©2025 All rights reserved | TrustFix</p>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

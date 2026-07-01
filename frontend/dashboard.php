@@ -70,6 +70,7 @@ $user = apiRequest(
             Manage Users
         </a>
 
+<!--
         <h3>Contractors</h3>
 
         <a href="add_contractor.php">
@@ -87,7 +88,7 @@ $user = apiRequest(
         <a href="edit_contractor_profile.php">
             Edit Contractors
         </a>
-
+-->
     </div>
 
     <div
@@ -103,14 +104,14 @@ $user = apiRequest(
             Create and manage jobs.
         </p>
 
-        <a href="add_job.php">
-            Add Job
+        <a href="available_jobs.php">
+            Available Jobs
         </a>
 
         <br><br>
 
-        <a href="available_jobs.php">
-            Available Jobs
+        <a href="add_job.php">
+            Add Job
         </a>
 
         <br><br>
