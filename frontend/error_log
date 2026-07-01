@@ -376,3 +376,33 @@
     [_http_code] => 200
 )
 
+[01-Jul-2026 18:21:57 UTC] Array
+(
+    [id] => 34
+    [owner_user_id] => 14
+    [street_address] => 2214 S Estes St
+    [address_line_2] => 
+    [apartment] => 
+    [city] => Lakewood
+    [state] => CO
+    [zip] => 80128
+    [county] => Jefferson
+    [description] => House on Estes Street
+    [created_at] => 2026-07-01T18:20:50.000000Z
+    [updated_at] => 2026-07-01T18:21:57.000000Z
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 6
+                    [property_id] => 34
+                    [image_path] => properties/34/zXG1hzxlLtpbQU4gKLuE4hBp0ZpYZquKU2i4mjrl.webp
+                    [created_at] => 2026-07-01T18:21:55.000000Z
+                    [updated_at] => 2026-07-01T18:21:55.000000Z
+                )
+
+        )
+
+    [_http_code] => 200
+)
+

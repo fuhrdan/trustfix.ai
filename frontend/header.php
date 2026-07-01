@@ -22,6 +22,18 @@
             <a href="my_jobs.php">My Jobs</a>
             <a href="list_properties.php">Properties</a>
 
+            <?php if (($_SESSION['user']['role'] ?? '') === 'admin') { ?>
+
+                <a href="list_users.php">
+                    Manage Users
+                </a>
+
+                <a href="manage_jobs.php">
+                    Manage Jobs
+                </a>
+
+            <?php } ?>
+    
             <?php if (empty($_SESSION['jwt_token'])) { ?>
 
                 <a href="login.php">Login</a>

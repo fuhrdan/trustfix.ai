@@ -64,11 +64,21 @@ $user = apiRequest(
             View Properties
         </a>
 
-        <h3>Users</h3>
+        <?php if (($user['role'] ?? '') === 'admin'): ?>
 
-        <a href="list_users.php">
-            Manage Users
-        </a>
+            <h3>Admin</h3>
+
+            <a href="list_users.php">
+                Manage Users
+            </a>
+
+            <br><br>
+
+            <a href="manage_jobs.php">
+                Manage Jobs
+            </a>
+
+        <?php endif; ?>
 
 <!--
         <h3>Contractors</h3>
@@ -89,6 +99,7 @@ $user = apiRequest(
             Edit Contractors
         </a>
 -->
+
     </div>
 
     <div

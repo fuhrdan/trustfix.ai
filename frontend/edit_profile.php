@@ -364,16 +364,23 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
 
     <h2>Contractor / Business Information</h2>
 
-    <label style="display:block; margin-bottom:15px;">
+    <div style="display:flex; align-items:center; margin-bottom:20px;">
         <input
             type="checkbox"
             name="sign_up_as_contractor"
             id="sign_up_as_contractor"
             value="1"
             <?= $hasContractorProfile ? 'checked' : '' ?>
+            style="margin:0 10px 0 0; width:auto;"
         >
-        Sign up as contractor
-    </label>
+
+        <label
+            for="sign_up_as_contractor"
+            style="margin:0; font-weight:bold; cursor:pointer;"
+        >
+            Sign up as contractor
+        </label>
+    </div>
 
     <div id="contractor_fields" style="<?= $hasContractorProfile ? '' : 'display:none;' ?>">
 
@@ -453,15 +460,23 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label style="display:block; margin-bottom:15px;">
-            <input
-                type="checkbox"
-                name="emergency_availability"
-                value="1"
-                <?= !empty($contractor['emergency_availability']) ? 'checked' : '' ?>
-            >
+    <div style="display:flex; align-items:center; margin-bottom:20px;">
+        <input
+            type="checkbox"
+            name="emergency_availability"
+            id="emergency_availability"
+            value="1"
+            <?= !empty($contractor['emergency_availability']) ? 'checked' : '' ?>
+            style="margin:0 10px 0 0; width:auto;"
+        >
+
+        <label
+            for="emergency_availability"
+            style="margin:0; font-weight:bold; cursor:pointer;"
+        >
             Available for emergency work
         </label>
+    </div>
 
         <label>State Licenses</label>
         <input
@@ -570,15 +585,23 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ?? ''
         ) ?></textarea>
 
-        <label style="display:block; margin-bottom:15px;">
-            <input
-                type="checkbox"
-                name="is_public"
-                value="1"
-                <?= !empty($contractor['is_public']) ? 'checked' : '' ?>
-            >
+    <div style="display:flex; align-items:center; margin-bottom:20px;">
+        <input
+            type="checkbox"
+            name="is_public"
+            id="is_public"
+            value="1"
+            <?= !empty($contractor['is_public']) ? 'checked' : '' ?>
+            style="margin:0 10px 0 0; width:auto;"
+        >
+
+        <label
+            for="is_public"
+            style="margin:0; font-weight:bold; cursor:pointer;"
+        >
             Show my business profile in public contractor search after approval
         </label>
+    </div>
 
         <?php if (!empty($contractor['background_check_status']) || !empty($contractor['is_verified'])): ?>
             <p>

@@ -66,7 +66,24 @@ $users = $result['data'] ?? [];
     </td>
 
     <td>
-        <?= htmlspecialchars($user['role'] ?? '') ?>
+        <form method="POST" action="update_user_role.php" style="display:flex;gap:8px;align-items:center;margin:0;">
+            <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
+
+            <select name="role" style="min-width:130px;margin:0;">
+                <?php foreach (['customer' => 'Customer', 'handyman' => 'Handyman', 'company' => 'Company', 'admin' => 'Admin'] as $roleValue => $roleLabel): ?>
+                    <option
+                        value="<?= htmlspecialchars($roleValue) ?>"
+                        <?= ($user['role'] ?? '') === $roleValue ? 'selected' : '' ?>
+                    >
+                        <?= htmlspecialchars($roleLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <button type="submit" style="width:auto;margin:0;padding:8px 12px;">
+                Save
+            </button>
+        </form>
     </td>
 
     <td>
