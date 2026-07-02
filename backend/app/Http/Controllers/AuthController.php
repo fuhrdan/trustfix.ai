@@ -115,6 +115,13 @@ class AuthController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        $user = auth('api')->user();
+
+        if ($user) {
+            $user->last_login_at = now();
+            $user->save();
+        }
+
         return response()->json([
             'token' => $token,
             'token_type' => 'bearer',

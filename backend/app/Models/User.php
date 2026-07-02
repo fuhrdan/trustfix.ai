@@ -39,6 +39,7 @@ class User extends Authenticatable implements JWTSubject
         'suspended_at',
         'suspended_by',
         'suspension_reason',
+        'last_login_at',
     ];
 
     /**
@@ -61,6 +62,7 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'suspended_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 

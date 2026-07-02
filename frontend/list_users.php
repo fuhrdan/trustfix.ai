@@ -21,6 +21,7 @@ $users = $result['data'] ?? [];
     <th>Phone</th>
     <th>Address</th>
     <th>Business Name</th>
+    <th>Last Login</th>
     <th>Pending Approvals</th>
     <th>Role</th>
     <th>Edit</th>
@@ -53,6 +54,19 @@ $users = $result['data'] ?? [];
             $user['contractor_profile']['business_name']
             ?? ''
         ) ?>
+    </td>
+
+    <td>
+        <?php if (!empty($user['last_login_at'])): ?>
+            <?= htmlspecialchars(
+                date(
+                    'm/d/Y g:i A',
+                    strtotime($user['last_login_at'])
+                )
+            ) ?>
+        <?php else: ?>
+            <span style="color:#777;">Never</span>
+        <?php endif; ?>
     </td>
 
     <td>
