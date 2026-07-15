@@ -147,6 +147,11 @@ Route::middleware(['auth:api'])->group(function () {
             [AdminDashboardController::class, 'updateUser']
         );
 
+        Route::post(
+            '/admin/users/{id}/reset-password',
+            [AdminDashboardController::class, 'resetUserPassword']
+        );
+        
         Route::get('/admin/reports', [ReportController::class, 'adminIndex']);
         Route::post('/admin/reports/{id}/status', [ReportController::class, 'adminUpdateStatus']);
         Route::post('/admin/users/{id}/account-status', [ReportController::class, 'adminSuspendUser']);

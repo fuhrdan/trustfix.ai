@@ -13,6 +13,7 @@ use App\Models\Report;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class AdminDashboardController extends Controller
@@ -141,6 +142,22 @@ class AdminDashboardController extends Controller
         ]);
     }
 
+    public function resetUserPassword(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed'
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $user->password = Hash::make($validated['password']);
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully'
+        ]);
+    }
 
     public function updateContractorDocumentStatus(Request $request, $id)
     {
