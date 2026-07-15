@@ -16,6 +16,7 @@ use App\Http\Controllers\ContractorProfileController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\JobWorkspaceController;
 use App\Http\Controllers\ProfileClaimController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
@@ -51,6 +52,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/jobs/available', [JobController::class, 'availableJobs']);
     Route::get('/jobs/nearby', [JobController::class, 'nearbyHandymen']);
     Route::get('/jobs/{id}', [JobController::class, 'show']);
+    Route::get('/jobs/{id}/workspace', [JobWorkspaceController::class, 'show']);
+    Route::get('/jobs/{id}/messages', [JobWorkspaceController::class, 'messages']);
+    Route::post('/jobs/{id}/messages', [JobWorkspaceController::class, 'storeMessage']);
+    Route::get('/jobs/{id}/activities', [JobWorkspaceController::class, 'activities']);
 
     // Job creation and image upload are authenticated-user actions.
     // The controller still checks ownership for update/upload/delete.

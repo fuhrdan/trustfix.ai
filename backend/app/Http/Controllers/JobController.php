@@ -595,7 +595,7 @@ public function deleteImage($jobId, $imageId)
 
         $job = Job::findOrFail($id);
 
-        if ($job->customer_id != $user->id) {
+        if ($user->role !== 'admin' && $job->customer_id != $user->id) {
 
             return response()->json([
                 'message' => 'Unauthorized'
@@ -605,6 +605,7 @@ public function deleteImage($jobId, $imageId)
         $job->delete();
 
         return response()->json([
+            'success' => true,
             'message' => 'Job deleted successfully'
         ]);
     }

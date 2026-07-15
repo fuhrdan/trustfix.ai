@@ -118,7 +118,8 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/admin/users', [AdminDashboardController::class, 'users']);
         Route::get('/admin/contractors', [AdminDashboardController::class, 'contractors']);
         Route::get('/admin/jobs', [AdminDashboardController::class, 'jobs']);
-
+        Route::delete('/admin/jobs/{id}', [JobController::class, 'destroy']);
+        
         Route::get('/admin/profile-claims/pending', [ProfileClaimController::class, 'pending']);
         Route::post('/admin/profile-claims/{id}/status', [ProfileClaimController::class, 'updateStatus']);
 
