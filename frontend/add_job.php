@@ -134,6 +134,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
 
+<style>
+    .job-property-select
+    {
+        width: 100%;
+        margin-bottom: 15px;
+        padding: 10px;
+        min-height: 42px;
+        box-sizing: border-box;
+        border: 1px solid var(--tf-border);
+        border-radius: 4px;
+        background: #ffffff;
+        color: var(--tf-text);
+        font: inherit;
+    }
+
+    .job-property-label
+    {
+        display: block;
+        margin-bottom: 7px;
+        font-weight: 700;
+    }
+</style>
+
 <h1>Add Job</h1>
 
 <?= $message ?>
@@ -148,14 +171,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <form method="POST">
 
-    <label for="property_id">Job Address</label>
-    <select name="property_id" id="property_id" required>
-        <option value="">Select an address</option>
-        <?php foreach ($properties as $property) { ?>
-            <?php $address = jobPropertyAddress($property); ?>
-            <option value="<?= htmlspecialchars($property['id']) ?>">
-                <?= htmlspecialchars($address) ?>
-            </option>
+    <label for="property_id" class="job-property-label">Job Address</label>
+    <select name="property_id" id="property_id" class="job-property-select" required>
+        <?php if (!empty($properties)) { ?>
+            <option value="">Select an address</option>
+            <?php foreach ($properties as $property) { ?>
+                <?php $address = jobPropertyAddress($property); ?>
+                <option value="<?= htmlspecialchars($property['id']) ?>">
+                    <?= htmlspecialchars($address) ?>
+                </option>
+            <?php } ?>
+            <option value="add_property">+ Add Property</option>
+        <?php } else { ?>
+            <option value="add_property">+ Add Property</option>
         <?php } ?>
     </select>
 
@@ -214,6 +242,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </form>
 
 <script>
+const propertySelect = document.getElementById('property_id');
+
+propertySelect.addEventListener('change', function()
+{
+    if (this.value === 'add_property') {
+        window.location.href = 'add_property.php';
+    }
+});
+
+document.querySelector('form').addEventListener('submit', function(event)
+{
+    if (propertySelect.value === 'add_property') {
+        event.preventDefault();
+        window.location.href = 'add_property.php';
+    }
+});
+
 function wireUploadBlock(block)
 {
     const input = block.querySelector('.image-input');
