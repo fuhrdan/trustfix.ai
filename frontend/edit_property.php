@@ -34,10 +34,53 @@ if (!is_array($property)) {
 
 $message = '';
 
+//-------------------------------------------------
+// Add or remove an authorized property user
+//-------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+    ($_POST['action'] ?? '') === 'add_authorized_user') {
+
+    $authorizedEmail = trim($_POST['authorized_email'] ?? '');
+
+    $authorizedResult = apiRequest(
+        'POST',
+        "/properties/$propertyId/authorized-users",
+        ['email' => $authorizedEmail]
+    );
+
+    if (!empty($authorizedResult['success'])) {
+        $message .= "<div style='background:#dff0d8;padding:15px;border-radius:8px;margin-bottom:20px;'>Authorized user added successfully.</div>";
+    } else {
+        $authorizedMessage = $authorizedResult['message'] ?? 'Unable to add authorized user.';
+        $message .= "<div style='background:#f8d7da;padding:15px;border-radius:8px;margin-bottom:20px;'>" . htmlspecialchars($authorizedMessage) . "</div>";
+    }
+
+    $property = apiRequest('GET', "/properties/$propertyId");
+}
+elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+    ($_POST['action'] ?? '') === 'remove_authorized_user') {
+
+    $authorizedUserId = (int)($_POST['authorized_user_id'] ?? 0);
+
+    $authorizedResult = apiRequest(
+        'DELETE',
+        "/properties/$propertyId/authorized-users/$authorizedUserId"
+    );
+
+    if (!empty($authorizedResult['success'])) {
+        $message .= "<div style='background:#dff0d8;padding:15px;border-radius:8px;margin-bottom:20px;'>Authorized user removed successfully.</div>";
+    } else {
+        $authorizedMessage = $authorizedResult['message'] ?? 'Unable to remove authorized user.';
+        $message .= "<div style='background:#f8d7da;padding:15px;border-radius:8px;margin-bottom:20px;'>" . htmlspecialchars($authorizedMessage) . "</div>";
+    }
+
+    $property = apiRequest('GET', "/properties/$propertyId");
+}
+
 //=========================================================
 // FINAL UPDATE
 //=========================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     !isset($_POST['ajax_upload'])) {
 
     $payload = [
@@ -235,6 +278,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     </button>
 
 </form>
+
+<section style="margin-top:30px;padding:20px;border:1px solid #d9d9d9;border-radius:8px;background:#fff;">
+    <h3 style="margin-top:0;">Authorized Property Users</h3>
+
+    <p style="margin-bottom:15px;">
+        Add a renter, family member, or other trusted person who may create jobs for this property.
+        The person must already have a TrustFix account.
+    </p>
+
+    <form method="POST" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+        <input type="hidden" name="action" value="add_authorized_user">
+
+        <input
+            type="email"
+            name="authorized_email"
+            placeholder="Authorized user's email address"
+            required
+            style="flex:1;min-width:260px;margin:0;"
+        >
+
+        <button type="submit" style="margin:0;">
+            Add Authorized User
+        </button>
+    </form>
+
+    <?php if (!empty($property['users'])): ?>
+        <?php foreach ($property['users'] as $authorizedUser): ?>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:15px;padding:12px 0;border-top:1px solid #eee;">
+                <div>
+                    <strong><?= htmlspecialchars($authorizedUser['name'] ?? 'TrustFix User') ?></strong><br>
+                    <span><?= htmlspecialchars($authorizedUser['email'] ?? '') ?></span>
+                </div>
+
+                <form method="POST" onsubmit="return confirm('Remove this user's access to the property?');" style="margin:0;">
+                    <input type="hidden" name="action" value="remove_authorized_user">
+                    <input type="hidden" name="authorized_user_id" value="<?= (int)($authorizedUser['id'] ?? 0) ?>">
+                    <button type="submit" style="margin:0;background:#b42318;">
+                        Remove
+                    </button>
+                </form>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div style="padding:12px;background:#f7f7f7;border-radius:6px;">
+            No additional users currently have access to this property.
+        </div>
+    <?php endif; ?>
+</section>
 
 <script>
 

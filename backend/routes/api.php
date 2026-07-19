@@ -163,11 +163,16 @@ Route::middleware(['auth:api'])->group(function () {
     
     Route::middleware('auth:api')->group(function ()
     {
+        Route::post('/properties/{id}/authorized-users', [PropertyController::class, 'addAuthorizedUser']);
+        Route::delete('/properties/{id}/authorized-users/{userId}', [PropertyController::class, 'removeAuthorizedUser']);
+
         Route::apiResource(
             'properties',
             PropertyController::class
         );
-            Route::get('/properties', [PropertyController::class, 'myProperties']);
-                Route::delete('/properties/{id}', [PropertyController::class, 'destroy']);
+
+        // Keep the existing property-list endpoint mapped to myProperties().
+        // This returns both owned properties and properties shared with the user.
+        Route::get('/properties', [PropertyController::class, 'myProperties']);
     });
 });

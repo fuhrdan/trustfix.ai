@@ -1,306 +1,80 @@
-[22-Jun-2026 13:58:55 UTC] Array
+[19-Jul-2026 00:08:40 UTC] Array
 (
-    [id] => 18
-    [owner_user_id] => 10
-    [street_address] => 234 Street
+    [id] => 40
+    [owner_user_id] => 17
+    [street_address] => 5639 S Windermere St
     [address_line_2] => 
-    [apartment] => 102
-    [city] => Topeka
-    [state] => KS
-    [zip] => 66614
-    [county] => Hayford
-    [description] => House Test
-    [created_at] => 2026-06-22T13:16:48.000000Z
-    [updated_at] => 2026-06-22T13:58:54.000000Z
-)
-
-[22-Jun-2026 14:06:07 UTC] Array
-(
-    [id] => 18
-    [owner_user_id] => 10
-    [street_address] => 234 Street
-    [address_line_2] => 333 Lane
-    [apartment] => 210
-    [city] => Topeka
-    [state] => KS
-    [zip] => 66614
-    [county] => 0
-    [description] => House Test
-    [created_at] => 2026-06-22T13:16:48.000000Z
-    [updated_at] => 2026-06-22T14:06:07.000000Z
-)
-
-[22-Jun-2026 14:42:28 UTC] 
-[22-Jun-2026 14:44:13 UTC] Array
-(
-    [id] => 19
-    [owner_user_id] => 10
-    [street_address] => 3567 House St
-    [address_line_2] => Upper
-    [apartment] => 345
-    [city] => Happy City
-    [state] => HI
-    [zip] => 34567
-    [county] => Twilight
-    [description] => House for Test
-    [created_at] => 2026-06-22T14:43:34.000000Z
-    [updated_at] => 2026-06-22T14:44:13.000000Z
-)
-
-[22-Jun-2026 14:51:22 UTC] Array
-(
-    [id] => 20
-    [owner_user_id] => 10
-    [street_address] => Test House Image
-    [address_line_2] => Test House Image
-    [apartment] => Test House Image
-    [city] => Test House Image
-    [state] => Test House Image
-    [zip] => Test House Image
-    [county] => Test House Image
-    [description] => Test House Image
-    [created_at] => 2026-06-22T14:50:55.000000Z
-    [updated_at] => 2026-06-22T14:51:21.000000Z
-)
-
-[23-Jun-2026 15:08:25 UTC] Array
-(
-    [id] => 21
-    [owner_user_id] => 10
-    [street_address] => Street House
-    [address_line_2] => 
-    [apartment] => 
-    [city] => Detroit
-    [state] => MI
-    [zip] => 12345
-    [county] => Detroit
-    [description] => A test house with images.
-    [created_at] => 2026-06-23T15:07:43.000000Z
-    [updated_at] => 2026-06-23T15:08:24.000000Z
-)
-
-[23-Jun-2026 15:16:06 UTC] Array
-(
-    [id] => 22
-    [owner_user_id] => 10
-    [street_address] => Test Property
-    [address_line_2] => 
-    [apartment] => 
-    [city] => Applewood
+    [apartment] => 101
+    [city] => Littleton
     [state] => CO
-    [zip] => 80128
+    [zip] => 80120
     [county] => Jefferson
-    [description] => Test Images
-    [created_at] => 2026-06-23T15:15:38.000000Z
-    [updated_at] => 2026-06-23T15:16:06.000000Z
-)
-
-[23-Jun-2026 16:56:51 UTC] Array
-(
-    [message] => Server Error
-)
-
-[23-Jun-2026 17:18:02 UTC] Array
-(
-    [id] => 24
-    [owner_user_id] => 10
-    [street_address] => Picture House
-    [address_line_2] => 
-    [apartment] => 101
-    [city] => House with Picture
-    [state] => CO
-    [zip] => 80128
-    [county] => 0
-    [description] => House with Picture
-    [created_at] => 2026-06-23T16:55:36.000000Z
-    [updated_at] => 2026-06-23T17:18:02.000000Z
+    [description] => 1 bed, 1 bath apartment
+    [created_at] => 2026-07-19T00:05:43.000000Z
+    [updated_at] => 2026-07-19T00:08:40.000000Z
     [images] => Array
         (
             [0] => Array
                 (
-                    [id] => 1
-                    [property_id] => 24
-                    [image_path] => properties/24/23qiqNKMkD4wawqlScru8Ka6OjKEf93Vf2hmJKcI.jpg
-                    [created_at] => 2026-06-23T16:55:52.000000Z
-                    [updated_at] => 2026-06-23T16:55:52.000000Z
-                )
-
-        )
-
-)
-
-[23-Jun-2026 17:18:15 UTC] Array
-(
-    [id] => 24
-    [owner_user_id] => 10
-    [street_address] => Picture House
-    [address_line_2] => 
-    [apartment] => 101
-    [city] => House with Picture
-    [state] => CO
-    [zip] => 80128
-    [county] => 0
-    [description] => House with Picture
-    [created_at] => 2026-06-23T16:55:36.000000Z
-    [updated_at] => 2026-06-23T17:18:02.000000Z
-    [images] => Array
-        (
-            [0] => Array
-                (
-                    [id] => 1
-                    [property_id] => 24
-                    [image_path] => properties/24/23qiqNKMkD4wawqlScru8Ka6OjKEf93Vf2hmJKcI.jpg
-                    [created_at] => 2026-06-23T16:55:52.000000Z
-                    [updated_at] => 2026-06-23T16:55:52.000000Z
-                )
-
-        )
-
-)
-
-[23-Jun-2026 17:18:18 UTC] Array
-(
-    [id] => 24
-    [owner_user_id] => 10
-    [street_address] => Picture House
-    [address_line_2] => 
-    [apartment] => 101
-    [city] => House with Picture
-    [state] => CO
-    [zip] => 80128
-    [county] => 0
-    [description] => House with Picture
-    [created_at] => 2026-06-23T16:55:36.000000Z
-    [updated_at] => 2026-06-23T17:18:02.000000Z
-    [images] => Array
-        (
-            [0] => Array
-                (
-                    [id] => 1
-                    [property_id] => 24
-                    [image_path] => properties/24/23qiqNKMkD4wawqlScru8Ka6OjKEf93Vf2hmJKcI.jpg
-                    [created_at] => 2026-06-23T16:55:52.000000Z
-                    [updated_at] => 2026-06-23T16:55:52.000000Z
-                )
-
-        )
-
-)
-
-[24-Jun-2026 16:57:09 UTC] Array
-(
-    [id] => 27
-    [owner_user_id] => 10
-    [street_address] => Another house with pictures
-    [address_line_2] => 123
-    [apartment] => 65783A
-    [city] => Lakewood
-    [state] => CO
-    [zip] => 80122
-    [county] => 0
-    [description] => A test house with pictures (plural)
-    [created_at] => 2026-06-23T17:58:46.000000Z
-    [updated_at] => 2026-06-24T16:57:09.000000Z
-    [images] => Array
-        (
-            [0] => Array
-                (
-                    [id] => 2
-                    [property_id] => 27
-                    [image_path] => properties/27/BYhGRpDy0QFHfoN5ThhtMZYk2lAfUbpFVRFJliUJ.jpg
-                    [created_at] => 2026-06-24T16:57:02.000000Z
-                    [updated_at] => 2026-06-24T16:57:02.000000Z
-                )
-
-        )
-
-)
-
-[24-Jun-2026 16:57:20 UTC] Array
-(
-    [id] => 27
-    [owner_user_id] => 10
-    [street_address] => Another house with pictures
-    [address_line_2] => 123
-    [apartment] => 65783A
-    [city] => Lakewood
-    [state] => CO
-    [zip] => 80122
-    [county] => 0
-    [description] => A test house with pictures (plural)
-    [created_at] => 2026-06-23T17:58:46.000000Z
-    [updated_at] => 2026-06-24T16:57:09.000000Z
-    [images] => Array
-        (
-        )
-
-)
-
-[24-Jun-2026 19:28:17 UTC] Array
-(
-    [id] => 27
-    [owner_user_id] => 10
-    [street_address] => Another house with pictures
-    [address_line_2] => 123
-    [apartment] => 65783A
-    [city] => Lakewood
-    [state] => CO
-    [zip] => 80122
-    [county] => 0
-    [description] => A test house with pictures (plural)
-    [created_at] => 2026-06-23T17:58:46.000000Z
-    [updated_at] => 2026-06-24T16:57:09.000000Z
-    [images] => Array
-        (
-            [0] => Array
-                (
-                    [id] => 3
-                    [property_id] => 27
-                    [image_path] => properties/27/rHYuw9HryLRstWyIzSEZto5E5xWmyXvEeTLISzKG.jpg
-                    [created_at] => 2026-06-24T19:28:12.000000Z
-                    [updated_at] => 2026-06-24T19:28:12.000000Z
-                )
-
-        )
-
-)
-
-[29-Jun-2026 13:32:21 UTC] 
-[29-Jun-2026 17:57:16 UTC] Job save failed: 
-[29-Jun-2026 17:59:28 UTC] Job save failed: 
-[29-Jun-2026 18:03:40 UTC] Job save failed: 
-[29-Jun-2026 19:26:08 UTC] Array
-(
-    [id] => 27
-    [owner_user_id] => 10
-    [street_address] => Another house with pictures
-    [address_line_2] => 123
-    [apartment] => 65783A
-    [city] => Lakewood
-    [state] => CO
-    [zip] => 80122
-    [county] => 0
-    [description] => A test house with pictures (plural)
-    [created_at] => 2026-06-23T17:58:46.000000Z
-    [updated_at] => 2026-06-24T16:57:09.000000Z
-    [images] => Array
-        (
-            [0] => Array
-                (
-                    [id] => 3
-                    [property_id] => 27
-                    [image_path] => properties/27/rHYuw9HryLRstWyIzSEZto5E5xWmyXvEeTLISzKG.jpg
-                    [created_at] => 2026-06-24T19:28:12.000000Z
-                    [updated_at] => 2026-06-24T19:28:12.000000Z
+                    [id] => 7
+                    [property_id] => 40
+                    [image_path] => properties/40/u25A8b6qPIZlmCrfDhURF7AByLYNEmgnomDkDciy.webp
+                    [created_at] => 2026-07-19T00:08:05.000000Z
+                    [updated_at] => 2026-07-19T00:08:05.000000Z
                 )
 
             [1] => Array
                 (
-                    [id] => 4
-                    [property_id] => 27
-                    [image_path] => properties/27/uHOaRDIMYFmpzucY3TlDuUmYNT2EQXxWUdO6Z2BU.jpg
-                    [created_at] => 2026-06-29T19:26:03.000000Z
-                    [updated_at] => 2026-06-29T19:26:03.000000Z
+                    [id] => 8
+                    [property_id] => 40
+                    [image_path] => properties/40/j71w5STvvRdJZOvowE3B6paOJXBjDjSQbxP4t0GL.webp
+                    [created_at] => 2026-07-19T00:08:10.000000Z
+                    [updated_at] => 2026-07-19T00:08:10.000000Z
+                )
+
+            [2] => Array
+                (
+                    [id] => 9
+                    [property_id] => 40
+                    [image_path] => properties/40/zkkUt9TbUp1NwUosKK96oA40SUd7jeeskEkEmJUS.webp
+                    [created_at] => 2026-07-19T00:08:15.000000Z
+                    [updated_at] => 2026-07-19T00:08:15.000000Z
+                )
+
+            [3] => Array
+                (
+                    [id] => 10
+                    [property_id] => 40
+                    [image_path] => properties/40/SubjcJKSgFCTTeQglyGbYhJChJHxwwZdszh9ECIG.webp
+                    [created_at] => 2026-07-19T00:08:25.000000Z
+                    [updated_at] => 2026-07-19T00:08:25.000000Z
+                )
+
+            [4] => Array
+                (
+                    [id] => 11
+                    [property_id] => 40
+                    [image_path] => properties/40/pbSS7oZv08wMMBS2hOk6beMOjjoQDgyKUnPFXY0e.webp
+                    [created_at] => 2026-07-19T00:08:30.000000Z
+                    [updated_at] => 2026-07-19T00:08:30.000000Z
+                )
+
+            [5] => Array
+                (
+                    [id] => 12
+                    [property_id] => 40
+                    [image_path] => properties/40/yDGkHK6Er6sMjhNVmdsj7kgbVjtEa4sObXthaumH.webp
+                    [created_at] => 2026-07-19T00:08:34.000000Z
+                    [updated_at] => 2026-07-19T00:08:34.000000Z
+                )
+
+            [6] => Array
+                (
+                    [id] => 13
+                    [property_id] => 40
+                    [image_path] => properties/40/koXDzlHJWss4WnXzmobhvbwpKoERYQLMVVtnVlJq.webp
+                    [created_at] => 2026-07-19T00:08:38.000000Z
+                    [updated_at] => 2026-07-19T00:08:38.000000Z
                 )
 
         )
@@ -308,67 +82,74 @@
     [_http_code] => 200
 )
 
-[29-Jun-2026 19:35:09 UTC] Array
+[19-Jul-2026 00:10:31 UTC] Array
 (
-    [id] => 36
-    [customer_id] => 10
-    [handyman_id] => 
-    [property_id] => 
-    [status] => posted
-    [address] => Picture House, Apt/Unit 101, House with Picture, CO 80128
-    [lat] => 0.0000000
-    [lng] => 0.0000000
-    [initial_description] => Test job with pictures
-    [agreed_price] => 303.00
-    [created_at] => 2026-06-29T19:34:55.000000Z
-    [updated_at] => 2026-06-29T19:35:09.000000Z
-    [onsite_contact_name] => Doug
-    [onsite_contact_phone] => 303
-    [skills] => Array
-        (
-            [0] => general
-        )
-
-    [customer] => Array
-        (
-            [id] => 10
-            [name] => Daniel Fuhr
-            [username] => 
-            [email] => fuhrdan@gmail.com
-            [role] => admin
-            [company_id] => 
-            [phone] => 3033969722
-            [address] => 
-            [lat] => 
-            [lng] => 
-            [created_at] => 2026-05-21T16:27:20.000000Z
-            [updated_at] => 2026-05-28T22:04:24.000000Z
-            [remember_token] => pfyl4ort4EA2cxclYWEdDrwf80D7luZ3NffakCoIqTRnFx8Vkll16c7IEcjE
-        )
-
-    [handyman] => 
-    [property] => 
-    [change_orders] => Array
-        (
-        )
-
-    [disputes] => Array
-        (
-        )
-
-    [reports] => Array
-        (
-        )
-
+    [id] => 41
+    [owner_user_id] => 17
+    [street_address] => 5639 S Windermere St
+    [address_line_2] => 
+    [apartment] => 102
+    [city] => Littleton
+    [state] => CO
+    [zip] => 80120
+    [county] => Jefferson
+    [description] => 1 bed, 1 bath aparment
+    [created_at] => 2026-07-19T00:09:35.000000Z
+    [updated_at] => 2026-07-19T00:10:31.000000Z
     [images] => Array
         (
             [0] => Array
                 (
+                    [id] => 14
+                    [property_id] => 41
+                    [image_path] => properties/41/iO72Slb9IWtOM1QvUSZQygLQpN3fitl45T0zCTWm.webp
+                    [created_at] => 2026-07-19T00:10:08.000000Z
+                    [updated_at] => 2026-07-19T00:10:08.000000Z
+                )
+
+            [1] => Array
+                (
                     [id] => 15
-                    [job_id] => 36
-                    [image_path] => jobs/36/o5uXnoYXRnxuDTwu9dCE6coDFw8rqlQuRnpAXvjs.jpg
-                    [created_at] => 2026-06-29T19:34:55.000000Z
-                    [updated_at] => 2026-06-29T19:34:55.000000Z
+                    [property_id] => 41
+                    [image_path] => properties/41/tvWu0dopDwIJfaqWuPb0vbsxccwAJAIlPn5nkyak.webp
+                    [created_at] => 2026-07-19T00:10:11.000000Z
+                    [updated_at] => 2026-07-19T00:10:11.000000Z
+                )
+
+            [2] => Array
+                (
+                    [id] => 16
+                    [property_id] => 41
+                    [image_path] => properties/41/QhNPv2I1WcvapF1NDAezzCYDT4RxrTmPoleiP0eK.webp
+                    [created_at] => 2026-07-19T00:10:15.000000Z
+                    [updated_at] => 2026-07-19T00:10:15.000000Z
+                )
+
+            [3] => Array
+                (
+                    [id] => 17
+                    [property_id] => 41
+                    [image_path] => properties/41/vzxTkqoYwfOtgiY8iFcmF8KZSJmP8NC2CrYJzQWr.webp
+                    [created_at] => 2026-07-19T00:10:19.000000Z
+                    [updated_at] => 2026-07-19T00:10:19.000000Z
+                )
+
+            [4] => Array
+                (
+                    [id] => 18
+                    [property_id] => 41
+                    [image_path] => properties/41/HFlV7OjPt0zggIo9wSMc75o8LliqNEJYpZRkLg7X.webp
+                    [created_at] => 2026-07-19T00:10:23.000000Z
+                    [updated_at] => 2026-07-19T00:10:23.000000Z
+                )
+
+            [5] => Array
+                (
+                    [id] => 19
+                    [property_id] => 41
+                    [image_path] => properties/41/uE4nJYMa2bvuAouaWLr02nIv3VlPboKONE99dSxo.webp
+                    [created_at] => 2026-07-19T00:10:26.000000Z
+                    [updated_at] => 2026-07-19T00:10:26.000000Z
                 )
 
         )
@@ -376,29 +157,104 @@
     [_http_code] => 200
 )
 
-[01-Jul-2026 18:21:57 UTC] Array
+[19-Jul-2026 00:12:25 UTC] Array
 (
-    [id] => 34
-    [owner_user_id] => 14
+    [id] => 42
+    [owner_user_id] => 17
+    [street_address] => 5639 S Windermere St
+    [address_line_2] => 
+    [apartment] => 200
+    [city] => Littleton
+    [state] => CO
+    [zip] => 80120
+    [county] => Jefferson
+    [description] => 2 bed, 2 bath apartment with a view
+    [created_at] => 2026-07-19T00:10:36.000000Z
+    [updated_at] => 2026-07-19T00:12:24.000000Z
+    [images] => Array
+        (
+            [0] => Array
+                (
+                    [id] => 20
+                    [property_id] => 42
+                    [image_path] => properties/42/VGg5sUkLv00eV8f0BCNgBSuDwYTPnGHA7Y2ffc4n.jpg
+                    [created_at] => 2026-07-19T00:12:11.000000Z
+                    [updated_at] => 2026-07-19T00:12:11.000000Z
+                )
+
+            [1] => Array
+                (
+                    [id] => 21
+                    [property_id] => 42
+                    [image_path] => properties/42/I7fSymqN1qieOrnMhvVBormVgaZSq3TuwAIA6NYE.jpg
+                    [created_at] => 2026-07-19T00:12:15.000000Z
+                    [updated_at] => 2026-07-19T00:12:15.000000Z
+                )
+
+        )
+
+    [_http_code] => 200
+)
+
+[19-Jul-2026 00:15:44 UTC] Array
+(
+    [id] => 43
+    [owner_user_id] => 18
     [street_address] => 2214 S Estes St
     [address_line_2] => 
     [apartment] => 
     [city] => Lakewood
     [state] => CO
-    [zip] => 80128
+    [zip] => 80227
     [county] => Jefferson
-    [description] => House on Estes Street
-    [created_at] => 2026-07-01T18:20:50.000000Z
-    [updated_at] => 2026-07-01T18:21:57.000000Z
+    [description] => 5 bed, 3 bath house
+    [created_at] => 2026-07-19T00:14:05.000000Z
+    [updated_at] => 2026-07-19T00:15:44.000000Z
     [images] => Array
         (
             [0] => Array
                 (
-                    [id] => 6
-                    [property_id] => 34
-                    [image_path] => properties/34/zXG1hzxlLtpbQU4gKLuE4hBp0ZpYZquKU2i4mjrl.webp
-                    [created_at] => 2026-07-01T18:21:55.000000Z
-                    [updated_at] => 2026-07-01T18:21:55.000000Z
+                    [id] => 22
+                    [property_id] => 43
+                    [image_path] => properties/43/oVKnKoSKmu7S8qLyO79XNkRDG4o41VCiTJn83xRK.webp
+                    [created_at] => 2026-07-19T00:15:28.000000Z
+                    [updated_at] => 2026-07-19T00:15:28.000000Z
+                )
+
+            [1] => Array
+                (
+                    [id] => 23
+                    [property_id] => 43
+                    [image_path] => properties/43/n9FDE36bWYMmrwXeU9lV82nsBqfBYqYXDyHLWz4V.webp
+                    [created_at] => 2026-07-19T00:15:31.000000Z
+                    [updated_at] => 2026-07-19T00:15:31.000000Z
+                )
+
+            [2] => Array
+                (
+                    [id] => 24
+                    [property_id] => 43
+                    [image_path] => properties/43/9sKyE1P5zpduHcejZrZFQOfZdtOO7gf8WxjLc92l.webp
+                    [created_at] => 2026-07-19T00:15:35.000000Z
+                    [updated_at] => 2026-07-19T00:15:35.000000Z
+                )
+
+            [3] => Array
+                (
+                    [id] => 25
+                    [property_id] => 43
+                    [image_path] => properties/43/eSVyPlc8Odd9EVNGIr6iVTc0tGuJwbWWfSQrnC87.webp
+                    [created_at] => 2026-07-19T00:15:38.000000Z
+                    [updated_at] => 2026-07-19T00:15:38.000000Z
+                )
+
+            [4] => Array
+                (
+                    [id] => 26
+                    [property_id] => 43
+                    [image_path] => properties/43/5lWKcgAGEAf1HIoqqhoOml50RLh76RaEf0hkvz72.webp
+                    [created_at] => 2026-07-19T00:15:41.000000Z
+                    [updated_at] => 2026-07-19T00:15:41.000000Z
                 )
 
         )

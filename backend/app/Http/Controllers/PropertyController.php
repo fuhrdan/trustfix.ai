@@ -40,7 +40,7 @@ class PropertyController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $property = Property::with('images')
+        $property = Property::with(['images', 'users:id,name,email'])
             ->where('owner_user_id', $user->id)
             ->findOrFail($id);
 
@@ -62,6 +62,65 @@ class PropertyController extends Controller
 //        }
 
         return response()->json($property);
+    }
+
+
+    public function addAuthorizedUser(Request $request, $id)
+    {
+        $owner = Auth::guard('api')->user();
+
+        $property = Property::where('owner_user_id', $owner->id)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255']
+        ]);
+
+        $authorizedUser = User::whereRaw('LOWER(email) = ?', [
+            strtolower(trim($validated['email']))
+        ])->first();
+
+        if (!$authorizedUser)
+        {
+            return response()->json([
+                'message' => 'No TrustFix user was found with that email address.'
+            ], 404);
+        }
+
+        if ($authorizedUser->id == $owner->id)
+        {
+            return response()->json([
+                'message' => 'The property owner already has access to this property.'
+            ], 422);
+        }
+
+        $property->users()->syncWithoutDetaching([
+            $authorizedUser->id
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Authorized user added successfully.',
+            'users' => $property->users()
+                ->select('users.id', 'users.name', 'users.email')
+                ->orderBy('users.name')
+                ->get()
+        ]);
+    }
+
+    public function removeAuthorizedUser($id, $userId)
+    {
+        $owner = Auth::guard('api')->user();
+
+        $property = Property::where('owner_user_id', $owner->id)
+            ->findOrFail($id);
+
+        $property->users()->detach($userId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Authorized user removed successfully.'
+        ]);
     }
 
     public function store(Request $request)
