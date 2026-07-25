@@ -3,7 +3,13 @@
 require 'config.php';
 requireLogin();
 
-include 'header.php';
+$currentAdmin = apiRequest('GET', '/me');
+
+if (($currentAdmin['role'] ?? '') !== 'admin')
+{
+    http_response_code(403);
+    die('Administrator access required.');
+}
 
 $userId = (int)($_GET['id'] ?? 0);
 
@@ -13,6 +19,8 @@ if (!$userId)
 }
 
 $message = '';
+
+include 'header.php';
 
 function contractorDocumentLabel($type)
 {
@@ -63,7 +71,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $action = $_POST['action'] ?? 'update_user';
 
-    if ($action === 'update_document_status')
+    if ($action === 'approve_contractor')
+    {
+        $contractorProfileId = (int)($_POST['contractor_profile_id'] ?? 0);
+
+        if ($contractorProfileId <= 0)
+        {
+            $message = "
+                <div class='tf-alert tf-alert-error'>
+                    This user does not have a contractor profile to approve.
+                </div>
+            ";
+        }
+        else
+        {
+            $response = apiRequest(
+                'POST',
+                "/admin/contractor-profiles/$contractorProfileId/status",
+                [
+                    'status' => 'approved',
+                    'is_public' => true,
+                ]
+            );
+
+            if (($response['_http_code'] ?? 500) >= 200
+                && ($response['_http_code'] ?? 500) < 300
+                && ($response['status'] ?? '') === 'approved')
+            {
+                $message = "
+                    <div class='tf-alert tf-alert-success'>
+                        Contractor approved successfully. The contractor dashboard
+                        and available jobs are now enabled for this user.
+                    </div>
+                ";
+            }
+            else
+            {
+                $message = "
+                    <div class='tf-alert tf-alert-error'>
+                        Contractor approval failed.
+                        <pre>" . htmlspecialchars(print_r($response, true)) . "</pre>
+                    </div>
+                ";
+            }
+        }
+    }
+    elseif ($action === 'update_document_status')
     {
         $documentId = (int)($_POST['document_id'] ?? 0);
         $status = (int)($_POST['verification_status'] ?? 0);
@@ -166,6 +219,7 @@ if (!is_array($user) || isset($user['error']))
 }
 
 $documents = $user['contractor_documents'] ?? [];
+$contractorProfile = $user['contractor_profile'] ?? null;
 $pendingDocuments = 0;
 
 foreach ($documents as $document)
@@ -277,6 +331,85 @@ foreach ($documents as $document)
     </button>
 
 </form>
+
+<hr>
+
+<h2>Contractor Approval</h2>
+
+<?php if (empty($contractorProfile)): ?>
+
+    <p>
+        This user has not created a contractor profile yet.
+    </p>
+
+<?php else: ?>
+
+    <?php
+        $contractorStatus = $contractorProfile['status'] ?? 'pending';
+        $isApprovedContractor = $contractorStatus === 'approved';
+    ?>
+
+    <div style="
+        background:#fafafa;
+        border:1px solid #ddd;
+        border-radius:8px;
+        padding:18px;
+        margin-bottom:25px;
+    ">
+        <p>
+            <strong>Business:</strong>
+            <?= htmlspecialchars($contractorProfile['business_name'] ?? 'Not provided') ?>
+        </p>
+
+        <p>
+            <strong>Profile status:</strong>
+            <span style="
+                color:<?= $isApprovedContractor ? '#2e7d32' : '#b36b00' ?>;
+                font-weight:bold;
+            ">
+                <?= htmlspecialchars(ucwords(str_replace('_', ' ', $contractorStatus))) ?>
+            </span>
+        </p>
+
+        <?php if ($isApprovedContractor): ?>
+
+            <p style="color:#2e7d32;font-weight:bold;">
+                ✓ This contractor is approved and has dashboard access.
+            </p>
+
+        <?php else: ?>
+
+            <?php if ($pendingDocuments > 0): ?>
+                <p style="color:#b36b00;">
+                    Warning: <?= $pendingDocuments ?> contractor document<?= $pendingDocuments === 1 ? ' is' : 's are' ?>
+                    still awaiting review.
+                </p>
+            <?php endif; ?>
+
+            <form method="POST" onsubmit="return confirm('Approve this contractor and enable contractor dashboard access?');">
+                <input type="hidden" name="action" value="approve_contractor">
+                <input
+                    type="hidden"
+                    name="contractor_profile_id"
+                    value="<?= (int)($contractorProfile['id'] ?? 0) ?>"
+                >
+                <button type="submit" style="
+                    background:#2e7d32;
+                    color:white;
+                    border:0;
+                    border-radius:6px;
+                    padding:11px 18px;
+                    cursor:pointer;
+                    width:auto;
+                ">
+                    Approve Contractor
+                </button>
+            </form>
+
+        <?php endif; ?>
+    </div>
+
+<?php endif; ?>
 
 <hr>
 

@@ -19,6 +19,10 @@ $user = apiRequest(
     '/me'
 );
 
+if (!empty($user['role'])) {
+    $_SESSION['user'] = $user;
+}
+
 ?>
 
 <h1>Dashboard</h1>
@@ -130,6 +134,15 @@ $user = apiRequest(
         <a href="my_jobs.php">
             My Jobs
         </a>
+
+        <?php if (in_array(($user['role'] ?? ''), ['handyman', 'admin'], true)): ?>
+            <h3>Contractor</h3>
+            <a href="contractor_dashboard.php">
+                <?= ($user['role'] ?? '') === 'admin'
+                    ? 'Review Contractor Dashboards'
+                    : 'Open Contractor Dashboard' ?>
+            </a>
+        <?php endif; ?>
     </div>
 
 </div>

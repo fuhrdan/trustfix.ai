@@ -1,6 +1,7 @@
 <?php
 require 'config.php';
 requireLogin();
+$currentUser = apiRequest('GET', '/me');
 include 'header.php';
 
 $jobId = (int)($_GET['id'] ?? 0);
@@ -22,6 +23,14 @@ $customer = $job['customer'] ?? [];
 $handyman = $job['handyman'] ?? [];
 $property = $job['property'] ?? [];
 $changeOrders = $job['change_orders'] ?? [];
+$isCustomer = (int)($job['customer_id'] ?? 0) === (int)($currentUser['id'] ?? 0);
+$successfulPayment = false;
+foreach (($job['payments'] ?? []) as $workspacePayment) {
+    if (($workspacePayment['status'] ?? '') === 'succeeded') {
+        $successfulPayment = true;
+        break;
+    }
+}
 
 function wsStatusLabel($status)
 {
@@ -260,6 +269,9 @@ function wsTitle($text)
             <div class="workspace-actions">
                 <a href="job_detail.php?id=<?= (int)$job['id'] ?>" style="background:#333;">Details</a>
                 <a href="edit_job.php?id=<?= (int)$job['id'] ?>" style="background:#6c757d;">Edit</a>
+                <?php if ($isCustomer && !empty($job['handyman_id']) && !$successfulPayment && !empty($job['agreed_price'])) { ?>
+                    <a href="pay_job.php?id=<?= (int)$job['id'] ?>" style="background:#16835a;">Pay Contractor</a>
+                <?php } ?>
             </div>
         </section>
 

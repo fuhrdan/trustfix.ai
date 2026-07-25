@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'frontend_url' => env('TRUSTFIX_FRONTEND_URL', env('APP_URL')),
+        'platform_fee_percent' => (float)env('STRIPE_PLATFORM_FEE_PERCENT', 10),
+    ],
+
 ];

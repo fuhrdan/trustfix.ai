@@ -77,4 +77,9 @@ class Job extends Model
     {
         return $this->hasMany(JobActivity::class);
     }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }

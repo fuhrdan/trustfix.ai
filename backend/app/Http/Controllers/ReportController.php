@@ -151,7 +151,12 @@ class ReportController extends Controller
         $profile->update([
             'status' => $validated['status'],
             'is_public' => $validated['is_public'] ?? $profile->is_public,
+            'is_verified' => $validated['status'] === 'approved',
         ]);
+
+        if ($validated['status'] === 'approved') {
+            $profile->user()->update(['role' => 'handyman']);
+        }
 
         return response()->json($profile);
     }

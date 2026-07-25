@@ -13,6 +13,7 @@ use App\Models\JobImage;
 use App\Models\JobActivity;
 use App\Models\JobMessage;
 use App\Models\Property;
+use App\Models\ContractorProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -46,6 +47,14 @@ class JobController extends Controller
 
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $approvedContractor = ContractorProfile::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$approvedContractor && $user->role !== 'admin') {
+            return response()->json(['error' => 'Approved contractor access is required'], 403);
         }
 
         $validated = $request->validate([
@@ -274,7 +283,7 @@ class JobController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if ($job->customer_id != $user->id) {
+        if ($job->customer_id != $user->id && $job->handyman_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
@@ -376,6 +385,14 @@ public function deleteImage($jobId, $imageId)
 
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $approvedContractor = ContractorProfile::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$approvedContractor) {
+            return response()->json(['error' => 'Approved contractor access is required'], 403);
         }
 
         $updated = DB::transaction(function () use ($id, $user) {

@@ -18,8 +18,13 @@
         <div class="tf-nav-links">
             <a href="dashboard.php">Dashboard</a>
             <a href="list_contractors.php">Contractors</a>
-            <a href="available_jobs.php">Available Jobs</a>
+            <?php if (in_array(($_SESSION['user']['role'] ?? ''), ['handyman', 'admin'], true)) { ?>
+                <a href="available_jobs.php">Available Jobs</a>
+            <?php } ?>
             <a href="my_jobs.php">My Jobs</a>
+            <?php if (in_array(($_SESSION['user']['role'] ?? ''), ['handyman', 'admin'], true)) { ?>
+                <a href="contractor_dashboard.php">Contractor Dashboard</a>
+            <?php } ?>
             <a href="list_properties.php">Properties</a>
 
             <?php if (($_SESSION['user']['role'] ?? '') === 'admin') { ?>

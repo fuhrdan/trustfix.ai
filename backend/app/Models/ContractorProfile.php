@@ -32,6 +32,10 @@ class ContractorProfile extends Model
         'profile_photo_path',
         'status',
         'is_public',
+        'stripe_account_id',
+        'stripe_details_submitted',
+        'stripe_charges_enabled',
+        'stripe_payouts_enabled',
     ];
 
     protected $casts = [
@@ -42,6 +46,9 @@ class ContractorProfile extends Model
         'years_experience' => 'integer',
         'license_expiration_date' => 'date',
         'insurance_expiration_date' => 'date',
+        'stripe_details_submitted' => 'boolean',
+        'stripe_charges_enabled' => 'boolean',
+        'stripe_payouts_enabled' => 'boolean',
     ];
 
     public function user()

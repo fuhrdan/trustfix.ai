@@ -195,6 +195,7 @@ class AdminDashboardController extends Controller
             'status' => ['nullable', Rule::in(['draft', 'pending', 'approved', 'rejected', 'suspended'])],
             'is_public' => ['nullable', 'boolean'],
             'q' => ['nullable', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $query = ContractorProfile::with(['user', 'badges'])
@@ -225,7 +226,9 @@ class AdminDashboardController extends Controller
             });
         }
 
-        return response()->json($query->latest()->paginate(20));
+        return response()->json(
+            $query->latest()->paginate($validated['per_page'] ?? 20)
+        );
     }
 
     public function jobs(Request $request)

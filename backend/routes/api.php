@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChangeOrderController;
 use App\Http\Controllers\ContractorProfileController;
+use App\Http\Controllers\ContractorDashboardController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\HandymanController;
 use App\Http\Controllers\JobController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\ProfileClaimController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -40,6 +42,8 @@ Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
 Route::get('/contractors/{id}/reviews', [ReviewController::class, 'contractorReviews']);
+Route::get('/payments/config', [PaymentController::class, 'publicConfig']);
+Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
 
 // Protected routes
 Route::middleware(['auth:api'])->group(function () {
@@ -68,6 +72,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
     Route::get('/contractor/documents', [ContractorProfileController::class, 'myDocuments']);
     Route::post('/contractor/documents', [ContractorProfileController::class, 'uploadDocument']);
+    Route::get('/contractor/dashboard', [ContractorDashboardController::class, 'show']);
+    Route::post('/contractor/payout-account', [PaymentController::class, 'createConnectAccount']);
+    Route::post('/contractor/payout-account/refresh', [PaymentController::class, 'refreshConnectAccount']);
+    Route::post('/jobs/{id}/payment-intent', [PaymentController::class, 'createIntent']);
 
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
     Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
