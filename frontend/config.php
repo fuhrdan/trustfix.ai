@@ -2,8 +2,18 @@
 
 session_start();
 
-//The api base needs to be updated for "real" deployment
-$apiBase = 'https://api.lakehousesoftware.com/api';
+// A local file is convenient on shared hosting and is ignored by Git.
+// It may set $apiBase, $apiTimeout, and $verifyApiSsl.
+$apiBase = getenv('TRUSTFIX_API_BASE') ?: 'https://api.lakehousesoftware.com/api';
+$apiTimeout = (int)(getenv('TRUSTFIX_API_TIMEOUT') ?: 75);
+$verifyApiSsl = getenv('TRUSTFIX_VERIFY_API_SSL') !== 'false';
+$localConfig = __DIR__ . '/config.local.php';
+
+if (is_file($localConfig)) {
+    require $localConfig;
+}
+
+$apiBase = rtrim($apiBase, '/');
 
 $jwtToken = $_SESSION['jwt_token'] ?? ''; // Token for login
 
@@ -18,7 +28,7 @@ function requireLogin()
 
 function apiRequest($method, $endpoint, $data = null)
 {
-    global $apiBase, $jwtToken;
+    global $apiBase, $jwtToken, $apiTimeout, $verifyApiSsl;
 
     $url = $apiBase . $endpoint;
 
@@ -26,8 +36,9 @@ function apiRequest($method, $endpoint, $data = null)
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, max(20, $apiTimeout));
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$verifyApiSsl);
     curl_setopt($ch, CURLOPT_COOKIE, session_name() . '=' . session_id());
 
     $headers = [

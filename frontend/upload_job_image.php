@@ -125,7 +125,7 @@ try {
     if (!empty($job['images'])) {
         foreach ($job['images'] as $img) {
             $imagePath = $img['image_path'] ?? '';
-            $url = '/storage/' . ltrim($imagePath, '/');
+            $url = storageUrl($imagePath);
 
             $html .= "
                 <div style='margin-bottom:15px;'>

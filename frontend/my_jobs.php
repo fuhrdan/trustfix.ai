@@ -206,6 +206,13 @@ include 'header.php';
                             <?= jobMoney($job['agreed_price'] ?? null) ?>
                         </div>
 
+                        <?php if (!empty($job['estimate'])) { ?>
+                            <div style="background:#edf8f2;color:#126b49;border-radius:7px;padding:9px;margin-bottom:10px;">
+                                <strong>TrustFix range:</strong>
+                                <?= jobMoney($job['estimate']['estimate_low'] ?? null) ?>–<?= jobMoney($job['estimate']['estimate_high'] ?? null) ?>
+                            </div>
+                        <?php } ?>
+
                         <div style="color:#555;margin-bottom:8px;">
                             <strong>Address:</strong>
                             <?= jobText($job['address'] ?? '') ?>
@@ -235,6 +242,10 @@ include 'header.php';
 
                         <a href="job_detail.php?id=<?= $jobId ?>" style="display:block;text-align:center;background:#333;color:white;padding:10px;border-radius:8px;text-decoration:none;margin-bottom:10px;">
                             View Details
+                        </a>
+
+                        <a href="estimate_job.php?id=<?= $jobId ?>" style="display:block;text-align:center;background:#13764f;color:white;padding:10px;border-radius:8px;text-decoration:none;margin-bottom:10px;">
+                            Smart Estimate
                         </a>
 
                         <?php if ($role === 'handyman' && $status === 'accepted') { ?>

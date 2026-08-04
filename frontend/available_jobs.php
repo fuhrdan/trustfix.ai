@@ -213,6 +213,13 @@ function formatCardDate($value)
                 <?= htmlspecialchars(formatCardMoney($job['agreed_price'] ?? null)) ?>
             </p>
 
+            <?php if (!empty($job['estimate'])) { ?>
+                <p style="background:#edf8f2;border-radius:7px;padding:10px;color:#126b49;">
+                    <strong>TrustFix range:</strong>
+                    <?= htmlspecialchars(formatCardMoney($job['estimate']['estimate_low'] ?? null)) ?>–<?= htmlspecialchars(formatCardMoney($job['estimate']['estimate_high'] ?? null)) ?>
+                </p>
+            <?php } ?>
+
             <?php if (!empty($skills)) { ?>
                 <p>
                     <strong>Skills:</strong>

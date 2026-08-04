@@ -11,22 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-	Schema::create('cache', function (Blueprint $table)
-	{
-		$table->string('key_lock', 191)->primary();
-		$table->string('id')->nullable();
-		$table->text('agent')->nullable();
-		$table->longtext('payload')->nullable();
-		$table->integer('last_activity');
-		$table->integer('expiration')->index();
-	});
-
-	Schema::create('cache_locks', function (Blueprint $table)
-	{
-		$table->string('key_lock', 191)->primary();
-		$table->string('owner');
-		$table->integer('expiration')->index();
-	});
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id', 191)->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
     }
 
     /**
@@ -34,7 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-	Schema::dropIfExists('cache');
-	Schema::dropIfExists('cache_locks');
+        Schema::dropIfExists('sessions');
     }
 };

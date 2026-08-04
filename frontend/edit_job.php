@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     if (!empty($result['images'])) {
         foreach ($result['images'] as $img) {
 
-            $url = '/storage/' . $img['image_path'];
+            $url = storageUrl($img['image_path']);
 
             $message .= "
                 <div style='margin-bottom:15px;'>
@@ -207,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 ">
 
     <img
-        src="/storage/<?= htmlspecialchars($img['image_path']) ?>"
+        src="<?= htmlspecialchars(storageUrl($img['image_path'])) ?>"
         style="
             max-width:200px;
             border:1px solid #ccc;

@@ -193,4 +193,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->belongsTo(User::class, 'suspended_by');
     }
+
+    public function estimatePricingProfile()
+    {
+        return $this->hasOne(EstimatePricingProfile::class);
+    }
 }

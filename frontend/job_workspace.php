@@ -268,6 +268,7 @@ function wsTitle($text)
             <h2>Quick Actions</h2>
             <div class="workspace-actions">
                 <a href="job_detail.php?id=<?= (int)$job['id'] ?>" style="background:#333;">Details</a>
+                <a href="estimate_job.php?id=<?= (int)$job['id'] ?>" style="background:#13764f;">Smart Estimate</a>
                 <a href="edit_job.php?id=<?= (int)$job['id'] ?>" style="background:#6c757d;">Edit</a>
                 <?php if ($isCustomer && !empty($job['handyman_id']) && !$successfulPayment && !empty($job['agreed_price'])) { ?>
                     <a href="pay_job.php?id=<?= (int)$job['id'] ?>" style="background:#16835a;">Pay Contractor</a>

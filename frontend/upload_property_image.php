@@ -110,9 +110,7 @@ $debug = [];
                 //-----------------------------------------
                 // Full URL
                 //-----------------------------------------
-                $url =
-                    '/storage/'
-                    . ltrim($imagePath, '/');
+                $url = storageUrl($imagePath);
 
                 $imageId = (int)($img['id'] ?? 0);
                 $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');

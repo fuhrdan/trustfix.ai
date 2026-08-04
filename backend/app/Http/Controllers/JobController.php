@@ -65,7 +65,7 @@ class JobController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        $query = Job::with(['customer', 'property', 'images', 'messages', 'activities'])
+        $query = Job::with(['customer', 'property', 'images', 'messages', 'activities', 'estimate'])
             ->whereNull('handyman_id')
             ->whereIn('status', ['posted', 'requested']);
 
@@ -134,7 +134,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images', 'messages', 'activities']);
+        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images', 'messages', 'activities', 'estimate']);
 
         if ($user->role == 'handyman') {
             $query->where('handyman_id', $user->id);
@@ -149,7 +149,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images', 'messages.sender', 'activities.user'])->findOrFail($id);
+        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images', 'messages.sender', 'activities.user', 'estimate'])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;

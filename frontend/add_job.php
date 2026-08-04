@@ -3,8 +3,6 @@
 require 'config.php';
 requireLogin();
 
-include 'header.php';
-
 $message = '';
 $properties = apiRequest('GET', '/properties');
 
@@ -63,13 +61,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $budgetInput = trim((string)($_POST['agreed_price'] ?? ''));
+
     $payload = [
         'property_id' => $selectedPropertyId ?: null,
         'address' => $selectedAddress ?: 'Draft Job',
         'lat' => 0,
         'lng' => 0,
         'initial_description' => $_POST['initial_description'] ?? '',
-        'agreed_price' => ($_POST['agreed_price'] === '' ? null : (float)($_POST['agreed_price'] ?? 0)),
+        'agreed_price' => ($budgetInput === '' ? null : (float)$budgetInput),
         'onsite_contact_name' => $_POST['onsite_contact_name'] ?? null,
         'onsite_contact_phone' => $_POST['onsite_contact_phone'] ?? null,
         'skills' => $_POST['skills'] ?? []
@@ -91,6 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (is_array($saveResult) && isset($saveResult['id'])) {
 
+        if (!empty($_POST['smart_estimate'])) {
+            unset($_SESSION['draft_job_id']);
+            $_SESSION['flash_success'] = 'Job saved. TrustFix is ready to build the preliminary scope and estimate.';
+            header('Location: estimate_job.php?id=' . (int)$saveResult['id'] . '&auto=1');
+            exit;
+        }
+
         $message .= "
             <div style='background:#dff0d8;padding:15px;border-radius:8px;margin-bottom:20px;'>
                 Job Saved Successfully
@@ -100,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($saveResult['images'])) {
             foreach ($saveResult['images'] as $img) {
                 $imagePath = $img['image_path'] ?? '';
-                $url = '/storage/' . ltrim($imagePath, '/');
+                $url = storageUrl($imagePath);
 
                 $message .= "
                     <div style='margin-bottom:15px;'>
@@ -124,6 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ";
     }
 }
+
+include 'header.php';
 ?>
 
 <head>
@@ -197,8 +206,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         type="number"
         step="0.01"
         name="agreed_price"
-        placeholder="Price"
+        placeholder="Optional homeowner budget (not used in calculation)"
     >
+
+    <label style="display:flex;gap:10px;align-items:flex-start;background:#eef8f3;border:1px solid #b9dfcc;border-radius:8px;padding:14px;margin:15px 0;">
+        <input type="checkbox" name="smart_estimate" value="1" checked style="width:auto;margin-top:3px;">
+        <span>
+            <strong>Create a TrustFix Smart Estimate</strong><br>
+            <small>TrustFix will ask useful follow-up questions, outline the work, estimate labor time, identify materials, and calculate a preliminary range from configured pricing rules.</small>
+        </span>
+    </label>
 
     <input
         type="text"

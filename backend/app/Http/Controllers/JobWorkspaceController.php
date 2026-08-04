@@ -23,6 +23,7 @@ class JobWorkspaceController extends Controller
             'messages.sender',
             'activities.user',
             'payments',
+            'estimate',
         ])->findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;

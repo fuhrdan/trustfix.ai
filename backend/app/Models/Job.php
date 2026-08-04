@@ -82,4 +82,9 @@ class Job extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function estimate()
+    {
+        return $this->hasOne(JobEstimate::class);
+    }
 }

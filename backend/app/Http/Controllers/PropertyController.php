@@ -135,7 +135,7 @@ class PropertyController extends Controller
             'zip' => ['nullable', 'string', 'max:20'],
             'county' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:500'], 
-            'images.*' => ['nullable', 'images', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
         ]);
         
         $property = Property::create([
@@ -155,7 +155,7 @@ class PropertyController extends Controller
             foreach($request->file('images') as $image) {
                 $path = $image->store('properties/' . $property->id, 'public');
                 PropertyImage::create([
-                    'owner_user_id' => $property->id,
+                    'property_id' => $property->id,
                     'image_path' => $path
                 ]);
             }
@@ -300,7 +300,12 @@ class PropertyController extends Controller
 
     public function destroy($id)
     {
-        Property::destroy($id);
+        $user = Auth::guard('api')->user();
+        $property = $user->role === 'admin'
+            ? Property::findOrFail($id)
+            : Property::where('owner_user_id', $user->id)->findOrFail($id);
+
+        $property->delete();
 
         return response()->json([
             'success' => true

@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
         foreach ($result['image'] as $img) {
 
-            $url = '/storage/' . $img['image_path'];
+            $url = storageUrl($img['image_path']);
 
             $message .= "
                 <div style='margin-bottom:15px;'>

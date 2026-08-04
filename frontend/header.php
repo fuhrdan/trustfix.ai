@@ -24,6 +24,7 @@
             <a href="my_jobs.php">My Jobs</a>
             <?php if (in_array(($_SESSION['user']['role'] ?? ''), ['handyman', 'admin'], true)) { ?>
                 <a href="contractor_dashboard.php">Contractor Dashboard</a>
+                <a href="estimate_settings.php">Estimate Settings</a>
             <?php } ?>
             <a href="list_properties.php">Properties</a>
 
@@ -35,6 +36,14 @@
 
                 <a href="manage_jobs.php">
                     Manage Jobs
+                </a>
+
+                <a href="manage_material_prices.php">
+                    Material Prices
+                </a>
+
+                <a href="estimate_training_data.php">
+                    ML Data
                 </a>
 
             <?php } ?>

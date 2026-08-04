@@ -23,10 +23,6 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\JobEstimateController;
-use App\Http\Controllers\EstimatePricingProfileController;
-use App\Http\Controllers\MaterialPriceController;
-use App\Http\Controllers\EstimateTrainingDataController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -34,6 +30,14 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/properties/{id}/images', [PropertyController::class, 'uploadImage']);
+
+Route::delete(
+    '/property-images/{imageId}',
+    [PropertyController::class, 'deleteImage']
+);
+
+Route::delete('/admin/users/{id}',[AdminDashboardController::class,'deleteUser']);
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
@@ -56,15 +60,6 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/jobs/{id}/messages', [JobWorkspaceController::class, 'messages']);
     Route::post('/jobs/{id}/messages', [JobWorkspaceController::class, 'storeMessage']);
     Route::get('/jobs/{id}/activities', [JobWorkspaceController::class, 'activities']);
-    Route::get('/jobs/{id}/estimate', [JobEstimateController::class, 'show']);
-    Route::post('/jobs/{id}/estimate/analyze', [JobEstimateController::class, 'analyze']);
-    Route::put('/jobs/{id}/estimate', [JobEstimateController::class, 'update']);
-    Route::post('/jobs/{id}/estimate/quote', [JobEstimateController::class, 'quote']);
-    Route::post('/jobs/{id}/estimate/accept', [JobEstimateController::class, 'accept']);
-    Route::post('/jobs/{id}/estimate/actuals', [JobEstimateController::class, 'actuals']);
-    Route::get('/jobs/{id}/estimate/revisions', [JobEstimateController::class, 'revisions']);
-    Route::get('/estimate-pricing-profile', [EstimatePricingProfileController::class, 'show']);
-    Route::put('/estimate-pricing-profile', [EstimatePricingProfileController::class, 'update']);
 
     // Job creation and image upload are authenticated-user actions.
     // The controller still checks ownership for update/upload/delete.
@@ -72,8 +67,6 @@ Route::middleware(['auth:api'])->group(function () {
     Route::put('/jobs/{id}', [JobController::class, 'update']);
     Route::post('/jobs/{id}/images', [JobController::class, 'uploadImages']);
     Route::delete('/jobs/{jobId}/images/{imageId}', [JobController::class, 'deleteImage']);
-    Route::post('/properties/{id}/images', [PropertyController::class, 'uploadImage']);
-    Route::delete('/property-images/{imageId}', [PropertyController::class, 'deleteImage']);
 
     Route::get('/contractor/profile', [ContractorProfileController::class, 'myProfile']);
     Route::post('/contractor/profile', [ContractorProfileController::class, 'storeOrUpdate']);
@@ -131,7 +124,6 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
         Route::get('/admin/dashboard/activity', [AdminDashboardController::class, 'activity']);
         Route::get('/admin/users', [AdminDashboardController::class, 'users']);
-        Route::delete('/admin/users/{id}', [AdminDashboardController::class, 'deleteUser']);
         Route::get('/admin/contractors', [AdminDashboardController::class, 'contractors']);
         Route::get('/admin/jobs', [AdminDashboardController::class, 'jobs']);
         Route::delete('/admin/jobs/{id}', [JobController::class, 'destroy']);
@@ -175,12 +167,6 @@ Route::middleware(['auth:api'])->group(function () {
 
         Route::get('/admin/disputes', [DisputeController::class, 'adminIndex']);
         Route::post('/admin/disputes/{id}/status', [DisputeController::class, 'adminUpdateStatus']);
-
-        Route::get('/admin/material-prices', [MaterialPriceController::class, 'index']);
-        Route::post('/admin/material-prices', [MaterialPriceController::class, 'store']);
-        Route::put('/admin/material-prices/{id}', [MaterialPriceController::class, 'update']);
-        Route::delete('/admin/material-prices/{id}', [MaterialPriceController::class, 'destroy']);
-        Route::get('/admin/estimate-training-data', [EstimateTrainingDataController::class, 'index']);
     });
     
     Route::middleware('auth:api')->group(function ()
