@@ -14,8 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$debug = [];
-
 try {
 
     //-------------------------------------------------
@@ -44,19 +42,13 @@ try {
             ]
         );
 
-        $debug['create_job_response'] = $job;
-
         if (!is_array($job) || !isset($job['id'])) {
-            throw new Exception(
-                'Failed creating draft job: ' . print_r($job, true)
-            );
+            throw new RuntimeException(apiMessage($job, 'Unable to start the job draft.'));
         }
 
         $jobId = $job['id'];
         $_SESSION['draft_job_id'] = $jobId;
     }
-
-    $debug['job_id'] = $jobId;
 
     //-------------------------------------------------
     // Validate Upload
@@ -65,15 +57,8 @@ try {
         throw new Exception('No uploaded file received');
     }
 
-    $debug['file'] = [
-        'name' => $_FILES['image']['name'] ?? '',
-        'type' => $_FILES['image']['type'] ?? '',
-        'size' => $_FILES['image']['size'] ?? 0,
-        'error' => $_FILES['image']['error'] ?? null
-    ];
-
     if (!empty($_FILES['image']['error'])) {
-        throw new Exception('PHP upload error code: ' . $_FILES['image']['error']);
+        throw new RuntimeException('The uploaded file could not be read.');
     }
 
     //-------------------------------------------------
@@ -93,12 +78,8 @@ try {
         ]
     );
 
-    $debug['upload_result'] = $uploadResult;
-
     if (!is_array($uploadResult) || empty($uploadResult['success'])) {
-        throw new Exception(
-            'API image upload failed: ' . print_r($uploadResult, true)
-        );
+        throw new RuntimeException(apiMessage($uploadResult, 'The image could not be uploaded.'));
     }
 
     //-------------------------------------------------
@@ -109,12 +90,8 @@ try {
         "/jobs/$jobId"
     );
 
-    $debug['job_response'] = $job;
-
     if (!is_array($job)) {
-        throw new Exception(
-            'Job fetch failed. Response: ' . print_r($job, true)
-        );
+        throw new RuntimeException('The updated job could not be loaded.');
     }
 
     //-------------------------------------------------
@@ -141,18 +118,17 @@ try {
     echo json_encode([
         'success' => true,
         'job_id' => $jobId,
-        'html' => $html,
-        'debug' => $debug
+        'html' => $html
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log(sprintf('Job image upload failed for job %d: %s', $jobId ?? 0, $e->getMessage()));
 
-    http_response_code(500);
+    http_response_code(422);
 
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
-        'debug' => $debug
+        'error' => $e->getMessage()
     ]);
 }
 

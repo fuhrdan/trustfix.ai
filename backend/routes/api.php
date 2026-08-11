@@ -27,13 +27,19 @@ use App\Http\Controllers\JobEstimateController;
 use App\Http\Controllers\EstimatePricingProfileController;
 use App\Http\Controllers\MaterialPriceController;
 use App\Http\Controllers\EstimateTrainingDataController;
+use App\Http\Controllers\EstimateAccuracyController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])
+    ->middleware('throttle:6,1');
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
@@ -42,7 +48,7 @@ Route::get('/payments/config', [PaymentController::class, 'publicConfig']);
 Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
 
 // Protected routes
-Route::middleware(['auth:api'])->group(function () {
+Route::middleware(['auth:api', 'account.active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/me/update', [AuthController::class, 'updateMe']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -113,18 +119,9 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
     });
 
-    Route::middleware(['role:customer,handyman,company'])->group(function () {
+    Route::middleware(['role:customer,handyman,company,admin'])->group(function () {
         Route::post('/jobs/{id}/status', [JobController::class, 'updateStatus']);
-        Route::delete(
-            '/jobs/{id}',
-            [JobController::class, 'destroy']
-        );
-
-    Route::post('/jobs/{id}/cancel', [JobController::class, 'cancelJob']);
-
-    Route::post('/jobs/{id}/review', [ReviewController::class, 'store']);
-
-    Route::get('/reviews/my', [ReviewController::class, 'myReviews']);
+        Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
     });
 
     Route::middleware(['role:admin'])->group(function () {
@@ -181,6 +178,7 @@ Route::middleware(['auth:api'])->group(function () {
         Route::put('/admin/material-prices/{id}', [MaterialPriceController::class, 'update']);
         Route::delete('/admin/material-prices/{id}', [MaterialPriceController::class, 'destroy']);
         Route::get('/admin/estimate-training-data', [EstimateTrainingDataController::class, 'index']);
+        Route::get('/admin/estimate-accuracy', [EstimateAccuracyController::class, 'index']);
     });
     
     Route::middleware('auth:api')->group(function ()

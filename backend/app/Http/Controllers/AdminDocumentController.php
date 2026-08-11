@@ -3,12 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AdminDocumentController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications
+    ) {
+    }
+
     public function pending()
     {
         $documents = Document::with('handyman')
@@ -60,6 +66,7 @@ class AdminDocumentController extends Controller
 
         $admin = Auth::guard('api')->user();
         $document = Document::findOrFail($id);
+        $previousStatus = $document->status;
 
         $document->update([
             'status' => $validated['status'],
@@ -68,6 +75,16 @@ class AdminDocumentController extends Controller
             'reviewed_at' => now(),
             'admin_notes' => $validated['admin_notes'] ?? null,
         ]);
+
+        $document->load('handyman');
+        if ($document->handyman && $previousStatus !== $validated['status']) {
+            $this->notifications->contractorDocumentReviewed(
+                $document->handyman,
+                $document->type,
+                $validated['status'],
+                $validated['admin_notes'] ?? null
+            );
+        }
 
         return response()->json($document->fresh(['handyman', 'reviewer']));
     }

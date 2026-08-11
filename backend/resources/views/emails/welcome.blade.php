@@ -4,9 +4,9 @@
     $firstName = $fullName !== '' ? ($nameParts[0] ?? $fullName) : 'there';
     $role = (string) ($user->role ?? 'customer');
     $isContractor = in_array($role, ['handyman', 'company'], true);
-    $frontendUrl = rtrim((string) config('app.frontend_url', 'https://www.trustfixai.com'), '/');
+    $frontendUrl = rtrim((string) config('trustfix.frontend_url'), '/');
     $loginUrl = $frontendUrl . '/login.php';
-    $supportEmail = 't.tyler@trustfixai.com';
+    $supportEmail = (string) config('trustfix.support_email');
 @endphp
 <!doctype html>
 <html lang="en">

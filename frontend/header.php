@@ -46,6 +46,10 @@
                     ML Data
                 </a>
 
+                <a href="estimate_accuracy.php">
+                    Estimate Accuracy
+                </a>
+
             <?php } ?>
     
             <?php if (empty($_SESSION['jwt_token'])) { ?>

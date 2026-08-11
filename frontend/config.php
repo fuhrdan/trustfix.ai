@@ -1,6 +1,28 @@
 <?php
 
-session_start();
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(self)');
+}
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    $secureRequest = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || $forwardedProto === 'https';
+
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secureRequest,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 
 // A local file is convenient on shared hosting and is ignored by Git.
 // It may set $apiBase, $apiTimeout, and $verifyApiSsl.
@@ -15,7 +37,7 @@ if (is_file($localConfig)) {
 
 $apiBase = rtrim($apiBase, '/');
 
-$jwtToken = $_SESSION['jwt_token'] ?? ''; // Token for login
+$jwtToken = $_SESSION['jwt_token'] ?? '';
 
 function requireLogin()
 {
@@ -94,21 +116,17 @@ function apiRequest($method, $endpoint, $data = null)
         $headers
     );
 
-//*************DEBUG*************
-//echo "<pre>";
-//print_r($headers);
-//echo "</pre>";
-//*********END DEBUG*************
-
     $response = curl_exec($ch);
 
     if ($response === false) {
         $error = curl_error($ch);
         curl_close($ch);
 
+        error_log(sprintf('TrustFix API connection failure for %s: %s', $endpoint, $error));
+
         return [
             'success' => false,
-            'message' => 'Curl Error: ' . $error
+            'message' => 'TrustFix is temporarily unavailable. Please try again.'
         ];
     }
 
@@ -119,19 +137,35 @@ function apiRequest($method, $endpoint, $data = null)
     $decoded = json_decode($response, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log(sprintf('TrustFix API returned invalid JSON for %s (HTTP %d).', $endpoint, $httpCode));
+
         return [
             'success' => false,
             'http_code' => $httpCode,
-            'message' => 'API returned non-JSON response',
-            'raw_response' => $response
+            'message' => 'TrustFix returned an unexpected response. Please try again.'
         ];
     }
 
-    if (is_array($decoded)) {
+    if (is_array($decoded) && !array_is_list($decoded)) {
         $decoded['_http_code'] = $httpCode;
     }
 
     return $decoded;
+}
+
+function apiMessage($response, $fallback = 'Something went wrong. Please try again.')
+{
+    if (!is_array($response)) {
+        return $fallback;
+    }
+
+    foreach (['message', 'error'] as $key) {
+        if (isset($response[$key]) && is_string($response[$key]) && trim($response[$key]) !== '') {
+            return trim($response[$key]);
+        }
+    }
+
+    return $fallback;
 }
 
 function storageUrl($path)

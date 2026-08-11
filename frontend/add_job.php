@@ -122,26 +122,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $draftJobId = 0;
 
     } else {
-
-        $message .= "
-            <div style='background:#f8d7da;padding:15px;border-radius:8px;margin-bottom:20px;'>
-                Job save failed. Backend/API response:<br><br>
-                <pre style='white-space:pre-wrap;'>" . htmlspecialchars(print_r($saveResult, true)) . "</pre>
-            </div>
-        ";
+        $safeMessage = htmlspecialchars(
+            apiMessage($saveResult, 'Unable to save the job. Please try again.'),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $message .= "<div class='tf-alert tf-alert-error'>{$safeMessage}</div>";
     }
 }
 
 include 'header.php';
 ?>
-
-<head>
-    <title>Add Job</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="TF-Style.css">
-</head>
-
-<body>
 
 <style>
     .job-property-select
@@ -341,9 +332,7 @@ function wireUploadBlock(block)
             try {
                 data = JSON.parse(xhr.responseText);
             } catch(err) {
-                progressText.innerHTML =
-                    '<div style="color:red;">Server returned invalid JSON<br><br>' +
-                    '<pre style="white-space:pre-wrap;">' + xhr.responseText + '</pre></div>';
+                progressText.innerText = 'The upload service returned an unexpected response.';
                 return;
             }
 
@@ -363,9 +352,7 @@ function wireUploadBlock(block)
                 document.getElementById('uploadArea').appendChild(newBlock);
                 wireUploadBlock(newBlock);
             } else {
-                progressText.innerHTML =
-                    '<div style="color:red;">Upload failed<br><br>' +
-                    '<pre style="white-space:pre-wrap;">' + JSON.stringify(data, null, 2) + '</pre></div>';
+                progressText.innerText = data.error || 'Upload failed. Please try again.';
             }
         };
 

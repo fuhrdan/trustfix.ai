@@ -38,8 +38,7 @@ http_response_code(500);
 
 echo json_encode([
     'success' => false,
-    'message' => 'Delete failed',
-    'api_response' => $result
+    'message' => apiMessage($result, 'Delete failed. Please try again.')
 ]);
 
 exit;

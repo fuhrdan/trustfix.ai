@@ -14,6 +14,7 @@ use App\Models\JobActivity;
 use App\Models\JobMessage;
 use App\Models\Property;
 use App\Models\ContractorProfile;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,10 @@ use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications
+    ) {
+    }
 
     private function logJobEvent(Job $job, ?User $user, string $type, string $description): void
     {
@@ -421,6 +426,12 @@ public function deleteImage($jobId, $imageId)
             ], 409);
         }
 
+        $this->notifications->jobStatusChanged(
+            $updated,
+            'accepted',
+            $user
+        );
+
         return response()->json($updated);
     }
 
@@ -442,6 +453,7 @@ public function deleteImage($jobId, $imageId)
         ]);
 
         $this->logJobEvent($job, $user, 'job_started', $user->name . ' started this job.');
+        $this->notifications->jobStatusChanged($job, 'in_progress', $user);
 
         return response()->json($job->load(['messages', 'activities']));
     }
@@ -463,7 +475,21 @@ public function deleteImage($jobId, $imageId)
             'status' => 'completed',
         ]);
 
+        $estimate = $job->estimate;
+        if (
+            $estimate
+            && $estimate->actual_hours !== null
+            && $estimate->actual_material_cost !== null
+            && $estimate->final_invoice !== null
+        ) {
+            $estimate->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+        }
+
         $this->logJobEvent($job, $user, 'job_completed', $user->name . ' marked this job complete.');
+        $this->notifications->jobStatusChanged($job, 'completed', $user);
 
         return response()->json($job->load(['messages', 'activities']));
     }
@@ -472,19 +498,6 @@ public function deleteImage($jobId, $imageId)
     {
         $user = Auth::guard('api')->user();
         $job = Job::findOrFail($id);
-
-//Temporary fix to allow anyone to delete jobs.
-// Remove for production
-
-//    dd([
-//        'job_customer_id' => $job->customer_id,
-//             'auth_id' => auth()->id(),
-//            'job' => $job
-//        ]);
-    
-// WARNING remove the above before production.
-// Or dogs and cats will live together and anarchy will reign.
-// AND production will break.
 
         if ($job->customer_id != $user->id) {
             return response()->json(['error' => 'Forbidden'], 403);
@@ -499,37 +512,98 @@ public function deleteImage($jobId, $imageId)
         ]);
 
         $this->logJobEvent($job, $user, 'job_cancelled', $user->name . ' cancelled this job.');
+        $this->notifications->jobStatusChanged($job, 'cancelled', $user);
 
         return response()->json($job->load(['messages', 'activities']));
     }
 
-// I "fixed" this section while tired.
-// And probably made some serious mistakes.
-    // Update job status
     public function updateStatus(Request $request, $id)
     {
         $user = Auth::guard('api')->user();
-
         $job = Job::findOrFail($id);
 
-        if ($job->customer_id != $user->id) {
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                Rule::in([
+                    'posted',
+                    'requested',
+                    'accepted',
+                    'in_progress',
+                    'change_requested',
+                    'completed',
+                    'cancelled',
+                ]),
+            ],
+        ]);
 
+        $isAdmin = $user->role === 'admin';
+        $isCustomer = $job->customer_id == $user->id;
+        $isContractor = $job->handyman_id == $user->id;
+
+        if (!$isAdmin && !$isCustomer && !$isContractor) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $transitions = [
+            'posted' => ['requested', 'cancelled'],
+            'requested' => ['accepted', 'cancelled'],
+            'accepted' => ['in_progress', 'change_requested', 'cancelled'],
+            'in_progress' => ['completed', 'change_requested', 'cancelled'],
+            'change_requested' => ['accepted', 'in_progress', 'cancelled'],
+            'completed' => [],
+            'cancelled' => [],
+        ];
+        $newStatus = $validated['status'];
+
+        if (!in_array($newStatus, $transitions[$job->status] ?? [], true)) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'That job status transition is not allowed.',
+            ], 409);
+        }
+
+        if (
+            !$isAdmin
+            && $isCustomer
+            && !in_array($newStatus, ['change_requested', 'cancelled'], true)
+        ) {
+            return response()->json([
+                'message' => 'Customers can request a change or cancel an active job.',
             ], 403);
         }
 
-        $validated = $request->validate([
-            'address' => 'required|string|max:255',
-            'lat' => 'required|numeric',
-            'lng' => 'required|numeric',
-            'initial_description' => 'required|string',
-            'agreed_price' => 'nullable|numeric'
-        ]);
- 
-        $job->update($validated);
+        if (
+            !$isAdmin
+            && $isContractor
+            && !in_array(
+                $newStatus,
+                ['accepted', 'in_progress', 'change_requested', 'completed'],
+                true
+            )
+        ) {
+            return response()->json([
+                'message' => 'Contractors cannot apply that job status.',
+            ], 403);
+        }
 
-        return response()->json($job);
+        $previousStatus = $job->status;
+        $job->update(['status' => $newStatus]);
+
+        $description = $user->name
+            . ' changed the job status from '
+            . str_replace('_', ' ', $previousStatus)
+            . ' to '
+            . str_replace('_', ' ', $newStatus)
+            . '.';
+        $this->logJobEvent(
+            $job,
+            $user,
+            'job_status_changed',
+            $description
+        );
+        $this->notifications->jobStatusChanged($job, $newStatus, $user);
+
+        return response()->json($job->load(['messages', 'activities']));
     }
 
     public function update(Request $request, $id)
@@ -605,7 +679,6 @@ public function deleteImage($jobId, $imageId)
         return response()->json($job->load(['images', 'property']));
     }
 
-// I also updated this while tired.    
     public function destroy($id)
     {
         $user = Auth::guard('api')->user();

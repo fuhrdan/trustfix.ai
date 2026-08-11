@@ -12,12 +12,18 @@ use App\Models\ProfileClaim;
 use App\Models\Report;
 use App\Models\Review;
 use App\Models\User;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class AdminDashboardController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications
+    ) {
+    }
+
     public function stats()
     {
         return response()->json([
@@ -169,6 +175,7 @@ class AdminDashboardController extends Controller
         ]);
 
         $document = ContractorDocument::findOrFail($id);
+        $previousStatus = (int) $document->verification_status;
 
         $document->verification_status = (int) $validated['verification_status'];
         $document->notes = $validated['notes'] ?? $document->notes;
@@ -182,6 +189,20 @@ class AdminDashboardController extends Controller
         }
 
         $document->save();
+
+        $document->load('user');
+        if (
+            $document->user
+            && $previousStatus !== (int) $document->verification_status
+            && in_array((int) $document->verification_status, [1, 2], true)
+        ) {
+            $this->notifications->contractorDocumentReviewed(
+                $document->user,
+                $document->document_type,
+                (int) $document->verification_status === 1 ? 'approved' : 'rejected',
+                $document->notes
+            );
+        }
 
         return response()->json([
             'success' => true,

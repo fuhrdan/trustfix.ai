@@ -3,13 +3,6 @@ require 'config.php';
 include 'header.php';
 
 $properties = apiRequest('GET', '/properties');
-
-/*
-echo '<pre>';
-var_dump($properties);
-echo '</pre>';
-exit;
-*/
 ?>
 
 

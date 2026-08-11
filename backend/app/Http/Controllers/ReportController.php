@@ -6,12 +6,18 @@ use App\Models\ContractorProfile;
 use App\Models\Job;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications,
+    ) {
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -122,6 +128,7 @@ class ReportController extends Controller
 
         $admin = Auth::guard('api')->user();
         $user = User::findOrFail($id);
+        $previousStatus = $user->account_status ?? 'active';
 
         if ($user->id === $admin->id) {
             return response()->json(['error' => 'You cannot change your own account status'], 422);
@@ -136,6 +143,14 @@ class ReportController extends Controller
                 : ($validated['suspension_reason'] ?? null),
         ]);
 
+        if ($previousStatus !== $validated['account_status']) {
+            $this->notifications->accountStatus(
+                $user,
+                $validated['account_status'],
+                $validated['suspension_reason'] ?? null
+            );
+        }
+
         return response()->json($user);
     }
 
@@ -147,6 +162,7 @@ class ReportController extends Controller
         ]);
 
         $profile = ContractorProfile::findOrFail($id);
+        $previousStatus = $profile->status;
 
         $profile->update([
             'status' => $validated['status'],
@@ -156,6 +172,14 @@ class ReportController extends Controller
 
         if ($validated['status'] === 'approved') {
             $profile->user()->update(['role' => 'handyman']);
+        }
+
+        if ($previousStatus !== $validated['status']) {
+            $profile->load('user');
+
+            if ($profile->user) {
+                $this->notifications->contractorProfileStatus($profile->user, $validated['status']);
+            }
         }
 
         return response()->json($profile);

@@ -1,9 +1,6 @@
 <?php
 
 require 'config.php';
-
-session_start();
-
 requireLogin();
 
 header('Content-Type: application/json');
@@ -16,8 +13,6 @@ if (
     && isset($_POST['ajax_upload'])
 ) {
 
-$debug = [];
-
     try {
 
         //-------------------------------------------------
@@ -28,8 +23,6 @@ $debug = [];
         if (!$propertyId) {
             throw new Exception('Missing property_id');
         }
-
-        $debug['property_id'] = $propertyId;
 
         //-------------------------------------------------
         // Validate Upload
@@ -42,12 +35,6 @@ $debug = [];
             throw new Exception('No uploaded file received');
         }
 
-        $debug['file'] = [
-            'name' => $_FILES['image']['name'],
-            'type' => $_FILES['image']['type'],
-            'size' => $_FILES['image']['size']
-        ];
-        
         //-------------------------------------------------
         // Build CURL File
         //-------------------------------------------------
@@ -68,12 +55,9 @@ $debug = [];
             ]
         );
 
-        $debug['upload_result'] = $uploadResult;
-        
-        if (!is_array($uploadResult)) {
-            $debug['upload_result_type'] = gettype($uploadResult);
+        if (!is_array($uploadResult) || empty($uploadResult['success'])) {
+            throw new RuntimeException(apiMessage($uploadResult, 'The image could not be uploaded.'));
         }
-        
 
         //-------------------------------------------------
         // Fetch Updated Property
@@ -83,10 +67,8 @@ $debug = [];
             "/properties/$propertyId"
         );
 
-        if (!is_array($property)) {
-            throw new Exception(
-                "Property fetch failed. Response: " . print_r($propertyResponse, true)
-            );
+        if (!is_array($property) || !empty($property['error'])) {
+            throw new RuntimeException('The updated property could not be loaded.');
         }
 
         //-------------------------------------------------
@@ -114,8 +96,6 @@ $debug = [];
 
                 $imageId = (int)($img['id'] ?? 0);
                 $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-                $safePath = htmlspecialchars($imagePath, ENT_QUOTES, 'UTF-8');
-
                 $html .= "
                     <div style='position:relative;display:inline-block;margin:0 15px 15px 0;'>
                         <img
@@ -148,7 +128,6 @@ $debug = [];
                             '
                             title='Delete image'
                         >×</button>
-                        <div style='font-size:12px;margin-top:4px;'>{$safePath}</div>
                     </div>
                 ";
             }
@@ -159,20 +138,18 @@ $debug = [];
         //-------------------------------------------------
         echo json_encode([
             'success' => true,
-            'html' => $html,
-            'debug' => $debug,
-            'upload_result' => $uploadResult
+            'html' => $html
         ]);
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        error_log(sprintf('Property image upload failed for property %d: %s', $propertyId ?? 0, $e->getMessage()));
+
+        http_response_code(422);
 
         echo json_encode([
             'success' => false,
-            'error' => $e->getMessage(),
-            'debug' => $debug
+            'error' => 'The image could not be uploaded. Check the file and try again.'
         ]);
-
-        http_response_code(500);
     }
 
     exit;

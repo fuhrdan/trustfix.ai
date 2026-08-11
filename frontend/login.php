@@ -9,6 +9,9 @@ if (!empty($_SESSION['jwt_token'])) {
 }
 
 $error = '';
+$success = !empty($_GET['verified'])
+    ? 'Your email is verified. You can now sign in.'
+    : '';
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -26,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($result['token'])) {
 
+        session_regenerate_id(true);
+
         $_SESSION['jwt_token'] = $result['token'];
 
         $_SESSION['user'] = $result['user'] ?? [];
@@ -34,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $error = $result['message'] ?? 'Login failed';
+    $error = apiMessage($result, 'Login failed');
 }
 
 include 'header.php';
@@ -45,6 +50,12 @@ include 'header.php';
 <?php if (!empty($error)) { ?>
     <div style="color:red;margin-bottom:20px;">
         <?= htmlspecialchars($error) ?>
+    </div>
+<?php } ?>
+
+<?php if (!empty($success)) { ?>
+    <div class="tf-alert tf-alert-success">
+        <?= htmlspecialchars($success) ?>
     </div>
 <?php } ?>
 

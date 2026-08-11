@@ -1,163 +1,72 @@
 <?php
 
 require 'config.php';
-
-// Part II : Electric Boogaloo.  Going to give this a trie <sic> and see
-// if I can get the magic to work again.  Hopefully better than
-// Mary Poppins Returns.  Which IS a thing that happened, and no one 
-// ever remembers or talks about it.  What was wrong with Mary Poppins?
-// was it not enough?  Start asking questions people.
-// This is because this is a copy of add job updated for property.
-//Dan
-
-session_start();
-
 requireLogin();
-
-include 'header.php';
-
-//-------------------------------------------------
-// Create draft property if one does not exist
-//-------------------------------------------------
-if (!isset($_SESSION['draft_property_id'])) {
-
-    $payload = [
-        'street_address' => '123 Test St',
-        'address_line_2' => 'line 2',
-//        'apartment' = '101',
-        'city' => 'Test',
-        'state' => 'Insanity',
-        'zip' => '12345',
-        'county' => 'Crazy',
-        'description' => 'Test'
-    ];
-
-    $draftProperty = apiRequest(
-        'POST',
-        '/properties',
-        $payload
-    );
-/*    
-echo "<pre>";
-print_r($draftProperty);
-echo "</pre>";
-exit;
-*/
-    $_SESSION['draft_property_id'] =
-        $draftProperty['id'] ?? $draftProperty['data']['id'] ?? null;
-}
-
-$draftPropertyId =
-    $_SESSION['draft_property_id'];
-
-
-
 
 $message = '';
 
-//=========================================================
-// Create placeholder property immediately
-//=========================================================
+// Images need a property ID before the final form is submitted, so create a
+// genuinely empty draft instead of exposing test data in production.
+if (!isset($_SESSION['draft_property_id'])) {
+    $draftProperty = apiRequest('POST', '/properties', [
+        'street_address' => '',
+        'address_line_2' => '',
+        'apartment' => '',
+        'city' => '',
+        'state' => '',
+        'zip' => '',
+        'county' => '',
+        'description' => '',
+    ]);
 
-$propertyId = $_SESSION['draft_property_id'];
+    $draftId = $draftProperty['data']['id'] ?? $draftProperty['id'] ?? null;
 
+    if ($draftId) {
+        $_SESSION['draft_property_id'] = (int)$draftId;
+    } else {
+        $message = '<div class="tf-alert tf-alert-error">'
+            . htmlspecialchars(apiMessage($draftProperty, 'Unable to start a property draft.'), ENT_QUOTES, 'UTF-8')
+            . '</div>';
+    }
+}
 
-//=========================================================
-// FINAL SAVE
-//=========================================================
+$draftPropertyId = (int)($_SESSION['draft_property_id'] ?? 0);
+$propertyId = $draftPropertyId;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     !isset($_POST['ajax_upload'])) {
-
     $payload = [
-        'street_address' => $_POST['street_address'],
-        'address_line_2' => $_POST['address_line_2'],
-        'apartment' => $_POST['apartment'],
-        'city' => $_POST['city'],
-        'state' => $_POST['state'],
-        'zip' => $_POST['zip'],
-        'county' => $_POST['county'],
-        'description' => $_POST['description'],
+        'street_address' => trim($_POST['street_address'] ?? ''),
+        'address_line_2' => trim($_POST['address_line_2'] ?? ''),
+        'apartment' => trim($_POST['apartment'] ?? ''),
+        'city' => trim($_POST['city'] ?? ''),
+        'state' => trim($_POST['state'] ?? ''),
+        'zip' => trim($_POST['zip'] ?? ''),
+        'county' => trim($_POST['county'] ?? ''),
+        'description' => trim($_POST['description'] ?? ''),
     ];
 
-// ** DEBUG
-/*
- echo "<pre>";
- echo "Draft Property = ";
- print_r($draftProperty);
- echo "<BR>Property ID = ";
- print_r($propertyId);
+    if (!$propertyId) {
+        $message = '<div class="tf-alert tf-alert-error">Unable to save because the property draft was not created.</div>';
+    } else {
+        $saveResult = apiRequest('PUT', "/properties/$propertyId", $payload);
+        $httpCode = (int)($saveResult['_http_code'] ?? 0);
 
- echo "\n\nPayload:\n";
- print_r($payload);
- echo "</pre>";
- exit;
- */
-// ** END DEBUG
-
-    apiRequest(
-        'PUT',
-        "/properties/$propertyId",
-        $payload
-    );
-
-    $result = apiRequest(
-        'GET',
-        "/properties/$propertyId"
-    );
-
-    $message .= "
-        <div style='
-            background:#dff0d8;
-            padding:15px;
-            border-radius:8px;
-            margin-bottom:20px;
-        '>
-            Property Saved Successfully
-        </div>
-    ";
-
-    if (!empty($result['images'])) {
-
-        foreach ($result['image'] as $img) {
-
-            $url = storageUrl($img['image_path']);
-
-            $message .= "
-                <div style='margin-bottom:15px;'>
-
-                    <img
-                        src='{$url}'
-                        style='
-                            max-width:200px;
-                            border:1px solid #ccc;
-                            border-radius:8px;
-                        '
-                    >
-
-                </div>
-            ";
+        if ($httpCode >= 200 && $httpCode < 300) {
+            unset($_SESSION['draft_property_id']);
+            $_SESSION['flash_success'] = 'Property saved successfully.';
+            header('Location: list_properties.php');
+            exit;
         }
+
+        $message = '<div class="tf-alert tf-alert-error">'
+            . htmlspecialchars(apiMessage($saveResult, 'Unable to save the property.'), ENT_QUOTES, 'UTF-8')
+            . '</div>';
     }
-
-// This is the debugging message for testing.
-// Remove it for production.
-//    $message .= '<pre>' . print_r($result, true) . '</pre>';
-// Error log
-error_log(print_r($result, true));
-
-    unset($_SESSION['draft_property_id']);
 }
+
+include 'header.php';
 ?>
-
-<head>
-    <title>Add Property</title>
-
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="TF-Style.css">
-</head>
-
-<body>
 
 <h1>Add Property</h1>
 
@@ -169,6 +78,7 @@ error_log(print_r($result, true));
         type="text"
         name="street_address"
         placeholder="Street Address"
+        value="<?= htmlspecialchars($_POST['street_address'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
         required
     >
 
@@ -176,25 +86,29 @@ error_log(print_r($result, true));
         type="text"
         name="address_line_2"
         placeholder="Address Line 2"
+        value="<?= htmlspecialchars($_POST['address_line_2'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
     >
 
     <input
         type="text"
         name="apartment"
         placeholder="Apartment / Unit"
+        value="<?= htmlspecialchars($_POST['apartment'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
     >
 
-    <textarea
+    <input
         type="text"
         name="city"
         placeholder="City"
+        value="<?= htmlspecialchars($_POST['city'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
         required
-    ></textarea>
+    >
 
     <input
         type="text"
         name="state"
         placeholder="State"
+        value="<?= htmlspecialchars($_POST['state'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
         required
     >
 
@@ -202,6 +116,7 @@ error_log(print_r($result, true));
         type="text"
         name="zip"
         placeholder="Zip"
+        value="<?= htmlspecialchars($_POST['zip'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
         required
     >
 
@@ -209,12 +124,14 @@ error_log(print_r($result, true));
         type="text"
         name="county"
         placeholder="County"
+        value="<?= htmlspecialchars($_POST['county'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
     >
 
     <input
         type="text"
         name="description"
         placeholder="Description"
+        value="<?= htmlspecialchars($_POST['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
     >
 
 
@@ -246,7 +163,7 @@ error_log(print_r($result, true));
 
     <br>
 
-    <button type="submit">
+    <button type="submit" <?= $draftPropertyId ? '' : 'disabled' ?>>
         Save Property
     </button>
 
@@ -370,18 +287,12 @@ function wireUploadBlock(block)
 
                 try {
     
-                    console.log(xhr.responseText);
-
                     data = JSON.parse(xhr.responseText);
 
                 } catch(err) {
 
-                    progressText.innerHTML =
-                        '<div style="color:red;">' +
-                        'Server returned invalid JSON<br><br>' +
-                        '<pre style="white-space:pre-wrap;">' +
-                        xhr.responseText +
-                        '</pre></div>';
+                    progressText.innerText =
+                        'The upload service returned an unexpected response.';
 
                     return;
                 }
@@ -411,14 +322,13 @@ function wireUploadBlock(block)
 
                 } else {
 
-                    progressText.innerText =
-                        'Upload failed';
+                    progressText.innerText = data.error || 'Upload failed';
                 }
 
             } else {
 
                 progressText.innerText =
-                    'HTTP Error: ' + xhr.status;
+                    'Upload failed. Please try again.';
             }
         };
 
@@ -470,7 +380,7 @@ function deleteImage(imageId, btn)
                 alert('Invalid server response');
             }
         } else {
-            alert('HTTP error: ' + xhr.status);
+            alert('Delete failed. Please try again.');
         }
     };
 

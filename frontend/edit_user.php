@@ -107,10 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             }
             else
             {
+                $safeMessage = htmlspecialchars(
+                    apiMessage($response, 'Contractor approval failed.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
                 $message = "
                     <div class='tf-alert tf-alert-error'>
-                        Contractor approval failed.
-                        <pre>" . htmlspecialchars(print_r($response, true)) . "</pre>
+                        {$safeMessage}
                     </div>
                 ";
             }
@@ -148,15 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             }
             else
             {
+                $safeMessage = htmlspecialchars(
+                    apiMessage($response, 'Document update failed.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
                 $message = "
-                    <div style='
-                        background:#f8d7da;
-                        padding:15px;
-                        border-radius:8px;
-                        margin-bottom:20px;
-                    '>
-                        Document update failed.
-                        <pre>" . htmlspecialchars(print_r($response, true)) . "</pre>
+                    <div class='tf-alert tf-alert-error'>
+                        {$safeMessage}
                     </div>
                 ";
             }
@@ -193,15 +196,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
+            $safeMessage = htmlspecialchars(
+                apiMessage($response, 'User update failed.'),
+                ENT_QUOTES,
+                'UTF-8'
+            );
             $message = "
-                <div style='
-                    background:#f8d7da;
-                    padding:15px;
-                    border-radius:8px;
-                    margin-bottom:20px;
-                '>
-                    User update failed.
-                    <pre>" . htmlspecialchars(print_r($response, true)) . "</pre>
+                <div class='tf-alert tf-alert-error'>
+                    {$safeMessage}
                 </div>
             ";
         }

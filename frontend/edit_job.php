@@ -5,8 +5,6 @@ requireLogin();
 
 include 'header.php';
 
-session_start();
-
 //-------------------------------------------------
 // Get job ID
 //-------------------------------------------------
@@ -44,57 +42,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         'skills' => $_POST['skills'] ?? []
     ];
 
-    apiRequest(
+    $updateResult = apiRequest(
         'PUT',
         "/jobs/$jobId",
         $payload
     );
+    $httpCode = (int)($updateResult['_http_code'] ?? 0);
 
-    $result = apiRequest('GET', "/jobs/$jobId");
-
-    $message .= "
-        <div style='
-            background:#dff0d8;
-            padding:15px;
-            border-radius:8px;
-            margin-bottom:20px;
-        '>
-            Job Updated Successfully
-        </div>
-    ";
-
-    if (!empty($result['images'])) {
-        foreach ($result['images'] as $img) {
-
-            $url = storageUrl($img['image_path']);
-
-            $message .= "
-                <div style='margin-bottom:15px;'>
-                    <img src='{$url}'
-                        style='
-                            max-width:200px;
-                            border:1px solid #ccc;
-                            border-radius:8px;
-                        '
-                    >
-                </div>
-            ";
-        }
+    if ($httpCode >= 200 && $httpCode < 300) {
+        $job = apiRequest('GET', "/jobs/$jobId");
+        $message = '<div class="tf-alert tf-alert-success">Job updated successfully.</div>';
+    } else {
+        $message = '<div class="tf-alert tf-alert-error">'
+            . htmlspecialchars(apiMessage($updateResult, 'Unable to update the job.'), ENT_QUOTES, 'UTF-8')
+            . '</div>';
     }
-
-    error_log(print_r($result, true));
 }
 
 ?>
-
-<head>
-    <title>Edit Job</title>
-
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="TF-Style.css">
-</head>
-
-<body>
 
 <h1>Edit Job</h1>
 
@@ -314,10 +279,7 @@ function wireUploadBlock(block)
                 try {
                     data = JSON.parse(xhr.responseText);
                 } catch(err) {
-                    progressText.innerHTML =
-                        '<div style="color:red;">Invalid JSON<br><pre>' +
-                        xhr.responseText +
-                        '</pre></div>';
+                    progressText.innerText = 'The upload service returned an unexpected response.';
                     return;
                 }
 
@@ -341,11 +303,11 @@ function wireUploadBlock(block)
                     wireUploadBlock(newBlock);
 
                 } else {
-                    progressText.innerText = 'Upload failed';
+                    progressText.innerText = data.error || 'Upload failed. Please try again.';
                 }
 
             } else {
-                progressText.innerText = 'HTTP Error: ' + xhr.status;
+                progressText.innerText = 'Upload failed. Please try again.';
             }
         };
 

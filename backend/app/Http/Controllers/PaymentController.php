@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\ContractorProfile;
 use App\Models\Job;
 use App\Models\Payment;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications
+    ) {
+    }
+
     private function stripe()
     {
         $secret = config('services.stripe.secret');
@@ -188,12 +194,14 @@ class PaymentController extends Controller
             default => null,
         };
 
-        if ($status) {
+        if ($status && $payment->status !== $status) {
             $payment->update([
                 'status' => $status,
                 'paid_at' => $status === 'succeeded' ? now() : $payment->paid_at,
                 'metadata' => ['stripe_event_id' => $event['id'] ?? null],
             ]);
+
+            $this->notifications->paymentUpdated($payment->fresh());
         }
 
         return response()->json(['received' => true]);

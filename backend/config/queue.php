@@ -38,10 +38,12 @@ return [
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'jobs'),
-            'queue' => env('DB_QUEUE', 'default'),
+            // TrustFix already uses "jobs" for repair jobs. Keep queue payloads
+            // in a dedicated table so Laravel never treats repair rows as work.
+            'table' => env('DB_QUEUE_TABLE', 'queue_jobs'),
+            'queue' => env('DB_QUEUE', 'notifications'),
             'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
+            'after_commit' => true,
         ],
 
         'beanstalkd' => [
@@ -104,7 +106,7 @@ return [
 
     'batching' => [
         'database' => env('DB_CONNECTION', 'sqlite'),
-        'table' => 'job_batches',
+        'table' => env('DB_QUEUE_BATCH_TABLE', 'queue_job_batches'),
     ],
 
     /*
@@ -123,7 +125,7 @@ return [
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'sqlite'),
-        'table' => 'failed_jobs',
+        'table' => env('QUEUE_FAILED_TABLE', 'queue_failed_jobs'),
     ],
 
 ];

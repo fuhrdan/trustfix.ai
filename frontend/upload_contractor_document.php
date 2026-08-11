@@ -67,8 +67,7 @@ if ($httpCode >= 400 || !empty($result['errors']) || !empty($result['error']))
 
     echo json_encode([
         'success' => false,
-        'error' => $error,
-        'debug' => $result
+        'error' => $error
     ]);
     exit;
 }

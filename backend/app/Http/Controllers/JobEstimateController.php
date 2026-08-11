@@ -13,6 +13,7 @@ use App\Services\Estimating\EstimateCalculator;
 use App\Services\Estimating\EstimatePricingResolver;
 use App\Services\Estimating\JobAnalysisManager;
 use App\Services\Estimating\MaterialPriceMatcher;
+use App\Services\LifecycleNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class JobEstimateController extends Controller
         private readonly EstimatePricingResolver $pricingResolver,
         private readonly MaterialPriceMatcher $materialMatcher,
         private readonly EstimateCalculator $calculator,
+        private readonly LifecycleNotificationService $notifications,
     ) {
     }
 
@@ -254,6 +256,8 @@ class JobEstimateController extends Controller
             $user->name . ' submitted a contractor quote for customer review.'
         );
 
+        $this->notifications->quoteSubmitted($job, $estimate->fresh());
+
         return response()->json($estimate->fresh());
     }
 
@@ -286,6 +290,8 @@ class JobEstimateController extends Controller
             'quote_accepted',
             $user->name . ' accepted the contractor quote.'
         );
+
+        $this->notifications->quoteAccepted($job, $estimate->fresh());
 
         return response()->json($estimate->fresh());
     }

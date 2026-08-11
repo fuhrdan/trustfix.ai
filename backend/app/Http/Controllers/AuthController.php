@@ -1,35 +1,34 @@
 <?php
-//*****************************************************************************
-//** Guard the gates with careful code,
-//** Check each key before it's bestowed.
-//** Tokens dance, sessions rise and fall,
-//** Authentication answers every call - Dan
-//*****************************************************************************
 
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\LifecycleNotificationService;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Validation\Rule;
-
-use App\Mail\WelcomeMail;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly LifecycleNotificationService $notifications
+    ) {
+    }
+
     public function register(Request $request)
     {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
+        ]);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['nullable', Rule::in(['customer', 'handyman', 'admin', 'company'])],
-            'company_id' => ['nullable', 'integer', 'exists:users,id'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'username' => ['nullable', 'string', 'max:255', 'unique:users,username'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -40,115 +39,190 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'username' => $validated['username'] ?? null,
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'] ?? 'customer',
-            'company_id' => $validated['company_id'] ?? null,
+            // Public registration can never grant an elevated role.
+            'role' => 'customer',
+            'company_id' => null,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
         ]);
-        
-        Mail::to($user->email)->send(
-            new WelcomeMail($user)
-            );
 
-        $token = auth('api')->login($user);
+        $welcomeQueued = $this->notifications->welcome($user);
+        $verificationQueued = $this->notifications->emailVerification($user);
 
         return response()->json([
             'user' => $user,
-            'token' => $token,
-            'token_type' => 'bearer',
+            'requires_email_verification' => true,
+            'notification_queued' => $welcomeQueued && $verificationQueued,
+            'message' => 'Account created. Check your email to verify your address before signing in.',
         ], 201);
     }
 
     public function updateMe(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::guard('api')->user();
 
-        $validated = $request->validate([
-
-            'name' =>
-                'required|string|max:255',
-
-            'username' =>
-                'nullable|string|max:255|unique:users,username,' . $user->id,
-
-            'email' =>
-                'required|email|max:255|unique:users,email,' . $user->id,
-
-            'phone' =>
-                'nullable|string|max:30',
-
-            'address' =>
-                'nullable|string|max:500'
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
         ]);
 
-        $user->name =
-            $validated['name'];
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255', 'unique:users,username,' . $user->id],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string', 'max:500'],
+        ]);
 
-        $user->username =
-            $validated['username'] ?? null;
+        $emailChanged = !hash_equals(
+            Str::lower((string) $user->email),
+            $validated['email']
+        );
 
-        $user->email =
-            $validated['email'];
+        $user->fill([
+            'name' => $validated['name'],
+            'username' => $validated['username'] ?? null,
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ]);
 
-        $user->phone =
-            $validated['phone'] ?? null;
-
-        $user->address =
-            $validated['address'] ?? null;
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
 
         $user->save();
 
+        if ($emailChanged) {
+            $this->notifications->emailVerification($user);
+        }
+
         return response()->json([
             'success' => true,
-            'user' => $user
+            'user' => $user,
+            'requires_email_verification' => $emailChanged,
+            'message' => $emailChanged
+                ? 'Profile updated. Verify your new email address before your next sign-in.'
+                : 'Profile updated successfully.',
         ]);
     }
 
     public function login(Request $request)
     {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
+        ]);
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
 
-        if (!$token = auth('api')->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (!$token = Auth::guard('api')->attempt($credentials)) {
+            return response()->json([
+                'message' => 'The email or password is incorrect.',
+            ], 401);
         }
 
-        $user = auth('api')->user();
+        $user = Auth::guard('api')->user();
 
-        if ($user) {
-            $user->last_login_at = now();
-            $user->save();
+        if (($user->account_status ?? 'active') !== 'active') {
+            Auth::guard('api')->logout();
+
+            return response()->json([
+                'message' => 'This account is not currently active. Contact TrustFix for assistance.',
+            ], 403);
         }
+
+        if (!$user->hasVerifiedEmail()) {
+            Auth::guard('api')->logout();
+            $this->notifications->emailVerification($user);
+
+            return response()->json([
+                'message' => 'Verify your email before signing in. A new verification link has been sent.',
+                'requires_email_verification' => true,
+            ], 403);
+        }
+
+        $user->last_login_at = now();
+        $user->save();
 
         return response()->json([
+            'user' => $user,
             'token' => $token,
             'token_type' => 'bearer',
         ]);
     }
 
-    public function forgotPassword(Request $request)
+    public function resendVerification(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email'
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
         ]);
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if ($user && !$user->hasVerifiedEmail()) {
+            $this->notifications->emailVerification($user);
+        }
 
         return response()->json([
-            'message' => __($status)
+            'message' => 'If that address belongs to an unverified TrustFix account, a new link has been sent.',
+        ]);
+    }
+
+    public function verifyEmail(Request $request, $id, $hash)
+    {
+        $user = User::findOrFail($id);
+
+        if (!hash_equals(
+            sha1($user->getEmailForVerification()),
+            (string) $hash
+        )) {
+            abort(403, 'Invalid verification link.');
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+            event(new Verified($user));
+        }
+
+        return redirect()->away(
+            rtrim((string) config('trustfix.frontend_url'), '/')
+            . '/login.php?verified=1'
+        );
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
+        ]);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        Password::sendResetLink(['email' => $validated['email']]);
+
+        return response()->json([
+            'message' => 'If a TrustFix account uses that address, a password reset link has been sent.',
         ]);
     }
 
     public function resetPassword(Request $request)
     {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
+        ]);
+
         $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|min:8|confirmed',
+            'token' => ['required'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'min:8', 'confirmed'],
         ]);
 
         $status = Password::reset(
@@ -159,9 +233,8 @@ class AuthController extends Controller
                 'token'
             ),
             function ($user, $password) {
-
                 $user->forceFill([
-                    'password' => Hash::make($password)
+                    'password' => Hash::make($password),
                 ])->setRememberToken(
                     Str::random(60)
                 );
@@ -173,33 +246,32 @@ class AuthController extends Controller
         );
 
         if ($status === Password::PASSWORD_RESET) {
-
             return response()->json([
-                'message' => 'Password reset successful.'
+                'message' => 'Password reset successful.',
             ]);
         }
 
         return response()->json([
-            'message' => __($status)
+            'message' => __($status),
         ], 400);
     }
 
     public function me()
     {
-        return response()->json(auth('api')->user());
+        return response()->json(Auth::guard('api')->user());
     }
 
     public function refresh()
     {
         return response()->json([
-            'token' => auth('api')->refresh(),
+            'token' => Auth::guard('api')->refresh(),
             'token_type' => 'bearer',
         ]);
     }
 
     public function logout()
     {
-        auth('api')->logout();
+        Auth::guard('api')->logout();
 
         return response()->json([
             'message' => 'Successfully logged out',

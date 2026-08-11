@@ -26,15 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload
     );
 
-// Find the erorr <sic>    
-//echo "<pre>";
-//print_r($result);
-//echo "</pre>";
-//exit;
-
-session_start();
-
     if (!empty($result['token'])) {
+
+        session_regenerate_id(true);
 
         $_SESSION['jwt_token'] = $result['token'];
 
@@ -44,7 +38,12 @@ session_start();
         exit;
     }
 
-    $error = $result['message'] ?? 'Registration failed';
+    if (!empty($result['requires_email_verification'])) {
+        $success = $result['message']
+            ?? 'Account created. Check your email to verify your address.';
+    } else {
+        $error = apiMessage($result, 'Registration failed');
+    }
 }
 
 include 'header.php';
@@ -58,6 +57,13 @@ include 'header.php';
     </div>
 <?php } ?>
 
+<?php if (!empty($success)) { ?>
+    <div class="tf-alert tf-alert-success">
+        <?= htmlspecialchars($success) ?>
+    </div>
+<?php } ?>
+
+<?php if (empty($success)) { ?>
 <form method="POST">
 
     <input
@@ -93,6 +99,7 @@ include 'header.php';
     </button>
 
 </form>
+<?php } ?>
 
 <p>
     Already have an account?

@@ -9,8 +9,6 @@ requireLogin();
 
 include 'header.php';
 
-session_start();
-
 //-------------------------------------------------
 // Get property ID
 //-------------------------------------------------
@@ -94,60 +92,24 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         'description' => $_POST['description'] ?? '',
     ];
 
-    apiRequest(
+    $updateResult = apiRequest(
         'PUT',
         "/properties/$propertyId",
         $payload
     );
+    $httpCode = (int)($updateResult['_http_code'] ?? 0);
 
-    $result = apiRequest(
-        'GET', 
-        "/properties/$propertyId"
-    );
-
-    $message .= "
-        <div style='
-            background:#dff0d8;
-            padding:15px;
-            border-radius:8px;
-            margin-bottom:20px;
-        '>
-            Property Updated Successfully
-        </div>
-    ";
-
-    if (!empty($result['images'])) {
-        foreach ($result['images'] as $img) {
-
-            $url = storageUrl($img['image_path']);
-
-            $message .= "
-                <div style='margin-bottom:15px;'>
-                    <img src='{$url}'
-                        style='
-                            max-width:200px;
-                            border:1px solid #ccc;
-                            border-radius:8px;
-                        '
-                    >
-                </div>
-            ";
-        }
+    if ($httpCode >= 200 && $httpCode < 300) {
+        $property = apiRequest('GET', "/properties/$propertyId");
+        $message = '<div class="tf-alert tf-alert-success">Property updated successfully.</div>';
+    } else {
+        $message = '<div class="tf-alert tf-alert-error">'
+            . htmlspecialchars(apiMessage($updateResult, 'Unable to update the property.'), ENT_QUOTES, 'UTF-8')
+            . '</div>';
     }
-
-    error_log(print_r($result, true));
 }
 
 ?>
-
-<head>
-    <title>Edit Property</title>
-
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="TF-Style.css">
-</head>
-
-<body>
 
 <h1>Edit Property</h1>
 
@@ -388,10 +350,7 @@ function wireUploadBlock(block)
                 try {
                     data = JSON.parse(xhr.responseText);
                 } catch(err) {
-                    progressText.innerHTML =
-                        '<div style="color:red;">Invalid JSON<br><pre>' +
-                        xhr.responseText +
-                        '</pre></div>';
+                    progressText.innerText = 'The upload service returned an unexpected response.';
                     return;
                 }
 
@@ -412,11 +371,11 @@ function wireUploadBlock(block)
                     }, 1000);
 
                 } else {
-                    progressText.innerText = 'Upload failed';
+                    progressText.innerText = data.error || 'Upload failed. Please try again.';
                 }
 
             } else {
-                progressText.innerText = 'HTTP Error: ' + xhr.status;
+                progressText.innerText = 'Upload failed. Please try again.';
             }
         };
 

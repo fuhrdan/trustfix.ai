@@ -59,10 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         ";
     } else {
+        $safeMessage = htmlspecialchars(
+            apiMessage($response, 'Unable to update the job.'),
+            ENT_QUOTES,
+            'UTF-8'
+        );
         $message = "
-            <div style='background:#f8d7da;padding:15px;border-radius:8px;margin-bottom:20px;'>
-                Job update failed.
-                <pre>" . htmlspecialchars(print_r($response, true)) . "</pre>
+            <div class='tf-alert tf-alert-error'>
+                {$safeMessage}
             </div>
         ";
     }
