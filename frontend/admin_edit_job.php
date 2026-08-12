@@ -1,13 +1,12 @@
 <?php
 
 require 'config.php';
-requireLogin();
-include 'header.php';
+requireRole('admin');
 
 $jobId = (int)($_GET['id'] ?? 0);
 
 if ($jobId <= 0) {
-    die('Missing job id');
+    renderFrontendError(400, 'Missing Job', 'Choose a job before opening the administrative editor.');
 }
 
 $message = '';
@@ -32,6 +31,7 @@ $skillsList = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
     $payload = [
         'status' => $_POST['status'] ?? 'posted',
         'address' => $_POST['address'] ?? '',
@@ -78,7 +78,7 @@ $job = apiRequest(
 );
 
 if (!is_array($job) || isset($job['error'])) {
-    die('Job not found');
+    renderFrontendError(404, 'Job Not Found', 'This job could not be loaded.');
 }
 
 $existingSkills = $job['skills'] ?? [];
@@ -86,6 +86,9 @@ $existingSkills = $job['skills'] ?? [];
 if (!is_array($existingSkills)) {
     $existingSkills = [];
 }
+
+$pageTitle = 'Edit Job';
+include 'header.php';
 
 ?>
 
@@ -118,6 +121,7 @@ if (!is_array($existingSkills)) {
 </div>
 
 <form method="POST">
+    <?= csrfField() ?>
     <label>Status</label><br>
     <select name="status" required>
         <?php foreach ($statuses as $value => $label): ?>

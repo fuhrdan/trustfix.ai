@@ -13,6 +13,8 @@ $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    requireValidCsrf();
+
     $payload = [
         'name' => $_POST['name'],
         'email' => $_POST['email'],
@@ -65,29 +67,38 @@ include 'header.php';
 
 <?php if (empty($success)) { ?>
 <form method="POST">
+    <?= csrfField() ?>
 
+    <label for="register_name">Full Name</label>
     <input
+        id="register_name"
         type="text"
         name="name"
         placeholder="Full Name"
         required
     >
 
+    <label for="register_email">Email Address</label>
     <input
+        id="register_email"
         type="email"
         name="email"
         placeholder="Email"
         required
     >
 
+    <label for="register_password">Password</label>
     <input
+        id="register_password"
         type="password"
         name="password"
         placeholder="Password"
         required
     >
 
+    <label for="register_password_confirmation">Confirm Password</label>
     <input
+        id="register_password_confirmation"
         type="password"
         name="password_confirmation"
         placeholder="Confirm Password"

@@ -4,6 +4,8 @@ requireLogin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    requireValidCsrf();
+
     $jobId = $_POST['job_id'] ?? null;
 
     if (!$jobId) {

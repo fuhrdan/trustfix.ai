@@ -187,7 +187,7 @@ function wsTitle($text)
 </div>
 
 <div class="workspace-grid">
-    <main>
+    <div>
         <section class="workspace-card">
             <h2>Conversation</h2>
 
@@ -222,6 +222,7 @@ function wsTitle($text)
             <?php } ?>
 
             <form method="POST" action="send_job_message.php" style="margin-top:20px;">
+                <?= csrfField() ?>
                 <input type="hidden" name="job_id" value="<?= (int)$job['id'] ?>">
                 <textarea name="message" rows="4" placeholder="Send a message about this job..." required></textarea>
                 <button type="submit" style="background:#0d6efd;color:white;border:0;border-radius:8px;cursor:pointer;">
@@ -261,7 +262,7 @@ function wsTitle($text)
                 <?php } ?>
             <?php } ?>
         </section>
-    </main>
+    </div>
 
     <aside>
         <section class="workspace-card">

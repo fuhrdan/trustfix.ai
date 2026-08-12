@@ -4,7 +4,10 @@
     $firstName = $fullName !== '' ? ($nameParts[0] ?? $fullName) : 'there';
     $role = (string) ($user->role ?? 'customer');
     $isContractor = in_array($role, ['handyman', 'company'], true);
-    $frontendUrl = rtrim((string) config('trustfix.frontend_url'), '/');
+    $frontendUrl = rtrim((string) config(
+        'trustfix.frontend_url',
+        'https://trustfix.lakehousesoftware.com'
+    ), '/');
     $loginUrl = $frontendUrl . '/login.php';
     $supportEmail = (string) config('trustfix.support_email');
 @endphp

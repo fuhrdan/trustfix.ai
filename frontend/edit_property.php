@@ -7,15 +7,13 @@
 require 'config.php';
 requireLogin();
 
-include 'header.php';
-
 //-------------------------------------------------
 // Get property ID
 //-------------------------------------------------
 $propertyId = (int)($_GET['id'] ?? 0);
 
 if (!$propertyId) {
-    die("Missing property ID");
+    renderFrontendError(400, 'Missing Property', 'Choose a property before opening the editing page.');
 }
 
 //-------------------------------------------------
@@ -26,11 +24,15 @@ $property = apiRequest(
     "/properties/$propertyId"
     );
 
-if (!is_array($property)) {
-    die("Property not found or invalid response");
+if (!is_array($property) || empty($property['id'])) {
+    renderFrontendError(404, 'Property Not Found', 'This property is unavailable or you do not have access to it.');
 }
 
 $message = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
+}
 
 //-------------------------------------------------
 // Add or remove an authorized property user
@@ -82,14 +84,14 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     !isset($_POST['ajax_upload'])) {
 
     $payload = [
-        'street_address' => $_POST['street_address'] ?? '',
-        'address_line_2' => $_POST['address_line_2'] ?? '',
-        'apartment' => $_POST['apartment'] ?? '',
-        'city' => ($_POST['city'] ?? 0),
-        'state' => ($_POST['state'] ?? 0),
-        'zip' => $_POST['zip'] ?? '',
-        'county' => ($_POST['county'] ?? 0),
-        'description' => $_POST['description'] ?? '',
+        'street_address' => trim($_POST['street_address'] ?? ''),
+        'address_line_2' => trim($_POST['address_line_2'] ?? ''),
+        'apartment' => trim($_POST['apartment'] ?? ''),
+        'city' => trim($_POST['city'] ?? ''),
+        'state' => trim($_POST['state'] ?? ''),
+        'zip' => trim($_POST['zip'] ?? ''),
+        'county' => trim($_POST['county'] ?? ''),
+        'description' => trim($_POST['description'] ?? ''),
     ];
 
     $updateResult = apiRequest(
@@ -109,6 +111,9 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     }
 }
 
+$pageTitle = 'Edit Property';
+include 'header.php';
+
 ?>
 
 <h1>Edit Property</h1>
@@ -116,8 +121,11 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 <?= $message ?>
 
 <form method="POST">
+    <?= csrfField() ?>
 
+    <label for="property_street_address">Street Address</label>
     <input
+        id="property_street_address"
         type="text"
         name="street_address"
         placeholder="Street Address"
@@ -125,45 +133,62 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         value="<?= htmlspecialchars($property['street_address'] ?? '') ?>"
     >
 
+    <label for="property_address_line_2">Address Line 2</label>
     <input
+        id="property_address_line_2"
         type="text"
         name="address_line_2"
         placeholder="Address Line 2"
         value="<?= htmlspecialchars($property['address_line_2'] ?? '') ?>"
     >
 
+    <label for="property_apartment">Apartment / Unit</label>
     <input
+        id="property_apartment"
         type="text"
         name="apartment"
         placeholder="Apartment / Unit"
         value="<?= htmlspecialchars($property['apartment'] ?? '') ?>"
     >
 
-    <textarea
-        name="city"
-        placeholder="city"
-        required
-    ><?= htmlspecialchars($property['city'] ?? '') ?></textarea>
-
+    <label for="property_city">City</label>
     <input
+        id="property_city"
+        type="text"
+        name="city"
+        required
+        value="<?= htmlspecialchars($property['city'] ?? '') ?>"
+    >
+
+    <label for="property_state">State</label>
+    <input
+        id="property_state"
+        type="text"
         name="state"
-        placeholder="state"
         value="<?= htmlspecialchars($property['state'] ?? '') ?>"
     >
 
+    <label for="property_zip">ZIP Code</label>
     <input
+        id="property_zip"
         type="text"
         name="zip"
-        placeholder="zip"
         value="<?= htmlspecialchars($property['zip'] ?? '') ?>"
     >
 
+    <label for="property_county">County</label>
     <input
+        id="property_county"
         type="text"
-        name="description"
-        placeholder="description"
-        value="<?= htmlspecialchars($property['description'] ?? '') ?>"
+        name="county"
+        value="<?= htmlspecialchars($property['county'] ?? '') ?>"
     >
+
+    <label for="property_description">Property Notes</label>
+    <textarea
+        id="property_description"
+        name="description"
+    ><?= htmlspecialchars($property['description'] ?? '') ?></textarea>
 
     <h3>Upload Pictures</h3>
 
@@ -199,6 +224,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
                 ">
                     <img
                         src="<?= htmlspecialchars(storageUrl($img['image_path'])) ?>"
+                        alt="Property photo"
                         style="
                             max-width:200px;
                             border:1px solid #ccc;
@@ -250,9 +276,12 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     </p>
 
     <form method="POST" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="add_authorized_user">
 
+        <label class="tf-sr-only" for="authorized_email">Authorized user's email address</label>
         <input
+            id="authorized_email"
             type="email"
             name="authorized_email"
             placeholder="Authorized user's email address"
@@ -274,6 +303,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' &&
                 </div>
 
                 <form method="POST" onsubmit="return confirm('Remove this user's access to the property?');" style="margin:0;">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="remove_authorized_user">
                     <input type="hidden" name="authorized_user_id" value="<?= (int)($authorizedUser['id'] ?? 0) ?>">
                     <button type="submit" style="margin:0;background:#b42318;">
@@ -321,6 +351,7 @@ function wireUploadBlock(block)
         const progressText = progressContainer.querySelector('.progress-text');
 
         const formData = new FormData();
+        formData.append('csrf_token', <?= json_encode(csrfToken()) ?>);
         formData.append('ajax_upload', '1');
         formData.append('image', input.files[0]);
 
@@ -398,6 +429,7 @@ function deleteImage(imageId, btn)
     }
 
     const formData = new FormData();
+    formData.append('csrf_token', <?= json_encode(csrfToken()) ?>);
     formData.append('image_id', imageId);
 
     const xhr = new XMLHttpRequest();

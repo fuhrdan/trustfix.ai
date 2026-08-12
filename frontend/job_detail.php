@@ -185,7 +185,7 @@ $canAccept = empty($job['handyman_id'])
 </p>
 
 <div class="tf-detail-grid">
-    <main>
+    <div>
         <div class="tf-card">
             <span class="tf-status-pill"><?= htmlspecialchars(statusLabel($job['status'] ?? '')) ?></span>
 
@@ -239,7 +239,7 @@ $canAccept = empty($job['handyman_id'])
                 <p>No pictures have been added to this job yet.</p>
             <?php } ?>
         </div>
-    </main>
+    </div>
 
     <aside>
         <div class="tf-card">
@@ -251,6 +251,7 @@ $canAccept = empty($job['handyman_id'])
                 </p>
 
                 <form method="POST" action="accept_job.php" onsubmit="return confirm('Accept this job?');">
+                    <?= csrfField() ?>
                     <input type="hidden" name="job_id" value="<?= (int)$job['id'] ?>">
                     <button type="submit" class="tf-action-button">
                         Accept Job

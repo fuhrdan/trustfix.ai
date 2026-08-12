@@ -2,7 +2,10 @@
     $fullName = trim((string) ($recipient->name ?? ''));
     $nameParts = preg_split('/\s+/', $fullName);
     $firstName = $fullName !== '' ? ($nameParts[0] ?? $fullName) : 'there';
-    $frontendUrl = rtrim((string) config('trustfix.frontend_url'), '/');
+    $frontendUrl = rtrim((string) config(
+        'trustfix.frontend_url',
+        'https://trustfix.lakehousesoftware.com'
+    ), '/');
     $supportEmail = (string) config('trustfix.support_email');
 @endphp
 <!doctype html>

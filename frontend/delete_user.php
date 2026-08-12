@@ -1,10 +1,11 @@
 <?php
 
 require 'config.php';
-requireLogin();
+requireRole('admin');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    requireValidCsrf();
     $userId = (int)(
         $_POST['user_id'] ?? 0
     );

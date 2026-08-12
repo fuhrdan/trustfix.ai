@@ -60,6 +60,7 @@ function estScalarArray($values)
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
     $action = $_POST['action'] ?? '';
     $response = null;
     $successMessage = '';
@@ -244,6 +245,7 @@ include 'header.php';
             <p>TrustFix will analyze the request and photos, ask follow-up questions, create a step-by-step work plan, and identify materials. TrustFix—not the AI provider—will calculate the money.</p>
             <?php if (!empty($permissions['can_analyze'])) { ?>
                 <form method="POST">
+                    <?= csrfField() ?>
                     <input type="hidden" name="job_id" value="<?= $jobId ?>">
                     <input type="hidden" name="action" value="analyze">
                     <button class="est-primary" type="submit">Generate Preliminary Estimate</button>
@@ -268,13 +270,14 @@ include 'header.php';
         <?php } ?>
 
         <div class="est-grid">
-            <main>
+            <div>
                 <?php if ($questions && !empty($permissions['can_analyze'])) { ?>
                     <section class="est-card">
                         <span class="est-kicker">Improve confidence</span>
                         <h2>Follow-up questions</h2>
                         <p>These details can materially change labor time, materials, access, or safety. Answer what you know and TrustFix will rebuild the scope.</p>
                         <form method="POST">
+                            <?= csrfField() ?>
                             <input type="hidden" name="job_id" value="<?= $jobId ?>">
                             <input type="hidden" name="action" value="analyze">
                             <?php foreach ($answers as $key => $answer) { ?>
@@ -310,6 +313,7 @@ include 'header.php';
 
                 <?php if (!empty($permissions['can_review'])) { ?>
                     <form method="POST" id="contractor-review-form">
+                        <?= csrfField() ?>
                         <input type="hidden" name="job_id" value="<?= $jobId ?>">
                         <input type="hidden" name="action" value="review">
 
@@ -396,7 +400,7 @@ include 'header.php';
                         </table>
                     </section>
                 <?php } ?>
-            </main>
+            </div>
 
             <aside>
                 <section class="est-card">
@@ -434,6 +438,7 @@ include 'header.php';
 
                     <?php if (!empty($permissions['can_quote']) && ($estimate['status'] ?? '') === 'contractor_reviewed' && !empty($pricing['configured']) && !$missingPrices) { ?>
                         <form method="POST">
+                            <?= csrfField() ?>
                             <input type="hidden" name="job_id" value="<?= $jobId ?>">
                             <input type="hidden" name="action" value="quote">
                             <label class="est-input-label" for="contractor_quote">Final contractor quote</label>
@@ -448,6 +453,7 @@ include 'header.php';
 
                     <?php if (!empty($permissions['can_accept'])) { ?>
                         <form method="POST" onsubmit="return confirm('Accept this contractor quote as the agreed job price?');">
+                            <?= csrfField() ?>
                             <input type="hidden" name="job_id" value="<?= $jobId ?>">
                             <input type="hidden" name="action" value="accept">
                             <button class="est-accept" type="submit">Accept Contractor Quote</button>
@@ -465,6 +471,7 @@ include 'header.php';
                         <h2>Actual project outcome</h2>
                         <p class="est-meta">Record the result after work is performed. These values remain separate from the original estimate so TrustFix can measure error and train a future model.</p>
                         <form method="POST">
+                            <?= csrfField() ?>
                             <input type="hidden" name="job_id" value="<?= $jobId ?>">
                             <input type="hidden" name="action" value="actuals">
                             <label class="est-input-label">Actual labor hours</label>

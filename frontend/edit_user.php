@@ -1,26 +1,16 @@
 <?php
 
 require 'config.php';
-requireLogin();
-
-$currentAdmin = apiRequest('GET', '/me');
-
-if (($currentAdmin['role'] ?? '') !== 'admin')
-{
-    http_response_code(403);
-    die('Administrator access required.');
-}
+$currentAdmin = requireRole('admin');
 
 $userId = (int)($_GET['id'] ?? 0);
 
 if (!$userId)
 {
-    die('Missing user id');
+    renderFrontendError(400, 'Missing User', 'Choose a user before opening the administrative editor.');
 }
 
 $message = '';
-
-include 'header.php';
 
 function contractorDocumentLabel($type)
 {
@@ -69,6 +59,7 @@ function contractorDocumentUrl($storedFilename)
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    requireValidCsrf();
     $action = $_POST['action'] ?? 'update_user';
 
     if ($action === 'approve_contractor')
@@ -217,7 +208,7 @@ $user = apiRequest(
 
 if (!is_array($user) || isset($user['error']))
 {
-    die('User not found');
+    renderFrontendError(404, 'User Not Found', 'This user account could not be loaded.');
 }
 
 $documents = $user['contractor_documents'] ?? [];
@@ -232,6 +223,9 @@ foreach ($documents as $document)
     }
 }
 
+$pageTitle = 'Edit User';
+include 'header.php';
+
 ?>
 
 <h1>Edit User</h1>
@@ -239,6 +233,7 @@ foreach ($documents as $document)
 <?= $message ?>
 
 <form method="POST">
+    <?= csrfField() ?>
 
     <input type="hidden" name="action" value="update_user">
 
@@ -389,6 +384,7 @@ foreach ($documents as $document)
             <?php endif; ?>
 
             <form method="POST" onsubmit="return confirm('Approve this contractor and enable contractor dashboard access?');">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="approve_contractor">
                 <input
                     type="hidden"
@@ -475,6 +471,7 @@ foreach ($documents as $document)
 
                 <td>
                     <form method="POST" style="margin-bottom:8px;">
+                        <?= csrfField() ?>
                         <input type="hidden" name="action" value="update_document_status">
                         <input type="hidden" name="document_id" value="<?= $documentId ?>">
                         <input type="hidden" name="verification_status" value="1">
@@ -491,6 +488,7 @@ foreach ($documents as $document)
                     </form>
 
                     <form method="POST">
+                        <?= csrfField() ?>
                         <input type="hidden" name="action" value="update_document_status">
                         <input type="hidden" name="document_id" value="<?= $documentId ?>">
                         <input type="hidden" name="verification_status" value="2">

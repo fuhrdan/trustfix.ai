@@ -2,6 +2,17 @@
 
 require 'config.php';
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: dashboard.php');
+    exit;
+}
+
+requireValidCsrf();
+
+if (!empty($_SESSION['jwt_token'])) {
+    apiRequest('POST', '/logout', []);
+}
+
 $_SESSION = [];
 
 if (ini_get('session.use_cookies')) {

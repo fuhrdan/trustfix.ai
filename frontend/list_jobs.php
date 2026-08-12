@@ -122,6 +122,7 @@ $jobs = apiRequest('GET', '/jobs/my');
             
             <td>
                 <form method="POST" action="delete_job.php" onsubmit="return confirm('Delete this job?');">
+                <?= csrfField() ?>
                 <input type="hidden" name="job_id" value="<?= $job['id'] ?>">
                 <button type="submit" style="color:red;">
 

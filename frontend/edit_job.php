@@ -3,15 +3,13 @@
 require 'config.php';
 requireLogin();
 
-include 'header.php';
-
 //-------------------------------------------------
 // Get job ID
 //-------------------------------------------------
 $jobId = (int)($_GET['id'] ?? 0);
 
 if (!$jobId) {
-    die("Missing job ID");
+    renderFrontendError(400, 'Missing Job', 'Choose a job before opening the editing page.');
 }
 
 //-------------------------------------------------
@@ -19,8 +17,8 @@ if (!$jobId) {
 //-------------------------------------------------
 $job = apiRequest('GET', "/jobs/$jobId");
 
-if (!is_array($job)) {
-    die("Job not found or invalid response");
+if (!is_array($job) || empty($job['id'])) {
+    renderFrontendError(404, 'Job Not Found', 'This job is unavailable or you do not have access to it.');
 }
 
 $message = '';
@@ -30,6 +28,8 @@ $message = '';
 //=========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     !isset($_POST['ajax_upload'])) {
+
+    requireValidCsrf();
 
     $payload = [
         'address' => $_POST['address'] ?? '',
@@ -59,15 +59,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     }
 }
 
+$pageTitle = 'Edit Job';
+include 'header.php';
+
 ?>
 
 <h1>Edit Job</h1>
 
 <?= $message ?>
 
-<form method="POST">
+<?php if (($_GET['next'] ?? '') === 'estimate'): ?>
+    <section class="tf-card" style="margin-bottom:20px;border-left:4px solid var(--tf-blue);">
+        <h2>Optional: add photos before estimating</h2>
+        <p>Photos can improve the preliminary scope. Upload any useful images below, then continue when you are ready.</p>
+        <a class="tf-button tf-button-success" href="estimate_job.php?id=<?= $jobId ?>&amp;auto=1">Continue to Smart Estimate</a>
+    </section>
+<?php endif; ?>
 
+<form method="POST">
+    <?= csrfField() ?>
+
+    <label for="job_address">Address</label>
     <input
+        id="job_address"
         type="text"
         name="address"
         placeholder="Address"
@@ -75,13 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         value="<?= htmlspecialchars($job['address'] ?? '') ?>"
     >
 
+    <label for="job_description">Job Description</label>
     <textarea
+        id="job_description"
         name="initial_description"
         placeholder="Job Description"
         required
     ><?= htmlspecialchars($job['initial_description'] ?? '') ?></textarea>
 
+    <label for="job_price">Price</label>
     <input
+        id="job_price"
         type="number"
         step="0.01"
         name="agreed_price"
@@ -89,14 +107,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
         value="<?= htmlspecialchars($job['agreed_price'] ?? 0) ?>"
     >
 
+    <label for="job_contact_name">On-site Contact Name</label>
     <input
+        id="job_contact_name"
         type="text"
         name="onsite_contact_name"
         placeholder="On-site Contact Name"
         value="<?= htmlspecialchars($job['onsite_contact_name'] ?? '') ?>"
     >
 
+    <label for="job_contact_phone">On-site Contact Phone</label>
     <input
+        id="job_contact_phone"
         type="text"
         name="onsite_contact_phone"
         placeholder="On-site Contact Phone"
@@ -173,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <img
         src="<?= htmlspecialchars(storageUrl($img['image_path'])) ?>"
+        alt="Job photo"
         style="
             max-width:200px;
             border:1px solid #ccc;
@@ -250,6 +273,7 @@ function wireUploadBlock(block)
         const progressText = progressContainer.querySelector('.progress-text');
 
         const formData = new FormData();
+        formData.append('csrf_token', <?= json_encode(csrfToken()) ?>);
         formData.append('ajax_upload', '1');
         formData.append('image', input.files[0]);
 
@@ -330,6 +354,8 @@ function deleteImage(imageId, btn)
     }
 
     const formData = new FormData();
+    formData.append('csrf_token', <?= json_encode(csrfToken()) ?>);
+    formData.append('job_id', <?= $jobId ?>);
     formData.append('image_id', imageId);
 
     const xhr = new XMLHttpRequest();

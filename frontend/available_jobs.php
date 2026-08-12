@@ -1,7 +1,6 @@
 <?php
 require 'config.php';
-requireLogin();
-include 'header.php';
+requireRole(['handyman', 'company', 'admin']);
 
 $search = trim($_GET['search'] ?? '');
 $category = trim($_GET['category'] ?? '');
@@ -19,6 +18,22 @@ $query = http_build_query([
 ]);
 
 $response = apiRequest('GET', '/jobs/available?' . $query);
+
+if ((int)($response['_http_code'] ?? 200) >= 400) {
+    $pageTitle = 'Available Jobs';
+    include 'header.php';
+    ?>
+        <section class="tf-empty-state">
+            <div class="tf-empty-state-icon" aria-hidden="true">!</div>
+            <h1>Contractor approval required</h1>
+            <p><?= htmlspecialchars(apiMessage($response, 'Your contractor profile must be approved before you can browse available jobs.'), ENT_QUOTES, 'UTF-8') ?></p>
+            <a class="tf-button" href="contractor_dashboard.php">Review Contractor Status</a>
+        </section>
+    <?php
+    include 'footer.php';
+    exit;
+}
+
 $jobs = $response['data'] ?? [];
 $total = $response['total'] ?? count($jobs);
 $currentPage = $response['current_page'] ?? 1;
@@ -67,6 +82,9 @@ function formatCardDate($value)
 
     return date('M j, Y g:i A', $timestamp);
 }
+
+$pageTitle = 'Available Jobs';
+include 'header.php';
 ?>
 
 
@@ -125,15 +143,15 @@ function formatCardDate($value)
 </p>
 
 <form method="GET" style="background:white;padding:20px;border-radius:8px;margin-bottom:25px;">
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end;">
+    <div class="tf-filter-grid">
         <div>
-            <label>Search</label>
-            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Description, address, contact">
+            <label for="available_search">Search</label>
+            <input id="available_search" type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Description, address, contact">
         </div>
 
         <div>
-            <label>Category</label>
-            <select name="category" style="width:100%;padding:10px;box-sizing:border-box;">
+            <label for="available_category">Category</label>
+            <select id="available_category" name="category" style="width:100%;padding:10px;box-sizing:border-box;">
                 <option value="" <?= selectedOption('', $category) ?>>All</option>
                 <option value="plumbing" <?= selectedOption('plumbing', $category) ?>>Plumbing</option>
                 <option value="electrical" <?= selectedOption('electrical', $category) ?>>Electrical</option>
@@ -144,8 +162,8 @@ function formatCardDate($value)
         </div>
 
         <div>
-            <label>Budget</label>
-            <select name="budget" style="width:100%;padding:10px;box-sizing:border-box;">
+            <label for="available_budget">Budget</label>
+            <select id="available_budget" name="budget" style="width:100%;padding:10px;box-sizing:border-box;">
                 <option value="any" <?= selectedOption('any', $budget) ?>>Any</option>
                 <option value="under_100" <?= selectedOption('under_100', $budget) ?>>Under $100</option>
                 <option value="100_250" <?= selectedOption('100_250', $budget) ?>>$100 - $250</option>
@@ -155,8 +173,8 @@ function formatCardDate($value)
         </div>
 
         <div>
-            <label>Sort</label>
-            <select name="sort" style="width:100%;padding:10px;box-sizing:border-box;">
+            <label for="available_sort">Sort</label>
+            <select id="available_sort" name="sort" style="width:100%;padding:10px;box-sizing:border-box;">
                 <option value="newest" <?= selectedOption('newest', $sort) ?>>Newest</option>
                 <option value="oldest" <?= selectedOption('oldest', $sort) ?>>Oldest</option>
                 <option value="highest_budget" <?= selectedOption('highest_budget', $sort) ?>>Highest Budget</option>

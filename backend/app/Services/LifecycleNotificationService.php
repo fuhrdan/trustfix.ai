@@ -36,14 +36,18 @@ class LifecycleNotificationService
             10,
             (int) config('trustfix.verification_expire_minutes', 60)
         );
-        $verificationUrl = URL::temporarySignedRoute(
+        $signedVerificationPath = URL::temporarySignedRoute(
             'verification.verify',
             now()->addMinutes($minutes),
             [
                 'id' => $user->getKey(),
                 'hash' => sha1($user->getEmailForVerification()),
-            ]
+            ],
+            absolute: false
         );
+        $verificationUrl = $this->frontendUrl('/verify_email.php')
+            . '?'
+            . http_build_query(['path' => $signedVerificationPath]);
 
         return $this->deliver(
             $user,

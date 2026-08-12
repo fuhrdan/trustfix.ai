@@ -2,7 +2,7 @@
 
 return [
     'frontend_url' => rtrim(
-        env('TRUSTFIX_FRONTEND_URL', 'https://www.trustfixai.com'),
+        env('TRUSTFIX_FRONTEND_URL', 'https://trustfix.lakehousesoftware.com'),
         '/'
     ),
 

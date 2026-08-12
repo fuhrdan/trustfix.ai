@@ -1,13 +1,7 @@
 <?php
 
 require 'config.php';
-requireLogin();
-
-$user = apiRequest('GET', '/me');
-if (($user['role'] ?? '') !== 'admin') {
-    http_response_code(403);
-    die('Administrator access is required.');
-}
+$user = requireRole('admin');
 
 $filters = [
     'project_type' => trim((string)($_GET['project_type'] ?? '')),
@@ -63,7 +57,7 @@ include 'header.php';
     .ea-shell{max-width:1250px;margin:0 auto 60px;padding:0 18px}.ea-hero{background:linear-gradient(135deg,#05080c,#17345b);border-bottom:4px solid #4EA8DE;border-radius:16px;color:#fff;padding:30px 34px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:22px}.ea-kicker{color:#78c9f4;text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:800}.ea-hero h1{font-size:34px;margin:6px 0 8px}.ea-hero p{margin:0;color:#c8d6e0;max-width:700px;line-height:1.5}.ea-hero-links{display:flex;gap:9px;flex-wrap:wrap}.ea-hero a{background:#fff;color:#17345b;padding:11px 14px;border-radius:999px;text-decoration:none;font-weight:800;white-space:nowrap}.ea-card{background:#fff;border:1px solid #d9e2ec;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(17,24,39,.05)}.ea-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:end;margin-bottom:20px}.ea-field label{display:block;font-size:12px;font-weight:800;color:#52616b;margin-bottom:6px}.ea-field input,.ea-field select{margin:0;width:100%;height:42px;border:1px solid #c6d4dd;border-radius:8px;background:#fff}.ea-filter-button{height:42px;margin:0;border:0;border-radius:8px;background:#2d6cdf;color:#fff;font-weight:800;cursor:pointer}.ea-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.ea-metric{background:#fff;border:1px solid #d9e2ec;border-top:4px solid #4EA8DE;border-radius:11px;padding:17px}.ea-metric strong{display:block;font-size:28px;color:#101820}.ea-metric span{color:#65737e;font-size:12px;line-height:1.4}.ea-readiness{padding:17px 19px;margin-bottom:20px;border-radius:10px;border-left:5px solid #2d6cdf;background:#eaf4ff;color:#263642}.ea-readiness.ready{border-color:#16835a;background:#edf8f2}.ea-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}.ea-card h2{margin:0 0 5px;color:#101820}.ea-card-intro{margin:0 0 15px;color:#65737e;font-size:13px}.ea-table-wrap{overflow-x:auto}.ea-table{width:100%;border-collapse:collapse;min-width:620px}.ea-table.wide{min-width:1050px}.ea-table th,.ea-table td{padding:10px 9px;border-bottom:1px solid #e2e8ed;text-align:left;vertical-align:middle}.ea-table th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#65737e}.ea-table .num{text-align:right;white-space:nowrap}.ea-bar{height:7px;background:#e5ebef;border-radius:99px;overflow:hidden;margin-top:4px}.ea-bar span{display:block;height:100%;background:linear-gradient(90deg,#2d6cdf,#4EA8DE)}.ea-good{color:#13764f;font-weight:800}.ea-warn{color:#b36b00;font-weight:800}.ea-empty{text-align:center;color:#65737e;padding:28px}.ea-note{font-size:12px;color:#65737e;margin-top:12px}@media(max-width:980px){.ea-filters{grid-template-columns:1fr 1fr}.ea-metrics{grid-template-columns:1fr 1fr}.ea-grid{grid-template-columns:1fr}}@media(max-width:620px){.ea-hero{align-items:flex-start;flex-direction:column;padding:24px 21px}.ea-hero h1{font-size:29px}.ea-filters,.ea-metrics{grid-template-columns:1fr}}
 </style>
 
-<main class="ea-shell">
+<div class="ea-shell">
     <header class="ea-hero">
         <div>
             <span class="ea-kicker">Estimate quality</span>
@@ -232,6 +226,6 @@ include 'header.php';
             <?= (int)($summary['actuals_complete'] ?? 0) ?> with complete actuals.
         </p>
     </section>
-</main>
+</div>
 
 <?php include 'footer.php'; ?>

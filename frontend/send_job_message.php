@@ -7,6 +7,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+requireValidCsrf();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: my_jobs.php');
+    exit;
+}
+
 $jobId = (int)($_POST['job_id'] ?? 0);
 $message = trim($_POST['message'] ?? '');
 

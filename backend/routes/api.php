@@ -38,7 +38,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middle
 Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])
     ->middleware('throttle:6,1');
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware('throttle:6,1')
     ->name('verification.verify');
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);

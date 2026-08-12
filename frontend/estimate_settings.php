@@ -1,17 +1,13 @@
 <?php
 
 require 'config.php';
-requireLogin();
-
-$user = apiRequest('GET', '/me');
+$user = requireRole(['handyman', 'company', 'admin']);
 $role = $user['role'] ?? '';
-if (!in_array($role, ['handyman', 'admin'], true)) {
-    die('Contractor or administrator access is required.');
-}
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
     $fields = [
         'name',
         'hourly_wage',
@@ -71,6 +67,7 @@ include 'header.php';
     <?php } ?>
 
     <form method="POST">
+        <?= csrfField() ?>
         <div class="eps-grid">
             <section class="eps-card">
                 <h2>Labor and direct costs</h2>

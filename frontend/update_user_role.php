@@ -1,7 +1,9 @@
 <?php
 
 require 'config.php';
-requireLogin();
+requireRole('admin');
+
+requireValidCsrf();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: list_users.php');

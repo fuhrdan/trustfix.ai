@@ -10,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+requireValidCsrf();
+
 $jobId = (int)$_POST['job_id'];
 
 $status = $_POST['status'];

@@ -1,12 +1,14 @@
 <?php
 
 require 'config.php';
-requireLogin();
+requireRole('admin');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: manage_jobs.php');
     exit;
 }
+
+requireValidCsrf();
 
 $jobId = (int)($_POST['job_id'] ?? 0);
 

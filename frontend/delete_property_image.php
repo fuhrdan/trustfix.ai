@@ -5,6 +5,7 @@ require 'config.php';
 requireLogin();
 
 header('Content-Type: application/json');
+requireValidCsrf(true);
 
 $imageId = (int)($_POST['image_id'] ?? 0);
 

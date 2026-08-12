@@ -1,12 +1,7 @@
 <?php
 
 require 'config.php';
-requireLogin();
-
-$user = apiRequest('GET', '/me');
-if (($user['role'] ?? '') !== 'admin') {
-    die('Administrator access is required.');
-}
+$user = requireRole('admin');
 
 $response = apiRequest('GET', '/admin/estimate-training-data?per_page=500');
 $rows = $response['data'] ?? [];

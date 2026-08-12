@@ -12,6 +12,7 @@ if (!is_array($jobs) || isset($jobs['error']) || isset($jobs['message'])) {
 }
 
 $role = $user['role'] ?? ($_SESSION['user']['role'] ?? '');
+$isContractor = in_array($role, ['handyman', 'company', 'admin'], true);
 
 function jobText($value, $fallback = 'Not provided')
 {
@@ -69,7 +70,7 @@ $buckets = [
         'jobs' => [],
     ],
     'waiting' => [
-        'title' => $role === 'handyman' ? 'Waiting / Open' : 'Posted / Waiting',
+        'title' => $isContractor ? 'Waiting / Open' : 'Posted / Waiting',
         'statuses' => ['posted', 'requested'],
         'jobs' => [],
     ],
@@ -107,6 +108,7 @@ $activeCount = count($buckets['active']['jobs']);
 $waitingCount = count($buckets['waiting']['jobs']);
 $completedCount = count($buckets['completed']['jobs']);
 
+$pageTitle = 'My Jobs';
 include 'header.php';
 ?>
 
@@ -147,13 +149,11 @@ include 'header.php';
 </div>
 
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:25px;">
-    <a href="available_jobs.php" style="background:#198754;color:white;padding:11px 16px;border-radius:8px;text-decoration:none;">
-        Find Available Jobs
-    </a>
-
-    <a href="add_job.php" style="background:#0d6efd;color:white;padding:11px 16px;border-radius:8px;text-decoration:none;">
-        Post New Job
-    </a>
+    <?php if ($isContractor): ?>
+        <a class="tf-button tf-button-success" href="available_jobs.php">Find Available Jobs</a>
+    <?php else: ?>
+        <a class="tf-button" href="add_job.php">Post New Job</a>
+    <?php endif; ?>
 </div>
 
 <?php foreach ($buckets as $bucketKey => $bucket) { ?>
@@ -248,8 +248,9 @@ include 'header.php';
                             Smart Estimate
                         </a>
 
-                        <?php if ($role === 'handyman' && $status === 'accepted') { ?>
+                        <?php if ($isContractor && $status === 'accepted') { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">
                                 <input type="hidden" name="action" value="start">
                                 <button type="submit" style="background:#0d6efd;color:white;border:0;border-radius:8px;cursor:pointer;">
@@ -258,8 +259,9 @@ include 'header.php';
                             </form>
                         <?php } ?>
 
-                        <?php if ($role === 'handyman' && $status === 'in_progress') { ?>
+                        <?php if ($isContractor && $status === 'in_progress') { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">
                                 <input type="hidden" name="action" value="complete">
                                 <button type="submit" style="background:#198754;color:white;border:0;border-radius:8px;cursor:pointer;">
@@ -268,8 +270,9 @@ include 'header.php';
                             </form>
                         <?php } ?>
 
-                        <?php if ($role !== 'handyman' && in_array($status, ['posted', 'requested', 'accepted', 'scheduled'], true)) { ?>
+                        <?php if (!$isContractor && in_array($status, ['posted', 'requested', 'accepted', 'scheduled'], true)) { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;" onsubmit="return confirm('Cancel this job?');">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">
                                 <input type="hidden" name="action" value="cancel">
                                 <button type="submit" style="background:#dc3545;color:white;border:0;border-radius:8px;cursor:pointer;">

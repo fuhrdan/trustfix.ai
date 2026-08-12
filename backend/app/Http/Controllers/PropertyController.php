@@ -127,12 +127,12 @@ class PropertyController extends Controller
     {
         
         $validated = $request->validate([
-            'street_address' => ['nullable', 'string', 'max:500'],
+            'street_address' => ['required', 'string', 'max:500'],
             'address_line_2' => ['nullable', 'string', 'max:500'],
             'apartment' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:500'],
-            'state' => ['nullable', 'string', 'max:500'],
-            'zip' => ['nullable', 'string', 'max:20'],
+            'city' => ['required', 'string', 'max:500'],
+            'state' => ['required', 'string', 'max:500'],
+            'zip' => ['required', 'string', 'max:20'],
             'county' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:500'], 
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']

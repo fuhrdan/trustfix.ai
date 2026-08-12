@@ -16,6 +16,8 @@ $success = !empty($_GET['verified'])
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    requireValidCsrf();
+
     $payload = [
         'email' => $_POST['email'],
         'password' => $_POST['password']
@@ -60,15 +62,20 @@ include 'header.php';
 <?php } ?>
 
 <form method="POST">
+    <?= csrfField() ?>
 
+    <label for="login_email">Email Address</label>
     <input
+        id="login_email"
         type="email"
         name="email"
         placeholder="Email"
         required
     >
 
+    <label for="login_password">Password</label>
     <input
+        id="login_password"
         type="password"
         name="password"
         placeholder="Password"

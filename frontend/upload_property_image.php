@@ -4,6 +4,7 @@ require 'config.php';
 requireLogin();
 
 header('Content-Type: application/json');
+requireValidCsrf(true);
 
 //=========================================================
 // AJAX IMAGE UPLOAD
@@ -100,6 +101,7 @@ if (
                     <div style='position:relative;display:inline-block;margin:0 15px 15px 0;'>
                         <img
                             src='{$safeUrl}'
+                            alt='Property photo'
                             style='
                                 max-width:200px;
                                 border:1px solid #ccc;

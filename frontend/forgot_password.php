@@ -2,12 +2,12 @@
 
 require 'config.php';
 
-include 'header.php';
-
 $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    requireValidCsrf();
 
     $payload = [
         'email' => $_POST['email']
@@ -28,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Unable to send reset email.';
     }
 }
+
+$pageTitle = 'Forgot Password';
+include 'header.php';
 
 ?>
 
@@ -50,8 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php } ?>
 
 <form method="POST">
+    <?= csrfField() ?>
 
+    <label for="forgot_email">Email Address</label>
     <input
+        id="forgot_email"
         type="email"
         name="email"
         placeholder="Email Address"

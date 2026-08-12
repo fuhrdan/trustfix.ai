@@ -7,6 +7,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+requireValidCsrf();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: contractor_dashboard.php');
+    exit;
+}
+
 $result = apiRequest('POST', '/contractor/payout-account');
 
 if (!empty($result['url'])) {

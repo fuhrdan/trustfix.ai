@@ -1,13 +1,15 @@
 <?php
 
 require 'config.php';
-requireLogin();
+requireRole('admin');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST')
 {
     header('Location: list_users.php');
     exit;
 }
+
+requireValidCsrf();
 
 $userId = (int)($_POST['user_id'] ?? 0);
 $password = $_POST['password'] ?? '';

@@ -1,8 +1,7 @@
 <?php
 
 require 'config.php';
-requireLogin();
-include 'header.php';
+requireRole('admin');
 
 $status = $_GET['status'] ?? '';
 $q = trim($_GET['q'] ?? '');
@@ -75,12 +74,17 @@ function adminJobAddress($job)
     return $job['address'] ?? '';
 }
 
+$pageTitle = 'Manage Jobs';
+include 'header.php';
+
 ?>
 
 <h1>Manage Jobs</h1>
 
 <form method="GET" style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+    <label class="tf-sr-only" for="admin_job_search">Search jobs</label>
     <input
+        id="admin_job_search"
         type="text"
         name="q"
         placeholder="Search jobs, users, address..."
@@ -88,7 +92,8 @@ function adminJobAddress($job)
         style="max-width:320px;margin:0;"
     >
 
-    <select name="status" style="max-width:220px;margin:0;">
+    <label class="tf-sr-only" for="admin_job_status">Job status</label>
+    <select id="admin_job_status" name="status" style="max-width:220px;margin:0;">
         <?php foreach ($statuses as $value => $label): ?>
             <option value="<?= htmlspecialchars($value) ?>" <?= $status === $value ? 'selected' : '' ?>>
                 <?= htmlspecialchars($label) ?>
@@ -105,7 +110,9 @@ function adminJobAddress($job)
     </a>
 </form>
 
-<table border="1" cellpadding="8">
+<div class="tf-table-wrap">
+<table>
+    <caption class="tf-sr-only">All TrustFix jobs</caption>
     <tr>
         <th>ID</th>
         <th>Status</th>
@@ -170,6 +177,7 @@ function adminJobAddress($job)
                     onsubmit="return confirm('Delete this job? This cannot be undone.');"
                     style="margin:0;"
                 >
+                    <?= csrfField() ?>
                     <input type="hidden" name="job_id" value="<?= (int)($job['id'] ?? 0) ?>">
                     <button type="submit" style="color:red;width:auto;margin:0;">
                         Delete
@@ -179,5 +187,6 @@ function adminJobAddress($job)
         </tr>
     <?php endforeach; ?>
 </table>
+</div>
 
 <?php include 'footer.php'; ?>

@@ -5,6 +5,7 @@ require 'config.php';
 requireLogin();
 
 header('Content-Type: application/json');
+requireValidCsrf(true);
 
 $allowedTypes = [
     'state_license',

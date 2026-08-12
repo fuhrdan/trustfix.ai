@@ -6,6 +6,7 @@ $jobId = (int)($_GET['id'] ?? $_POST['job_id'] ?? 0);
 $job = apiRequest('GET', '/jobs/' . $jobId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['images']['tmp_name'])) {
+    requireValidCsrf();
     $payload = [];
     foreach ($_FILES['images']['tmp_name'] as $index => $tmpName) {
         if ($tmpName && ($_FILES['images']['error'][$index] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
@@ -35,6 +36,7 @@ include 'header.php';
     <p><strong>Job #<?= $jobId ?></strong> — <?= htmlspecialchars($job['address'] ?? '') ?></p>
     <?php if (!empty($error)) { ?><div class="tf-alert tf-alert-error"><?= htmlspecialchars($error) ?></div><?php } ?>
     <form method="POST" enctype="multipart/form-data" style="background:white;padding:24px;border-radius:12px">
+        <?= csrfField() ?>
         <input type="hidden" name="job_id" value="<?= $jobId ?>">
         <label for="images"><strong>Select progress or completed-work photos</strong></label>
         <input id="images" type="file" name="images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>

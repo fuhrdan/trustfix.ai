@@ -176,6 +176,13 @@ class AuthController extends Controller
 
     public function verifyEmail(Request $request, $id, $hash)
     {
+        // Accept existing absolute signed links during the domain transition,
+        // plus the new host-independent relative signatures used by the
+        // TrustFix frontend verification bridge.
+        if (!$request->hasValidSignature() && !$request->hasValidSignature(false)) {
+            abort(403, 'Invalid or expired verification link.');
+        }
+
         $user = User::findOrFail($id);
 
         if (!hash_equals(
@@ -190,10 +197,17 @@ class AuthController extends Controller
             event(new Verified($user));
         }
 
-        return redirect()->away(
-            rtrim((string) config('trustfix.frontend_url'), '/')
-            . '/login.php?verified=1'
-        );
+        $redirectUrl = rtrim((string) config('trustfix.frontend_url'), '/')
+            . '/login.php?verified=1';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'redirect_url' => $redirectUrl,
+            ]);
+        }
+
+        return redirect()->away($redirectUrl);
     }
 
     public function forgotPassword(Request $request)

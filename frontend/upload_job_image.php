@@ -4,6 +4,7 @@ require 'config.php';
 requireLogin();
 
 header('Content-Type: application/json');
+requireValidCsrf(true);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -17,37 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
 
     //-------------------------------------------------
-    // Get/Create Draft Job
+    // Images are added only after a real job has been saved.
     //-------------------------------------------------
-    $jobId = $_SESSION['draft_job_id'] ?? null;
+    $jobId = (int)($_GET['job_id'] ?? 0);
 
-    if (!$jobId) {
-
-        $propertyId = (int)($_POST['property_id'] ?? 0);
-
-        if ($propertyId <= 0) {
-            throw new Exception('Please select a job address before uploading pictures.');
-        }
-
-        $job = apiRequest(
-            'POST',
-            '/jobs',
-            [
-                'property_id' => $propertyId,
-                'address' => 'Draft Job',
-                'lat' => 0,
-                'lng' => 0,
-                'initial_description' => 'Draft Job',
-                'agreed_price' => 0
-            ]
-        );
-
-        if (!is_array($job) || !isset($job['id'])) {
-            throw new RuntimeException(apiMessage($job, 'Unable to start the job draft.'));
-        }
-
-        $jobId = $job['id'];
-        $_SESSION['draft_job_id'] = $jobId;
+    if ($jobId <= 0) {
+        throw new Exception('Save the job before uploading pictures.');
     }
 
     //-------------------------------------------------
@@ -108,6 +84,7 @@ try {
                 <div style='margin-bottom:15px;'>
                     <img
                         src='" . htmlspecialchars($url) . "'
+                        alt='Job photo'
                         style='max-width:200px;border:1px solid #ccc;border-radius:8px;'
                     >
                 </div>

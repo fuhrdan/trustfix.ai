@@ -1,17 +1,13 @@
 <?php
 
 require 'config.php';
-requireLogin();
-
-$user = apiRequest('GET', '/me');
-if (($user['role'] ?? '') !== 'admin') {
-    die('Administrator access is required.');
-}
+$user = requireRole('admin');
 
 $error = '';
 $search = trim((string)($_GET['search'] ?? ''));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
     $action = $_POST['action'] ?? 'save';
     $id = (int)($_POST['id'] ?? 0);
 
@@ -82,6 +78,7 @@ include 'header.php';
         <aside class="mp-card">
             <h2><?= $editing ? 'Edit material price' : 'Add material price' ?></h2>
             <form method="POST">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="save">
                 <input type="hidden" name="id" value="<?= (int)($editing['id'] ?? 0) ?>">
                 <div class="mp-field"><label>Material name</label><input name="name" value="<?= htmlspecialchars($editing['name'] ?? '') ?>" placeholder="Example: 1/2 inch drywall panel" required></div>
@@ -106,7 +103,7 @@ include 'header.php';
             </form>
         </aside>
 
-        <main class="mp-card">
+        <section class="mp-card">
             <div style="display:flex;justify-content:space-between;gap:15px;align-items:end;flex-wrap:wrap">
                 <div><h2 style="margin-bottom:4px">Catalog</h2><span class="mp-source"><?= (int)($response['total'] ?? count($prices)) ?> price records</span></div>
                 <form method="GET" style="display:flex;gap:8px;align-items:end"><div><label style="display:block;font-weight:800">Search</label><input name="search" value="<?= htmlspecialchars($search) ?>"></div><button type="submit" style="width:auto">Find</button></form>
@@ -122,12 +119,12 @@ include 'header.php';
                             <td><?= htmlspecialchars($price['zip_code'] ?: 'All ZIP codes') ?><br><span class="mp-source"><?= htmlspecialchars($price['source_name'] ?? 'Source not listed') ?><?= !empty($price['observed_at']) ? ' &bull; ' . htmlspecialchars(substr($price['observed_at'], 0, 10)) : '' ?></span></td>
                             <td class="num"><?= mpMoney($price['low_unit_price'] ?? $price['unit_price'] ?? 0) ?>–<?= mpMoney($price['high_unit_price'] ?? $price['unit_price'] ?? 0) ?></td>
                             <td class="<?= !empty($price['active']) ? 'mp-active' : 'mp-inactive' ?>"><?= !empty($price['active']) ? 'Active' : 'Inactive' ?></td>
-                            <td><div class="mp-actions"><a href="manage_material_prices.php?edit=<?= (int)$price['id'] ?>">Edit</a><form method="POST" onsubmit="return confirm('Remove this material price record?');"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$price['id'] ?>"><button class="mp-delete" type="submit">Delete</button></form></div></td>
+                            <td><div class="mp-actions"><a href="manage_material_prices.php?edit=<?= (int)$price['id'] ?>">Edit</a><form method="POST" onsubmit="return confirm('Remove this material price record?');"><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$price['id'] ?>"><button class="mp-delete" type="submit">Delete</button></form></div></td>
                         </tr>
                     <?php } ?>
                 </tbody>
             </table>
-        </main>
+        </section>
     </div>
 </div>
 

@@ -36,6 +36,7 @@ if (is_file($localConfig)) {
 }
 
 $apiBase = rtrim($apiBase, '/');
+$frontendSupportEmail = getenv('TRUSTFIX_SUPPORT_EMAIL') ?: 't.tyler@trustfixai.com';
 
 $jwtToken = $_SESSION['jwt_token'] ?? '';
 
@@ -46,6 +47,114 @@ function requireLogin()
         header('Location: login.php');
         exit;
     }
+}
+
+function csrfToken()
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function csrfField()
+{
+    return '<input type="hidden" name="csrf_token" value="'
+        . htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8')
+        . '">';
+}
+
+function requireValidCsrf($jsonResponse = false)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return;
+    }
+
+    $submittedToken = $_POST['csrf_token']
+        ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    $valid = is_string($submittedToken)
+        && hash_equals(csrfToken(), $submittedToken);
+
+    if ($valid) {
+        return;
+    }
+
+    http_response_code(419);
+
+    if ($jsonResponse) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'error' => 'Your session expired. Refresh the page and try again.'
+        ]);
+        exit;
+    }
+
+    renderFrontendError(
+        419,
+        'Session Expired',
+        'Refresh the page and try that action again.'
+    );
+}
+
+function currentUser($refresh = false)
+{
+    if (!$refresh && !empty($_SESSION['user']['role'])) {
+        return $_SESSION['user'];
+    }
+
+    $user = apiRequest('GET', '/me');
+
+    if (is_array($user) && !empty($user['role'])) {
+        $_SESSION['user'] = $user;
+        return $user;
+    }
+
+    return [];
+}
+
+function requireRole($roles)
+{
+    requireLogin();
+
+    $roles = (array)$roles;
+    $user = currentUser(true);
+
+    if (!in_array($user['role'] ?? '', $roles, true)) {
+        renderFrontendError(
+            403,
+            'Access Denied',
+            'You do not have permission to view this page.'
+        );
+    }
+
+    return $user;
+}
+
+function renderFrontendError($status, $title, $message)
+{
+    http_response_code((int)$status);
+    $pageTitle = (string)$title;
+
+    include __DIR__ . '/header.php';
+    ?>
+        <section class="tf-empty-state" role="alert">
+            <div class="tf-empty-state-icon" aria-hidden="true">!</div>
+            <h1><?= htmlspecialchars((string)$title, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p><?= htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8') ?></p>
+            <a class="tf-button" href="dashboard.php">Return to Dashboard</a>
+        </section>
+    <?php
+    include __DIR__ . '/footer.php';
+    exit;
+}
+
+function supportEmail()
+{
+    global $frontendSupportEmail;
+
+    return $frontendSupportEmail;
 }
 
 function apiRequest($method, $endpoint, $data = null)

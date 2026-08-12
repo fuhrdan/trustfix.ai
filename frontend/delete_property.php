@@ -4,6 +4,8 @@ requireLogin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    requireValidCsrf();
+
     $propertyId = $_POST['property_id'] ?? null;
 
     if (!$propertyId) {

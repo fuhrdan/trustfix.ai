@@ -4,8 +4,6 @@ require 'config.php';
 
 requireLogin();
 
-include 'header.php';
-
 $message = '';
 
 /*
@@ -53,6 +51,7 @@ if (!is_array($contractorDocuments))
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    requireValidCsrf();
     $contractorResult = [];
 
     /*
@@ -293,6 +292,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
     <?php
 }
 
+$pageTitle = 'Profile';
+include 'header.php';
+
 ?>
 
 <h1>Edit Profile</h1>
@@ -300,11 +302,13 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
 <?= $message ?>
 
 <form method="POST" enctype="multipart/form-data">
+    <?= csrfField() ?>
 
     <h2>Account Information</h2>
 
-    <label>Full Name</label>
+    <label for="profile_name">Full Name</label>
     <input
+        id="profile_name"
         type="text"
         name="name"
         placeholder="Full Name"
@@ -315,8 +319,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         required
     >
 
-    <label>Username</label>
+    <label for="profile_username">Username</label>
     <input
+        id="profile_username"
         type="text"
         name="username"
         placeholder="Username"
@@ -326,8 +331,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         ) ?>"
     >
 
-    <label>Email Address</label>
+    <label for="profile_email">Email Address</label>
     <input
+        id="profile_email"
         type="email"
         name="email"
         placeholder="Email Address"
@@ -338,8 +344,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         required
     >
 
-    <label>Phone Number</label>
+    <label for="profile_phone">Phone Number</label>
     <input
+        id="profile_phone"
         type="text"
         name="phone"
         placeholder="Phone Number"
@@ -349,8 +356,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         ) ?>"
     >
 
-    <label>Mailing / Account Address</label>
+    <label for="profile_address">Mailing / Account Address</label>
     <input
+        id="profile_address"
         type="text"
         name="address"
         placeholder="Account Address"
@@ -384,8 +392,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
 
     <div id="contractor_fields" style="<?= $hasContractorProfile ? '' : 'display:none;' ?>">
 
-        <label>Business Name</label>
+        <label for="business_name">Business Name</label>
         <input
+            id="business_name"
             type="text"
             name="business_name"
             placeholder="Business Name"
@@ -395,8 +404,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Business Address</label>
+        <label for="business_address">Business Address</label>
         <input
+            id="business_address"
             type="text"
             name="business_address"
             placeholder="Business Address"
@@ -406,8 +416,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Business Phone Number</label>
+        <label for="business_phone">Business Phone Number</label>
         <input
+            id="business_phone"
             type="text"
             name="business_phone"
             placeholder="Business Phone Number"
@@ -418,15 +429,16 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Business Type</label>
-        <select name="business_type">
+        <label for="business_type">Business Type</label>
+        <select id="business_type" name="business_type">
             <option value="">Select Business Type</option>
             <option value="individual" <?= (($contractor['business_type'] ?? '') === 'individual') ? 'selected' : '' ?>>Individual</option>
             <option value="company" <?= (($contractor['business_type'] ?? '') === 'company') ? 'selected' : '' ?>>Company</option>
         </select>
 
-        <label>Year Established</label>
+        <label for="year_established">Year Established</label>
         <input
+            id="year_established"
             type="number"
             name="year_established"
             placeholder="Year Established"
@@ -438,8 +450,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Website</label>
+        <label for="business_website">Website</label>
         <input
+            id="business_website"
             type="url"
             name="website"
             placeholder="https://example.com"
@@ -449,8 +462,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Service Area</label>
+        <label for="service_area">Service Area</label>
         <input
+            id="service_area"
             type="text"
             name="service_area"
             placeholder="Denver metro, Boulder, Colorado Springs, etc."
@@ -478,8 +492,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         </label>
     </div>
 
-        <label>State Licenses</label>
+        <label for="state_license">State Licenses</label>
         <input
+            id="state_license"
             type="text"
             name="state_license"
             placeholder="State License Number(s)"
@@ -497,8 +512,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             'State License Document'
         ); ?>
 
-        <label>Local Licenses</label>
+        <label for="local_license">Local Licenses</label>
         <input
+            id="local_license"
             type="text"
             name="local_license"
             placeholder="Local License Number(s)"
@@ -508,8 +524,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             ) ?>"
         >
 
-        <label>Sales Tax License</label>
+        <label for="sales_tax_license">Sales Tax License</label>
         <input
+            id="sales_tax_license"
             type="text"
             name="sales_tax_license"
             placeholder="Sales Tax License"
@@ -526,8 +543,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             'Sales Tax License Document'
         ); ?>
 
-        <label>License Expiration Date</label>
+        <label for="license_expiration_date">License Expiration Date</label>
         <input
+            id="license_expiration_date"
             type="date"
             name="license_expiration_date"
             value="<?= htmlspecialchars(
@@ -543,8 +561,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         ); ?>
         <input type="hidden" name="coi_path" value="<?= htmlspecialchars($contractor['coi_path'] ?? '') ?>">
 
-        <label>Insurance Expiration Date</label>
+        <label for="insurance_expiration_date">Insurance Expiration Date</label>
         <input
+            id="insurance_expiration_date"
             type="date"
             name="insurance_expiration_date"
             value="<?= htmlspecialchars(
@@ -560,8 +579,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
         ); ?>
         <input type="hidden" name="surety_bond_path" value="<?= htmlspecialchars($contractor['surety_bond_path'] ?? '') ?>">
 
-        <label>Contract / Service Agreement Area</label>
+        <label for="service_agreement">Contract / Service Agreement Area</label>
         <textarea
+            id="service_agreement"
             name="service_agreement"
             placeholder="Paste service agreement text or notes here."
         ><?= htmlspecialchars(
@@ -576,8 +596,9 @@ function renderContractorDocumentUpload($documents, $type, $fieldName, $label)
             'Contract / Service Agreement File'
         ); ?>
 
-        <label>Business Bio</label>
+        <label for="business_bio">Business Bio</label>
         <textarea
+            id="business_bio"
             name="bio"
             placeholder="Business Bio"
         ><?= htmlspecialchars(
@@ -663,6 +684,7 @@ document.querySelectorAll('.contractor-document-upload').forEach(function (wrapp
         }
 
         const formData = new FormData();
+        formData.append('csrf_token', <?= json_encode(csrfToken()) ?>);
         formData.append('document_type', documentType);
         formData.append('file', fileInput.files[0]);
 

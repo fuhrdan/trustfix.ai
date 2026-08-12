@@ -167,7 +167,7 @@ include 'header.php';
 
     <section class="cd-panel active" id="cd-overview">
         <div class="cd-grid">
-            <main>
+            <div>
                 <div class="cd-card">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:15px">
                         <h2>Active work</h2><a href="available_jobs.php">Find jobs →</a>
@@ -175,7 +175,7 @@ include 'header.php';
                     <?php if (!$activeJobs) { ?><p>No active work right now. New accepted jobs will appear here.</p><?php } ?>
                     <?php foreach (array_slice($activeJobs, 0, 5) as $job) { include __DIR__ . '/contractor_job_row.php'; } ?>
                 </div>
-            </main>
+            </div>
             <aside>
                 <div class="cd-card">
                     <h3>Payout account</h3>
@@ -187,7 +187,7 @@ include 'header.php';
                     <?php } else { ?>
                         <p class="cd-warn"><strong>Action required</strong></p>
                         <p>Connect a bank account securely before customers can pay you through Trustfix.</p>
-                        <form method="POST" action="start_contractor_onboarding.php"><button class="cd-button">Set up payouts</button></form>
+                        <form method="POST" action="start_contractor_onboarding.php"><?= csrfField() ?><button class="cd-button">Set up payouts</button></form>
                     <?php } ?>
                 </div>
                 <div class="cd-card">
@@ -249,7 +249,7 @@ include 'header.php';
             <?php if ($isAdmin) { ?>
                 <p class="cd-meta">Payout onboarding is read-only for administrators because the contractor must personally provide and verify banking information.</p>
             <?php } else { ?>
-                <form method="POST" action="start_contractor_onboarding.php"><button class="cd-button"><?= !empty($payouts['details_submitted']) ? 'Update payout account' : 'Set up payout account' ?></button></form>
+                <form method="POST" action="start_contractor_onboarding.php"><?= csrfField() ?><button class="cd-button"><?= !empty($payouts['details_submitted']) ? 'Update payout account' : 'Set up payout account' ?></button></form>
             <?php } ?>
         </div>
     </section>

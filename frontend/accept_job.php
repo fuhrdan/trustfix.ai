@@ -2,6 +2,13 @@
 require 'config.php';
 requireLogin();
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: available_jobs.php');
+    exit;
+}
+
+requireValidCsrf();
+
 $jobId = (int)($_POST['job_id'] ?? 0);
 
 if (!$jobId) {

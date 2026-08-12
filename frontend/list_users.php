@@ -1,9 +1,7 @@
 <?php
 
 require 'config.php';
-include 'header.php';
-
-requireLogin();
+requireRole('admin');
 
 $result = apiRequest('GET', '/admin/users');
 
@@ -11,6 +9,9 @@ $users = $result['data'] ?? [];
 
 $passwordMessage = $_SESSION['user_password_message'] ?? null;
 unset($_SESSION['user_password_message']);
+
+$pageTitle = 'Manage Users';
+include 'header.php';
 ?>
 
 <h1>Manage Users</h1>
@@ -26,7 +27,9 @@ unset($_SESSION['user_password_message']);
     </div>
 <?php endif; ?>
 
-<table border="1" cellpadding="8">
+<div class="tf-table-wrap">
+<table>
+<caption class="tf-sr-only">TrustFix user accounts</caption>
 
 <tr>
     <th>ID</th>
@@ -96,9 +99,10 @@ unset($_SESSION['user_password_message']);
 
     <td>
         <form method="POST" action="update_user_role.php" style="display:flex;gap:8px;align-items:center;margin:0;">
+            <?= csrfField() ?>
             <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
 
-            <select name="role" style="min-width:130px;margin:0;">
+            <select name="role" aria-label="Role for <?= htmlspecialchars($user['name'] ?? $user['email'] ?? 'user', ENT_QUOTES, 'UTF-8') ?>" style="min-width:130px;margin:0;">
                 <?php foreach (['customer' => 'Customer', 'handyman' => 'Handyman', 'company' => 'Company', 'admin' => 'Admin'] as $roleValue => $roleLabel): ?>
                     <option
                         value="<?= htmlspecialchars($roleValue) ?>"
@@ -138,6 +142,7 @@ unset($_SESSION['user_password_message']);
             action="delete_user.php"
             onsubmit="return confirm('Delete this user?');"
         >
+            <?= csrfField() ?>
 
             <input
                 type="hidden"
@@ -161,6 +166,7 @@ unset($_SESSION['user_password_message']);
 <?php endforeach; ?>
 
 </table>
+</div>
 
 
 <div
@@ -181,6 +187,7 @@ unset($_SESSION['user_password_message']);
         <p id="passwordResetUser"></p>
 
         <form method="POST" action="reset_user_password.php" onsubmit="return validatePasswordReset();">
+            <?= csrfField() ?>
             <input type="hidden" name="user_id" id="passwordResetUserId">
 
             <label for="newPassword">New Password</label><br>

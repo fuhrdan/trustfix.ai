@@ -1,150 +1,87 @@
 <?php
-// Chocolate Martini Recipe
-// 2 Shots Vodka
-// 2 Shots Chocolate Liquer (Mozart Chocolate Creme)
-// 2 Shots Baily's
-// Shake in Shaker and serve in Martini Glass
 
 require 'config.php';
-
 requireLogin();
 
+$user = currentUser(true);
+$role = $user['role'] ?? '';
+$isContractor = in_array($role, ['handyman', 'company', 'admin'], true);
+$isAdmin = $role === 'admin';
+
+$pageTitle = 'Dashboard';
 include 'header.php';
-
-// Trying something here
-// $user = $_SESSION['user'] ?? [];
-
-$user = apiRequest(
-    'GET',
-    '/me'
-);
-
-if (!empty($user['role'])) {
-    $_SESSION['user'] = $user;
-}
-
 ?>
 
 <h1>Dashboard</h1>
 
-<p>
-    Welcome
-    <strong>
-        <?= htmlspecialchars($user['name'] ?? 'User') ?>
-    </strong>
+<p class="tf-page-intro">
+    Welcome back, <strong><?= htmlspecialchars($user['name'] ?? 'TrustFix user', ENT_QUOTES, 'UTF-8') ?></strong>.
+    Keep your properties, jobs, and repair records together in one place.
 </p>
 
-<div
-    style="
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-        gap:20px;
-        margin-top:30px;
-    "
->
+<div class="tf-card-grid">
+    <section class="tf-card">
+        <h2>Profile</h2>
+        <p>Keep your contact information and account settings current.</p>
+        <div class="tf-actions">
+            <a class="tf-button" href="edit_profile.php">Edit Profile</a>
+        </div>
+    </section>
 
-    <div
-        style="
-            background:#fafafa;
-            padding:20px;
-            border-radius:8px;
-        "
-    >
-        <h3>My Profile</h3>
-        
-        <a href="edit_profile.php">
-            Edit Profile
-        </a>
-        
-        <h3>My Properties</h3>
-        
-        <a href="add_property.php">
-            Add Property
-        </a>
-        
-        <BR><BR>
+    <section class="tf-card">
+        <h2>Properties</h2>
+        <p>Add a property before posting work, then keep its photos and authorized users organized.</p>
+        <div class="tf-actions">
+            <a class="tf-button" href="add_property.php">Add Property</a>
+            <a class="tf-button tf-button-secondary" href="list_properties.php">View Properties</a>
+        </div>
+    </section>
 
-        <a href="list_properties.php">
-            View Properties
-        </a>
-
-        <?php if (($user['role'] ?? '') === 'admin'): ?>
-
-            <h3>Admin</h3>
-
-            <a href="list_users.php">
-                Manage Users
-            </a>
-
-            <br><br>
-
-            <a href="manage_jobs.php">
-                Manage Jobs
-            </a>
-
-        <?php endif; ?>
-
-<!--
-        <h3>Contractors</h3>
-
-        <a href="add_contractor.php">
-            Add Contractor
-        </a>
-
-        <br><br>
-
-        <a href="list_contractors.php">
-            View Contractors
-        </a>
-
-        <br><br>
-
-        <a href="edit_contractor_profile.php">
-            Edit Contractors
-        </a>
--->
-
-    </div>
-
-    <div
-        style="
-            background:#fafafa;
-            padding:20px;
-            border-radius:8px;
-        "
-    >
-        <h3>Jobs</h3>
-
+    <section class="tf-card">
+        <h2><?= $isContractor ? 'Contractor Jobs' : 'Jobs' ?></h2>
         <p>
-            Create and manage jobs.
+            <?= $isContractor
+                ? 'Review work opportunities and manage jobs already assigned to you.'
+                : 'Describe the work you need and follow it from estimate through completion.' ?>
         </p>
+        <div class="tf-actions">
+            <?php if ($isContractor): ?>
+                <a class="tf-button tf-button-success" href="available_jobs.php">Available Jobs</a>
+            <?php else: ?>
+                <a class="tf-button" href="add_job.php">Post a Job</a>
+            <?php endif; ?>
+            <a class="tf-button tf-button-secondary" href="my_jobs.php">My Jobs</a>
+        </div>
+    </section>
 
-        <a href="available_jobs.php">
-            Available Jobs
-        </a>
+    <section class="tf-card">
+        <h2>Contractors</h2>
+        <p>Browse approved TrustFix professionals and review their service details.</p>
+        <div class="tf-actions">
+            <a class="tf-button" href="list_contractors.php">Browse Contractors</a>
+        </div>
+    </section>
 
-        <br><br>
+    <?php if ($isContractor): ?>
+        <section class="tf-card">
+            <h2>Contractor Workspace</h2>
+            <p>Review your approval status, payout readiness, and operating information.</p>
+            <div class="tf-actions">
+                <a class="tf-button" href="contractor_dashboard.php">Open Contractor Dashboard</a>
+            </div>
+        </section>
+    <?php endif; ?>
 
-        <a href="add_job.php">
-            Add Job
-        </a>
-
-        <br><br>
-
-        <a href="my_jobs.php">
-            My Jobs
-        </a>
-
-        <?php if (in_array(($user['role'] ?? ''), ['handyman', 'admin'], true)): ?>
-            <h3>Contractor</h3>
-            <a href="contractor_dashboard.php">
-                <?= ($user['role'] ?? '') === 'admin'
-                    ? 'Review Contractor Dashboards'
-                    : 'Open Contractor Dashboard' ?>
-            </a>
-        <?php endif; ?>
-    </div>
-
+    <?php if ($isAdmin): ?>
+        <section class="tf-card">
+            <h2>Administration</h2>
+            <p>Review users, jobs, approvals, materials, and estimate performance.</p>
+            <div class="tf-actions">
+                <a class="tf-button" href="list_users.php">Manage Users</a>
+                <a class="tf-button tf-button-secondary" href="manage_jobs.php">Manage Jobs</a>
+            </div>
+        </section>
+    <?php endif; ?>
 </div>
 
 <?php include 'footer.php'; ?>
