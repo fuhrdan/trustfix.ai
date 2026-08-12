@@ -10,6 +10,39 @@ use Illuminate\Support\Facades\Auth;
 
 class JobWorkspaceController extends Controller
 {
+    private function incomingMessagesQuery($user)
+    {
+        return JobMessage::query()
+            ->where('message_type', 'user')
+            ->whereNull('read_at')
+            ->whereNotNull('sender_user_id')
+            ->where('sender_user_id', '!=', $user->id)
+            ->whereHas('job', function ($jobs) use ($user) {
+                $jobs->where(function ($accessibleJobs) use ($user) {
+                    $accessibleJobs
+                        ->where('customer_id', $user->id)
+                        ->orWhere('handyman_id', $user->id);
+                });
+            });
+    }
+
+    private function markIncomingMessagesRead(Job $job, $user): void
+    {
+        $isParticipant = (int)$job->customer_id === (int)$user->id
+            || (int)$job->handyman_id === (int)$user->id;
+
+        if (!$isParticipant) {
+            return;
+        }
+
+        $job->messages()
+            ->where('message_type', 'user')
+            ->whereNull('read_at')
+            ->whereNotNull('sender_user_id')
+            ->where('sender_user_id', '!=', $user->id)
+            ->update(['read_at' => now()]);
+    }
+
     private function getAccessibleJob($id)
     {
         $user = Auth::guard('api')->user();
@@ -39,7 +72,10 @@ class JobWorkspaceController extends Controller
 
     public function show($id)
     {
+        $user = Auth::guard('api')->user();
         $job = $this->getAccessibleJob($id);
+
+        $this->markIncomingMessagesRead($job, $user);
 
         $job->messages = $job->messages()
             ->with('sender')
@@ -57,7 +93,10 @@ class JobWorkspaceController extends Controller
 
     public function messages($id)
     {
+        $user = Auth::guard('api')->user();
         $job = $this->getAccessibleJob($id);
+
+        $this->markIncomingMessagesRead($job, $user);
 
         return response()->json(
             $job->messages()
@@ -65,6 +104,20 @@ class JobWorkspaceController extends Controller
                 ->oldest()
                 ->get()
         );
+    }
+
+    public function messageSummary()
+    {
+        $user = Auth::guard('api')->user();
+        $messages = $this->incomingMessagesQuery($user);
+        $latestMessage = (clone $messages)
+            ->latest('created_at')
+            ->first(['id', 'job_id']);
+
+        return response()->json([
+            'unread_count' => (clone $messages)->count(),
+            'latest_job_id' => $latestMessage?->job_id,
+        ]);
     }
 
     public function storeMessage(Request $request, $id)

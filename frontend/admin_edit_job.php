@@ -77,7 +77,11 @@ $job = apiRequest(
     "/admin/jobs/$jobId"
 );
 
-if (!is_array($job) || isset($job['error'])) {
+if (
+    !is_array($job)
+    || (int)($job['_http_code'] ?? 500) >= 400
+    || isset($job['error'])
+) {
     renderFrontendError(404, 'Job Not Found', 'This job could not be loaded.');
 }
 
@@ -122,8 +126,8 @@ include 'header.php';
 
 <form method="POST">
     <?= csrfField() ?>
-    <label>Status</label><br>
-    <select name="status" required>
+    <label for="admin_job_status">Status</label><br>
+    <select id="admin_job_status" name="status" required>
         <?php foreach ($statuses as $value => $label): ?>
             <option value="<?= htmlspecialchars($value) ?>" <?= ($job['status'] ?? '') === $value ? 'selected' : '' ?>>
                 <?= htmlspecialchars($label) ?>
@@ -133,54 +137,67 @@ include 'header.php';
 
     <br><br>
 
-    <label>Address</label><br>
+    <label for="admin_job_address">Address</label><br>
     <input
+        id="admin_job_address"
         type="text"
         name="address"
         required
         value="<?= htmlspecialchars($job['address'] ?? '') ?>"
     >
 
-    <label>Latitude</label><br>
+    <label for="admin_job_lat">Latitude</label><br>
     <input
+        id="admin_job_lat"
         type="number"
         step="0.0000001"
+        min="-90"
+        max="90"
         name="lat"
         value="<?= htmlspecialchars($job['lat'] ?? 0) ?>"
     >
 
-    <label>Longitude</label><br>
+    <label for="admin_job_lng">Longitude</label><br>
     <input
+        id="admin_job_lng"
         type="number"
         step="0.0000001"
+        min="-180"
+        max="180"
         name="lng"
         value="<?= htmlspecialchars($job['lng'] ?? 0) ?>"
     >
 
-    <label>Description</label><br>
+    <label for="admin_job_description">Description</label><br>
     <textarea
+        id="admin_job_description"
         name="initial_description"
         rows="7"
         required
     ><?= htmlspecialchars($job['initial_description'] ?? '') ?></textarea>
 
-    <label>Agreed Price</label><br>
+    <label for="admin_job_price">Agreed Price</label><br>
     <input
+        id="admin_job_price"
         type="number"
         step="0.01"
+        min="0"
+        max="999999.99"
         name="agreed_price"
         value="<?= htmlspecialchars($job['agreed_price'] ?? '') ?>"
     >
 
-    <label>On-site Contact Name</label><br>
+    <label for="admin_job_contact_name">On-site Contact Name</label><br>
     <input
+        id="admin_job_contact_name"
         type="text"
         name="onsite_contact_name"
         value="<?= htmlspecialchars($job['onsite_contact_name'] ?? '') ?>"
     >
 
-    <label>On-site Contact Phone</label><br>
+    <label for="admin_job_contact_phone">On-site Contact Phone</label><br>
     <input
+        id="admin_job_contact_phone"
         type="text"
         name="onsite_contact_phone"
         value="<?= htmlspecialchars($job['onsite_contact_phone'] ?? '') ?>"
@@ -206,10 +223,11 @@ include 'header.php';
     <?php if (!empty($job['images'])): ?>
         <h3>Job Images</h3>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
-            <?php foreach ($job['images'] as $image): ?>
-                <a href="<?= htmlspecialchars(storageUrl($image['image_path'] ?? '')) ?>" target="_blank">
+            <?php foreach ($job['images'] as $imageIndex => $image): ?>
+                <a href="<?= htmlspecialchars(storageUrl($image['image_path'] ?? '')) ?>" target="_blank" rel="noopener noreferrer">
                     <img
                         src="<?= htmlspecialchars(storageUrl($image['image_path'] ?? '')) ?>"
+                        alt="Open job image <?= (int)$imageIndex + 1 ?>"
                         style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ccc;"
                     >
                 </a>

@@ -53,6 +53,7 @@ Route::middleware(['auth:api', 'account.active'])->group(function () {
     Route::post('/me/update', [AuthController::class, 'updateMe']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::get('/notifications/messages', [JobWorkspaceController::class, 'messageSummary']);
 
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
     Route::get('/jobs/available', [JobController::class, 'availableJobs']);
@@ -107,7 +108,9 @@ Route::middleware(['auth:api', 'account.active'])->group(function () {
 
         Route::post('/contractors/{id}/claim', [ProfileClaimController::class, 'store']);
         Route::get('/profile-claims/my', [ProfileClaimController::class, 'myClaims']);
+    });
 
+    Route::middleware(['role:handyman,company'])->group(function () {
         Route::post('/jobs/{id}/accept', [JobController::class, 'acceptJob']);
         Route::post('/jobs/{id}/start', [JobController::class, 'startJob']);
         Route::post('/jobs/{id}/complete', [JobController::class, 'completeJob']);
@@ -131,6 +134,8 @@ Route::middleware(['auth:api', 'account.active'])->group(function () {
         Route::delete('/admin/users/{id}', [AdminDashboardController::class, 'deleteUser']);
         Route::get('/admin/contractors', [AdminDashboardController::class, 'contractors']);
         Route::get('/admin/jobs', [AdminDashboardController::class, 'jobs']);
+        Route::get('/admin/jobs/{id}', [AdminDashboardController::class, 'getJob']);
+        Route::put('/admin/jobs/{id}', [AdminDashboardController::class, 'updateJob']);
         Route::delete('/admin/jobs/{id}', [JobController::class, 'destroy']);
         
         Route::get('/admin/profile-claims/pending', [ProfileClaimController::class, 'pending']);

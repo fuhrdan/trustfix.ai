@@ -1,18 +1,24 @@
 <?php
 require 'config.php';
 requireLogin();
-include 'header.php';
+$currentUser = currentUser();
+$currentRole = $currentUser['role'] ?? '';
+$isContractorAccount = in_array($currentRole, ['handyman', 'company'], true);
 
 $jobId = (int)($_GET['id'] ?? 0);
 
 if (!$jobId) {
-    die('Missing job ID');
+    renderFrontendError(400, 'Missing Job', 'Choose a job before opening its details.');
 }
 
 $job = apiRequest('GET', '/jobs/' . $jobId);
 
-if (!is_array($job) || !empty($job['error'])) {
-    die('Job not found or you do not have permission to view it.');
+if (
+    !is_array($job)
+    || (int)($job['_http_code'] ?? 500) >= 400
+    || !empty($job['error'])
+) {
+    renderFrontendError(404, 'Job Not Found', 'This job does not exist or you do not have permission to view it.');
 }
 
 $skills = $job['skills'] ?? [];
@@ -88,8 +94,12 @@ function firstLineTitle($text)
         : $title;
 }
 
-$canAccept = empty($job['handyman_id'])
+$canAccept = $isContractorAccount
+    && empty($job['handyman_id'])
     && in_array($job['status'] ?? '', ['posted', 'requested'], true);
+
+$pageTitle = 'Job Details';
+include 'header.php';
 ?>
 
 <style>
@@ -229,7 +239,7 @@ $canAccept = empty($job['handyman_id'])
                 <div class="tf-image-grid">
                     <?php foreach ($images as $image) { ?>
                         <?php if (!empty($image['image_path'])) { ?>
-                            <a href="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" target="_blank">
+                            <a href="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" target="_blank" rel="noopener noreferrer">
                                 <img src="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" alt="Job image">
                             </a>
                         <?php } ?>

@@ -114,6 +114,61 @@ function currentUser($refresh = false)
     return [];
 }
 
+function messageNotificationSummary($refresh = false)
+{
+    if (empty($_SESSION['jwt_token'])) {
+        return [
+            'unread_count' => 0,
+            'latest_job_id' => null,
+        ];
+    }
+
+    $cacheKey = 'message_notification_summary';
+    $cacheTtl = 45;
+    $cached = $_SESSION[$cacheKey] ?? null;
+
+    if (
+        !$refresh
+        && is_array($cached)
+        && isset($cached['fetched_at'], $cached['summary'])
+        && (time() - (int)$cached['fetched_at']) < $cacheTtl
+    ) {
+        return $cached['summary'];
+    }
+
+    $fallback = is_array($cached['summary'] ?? null)
+        ? $cached['summary']
+        : [
+            'unread_count' => 0,
+            'latest_job_id' => null,
+        ];
+
+    // Keep navigation responsive if the API is temporarily constrained.
+    $response = apiRequest('GET', '/notifications/messages', null, 5);
+    $httpCode = (int)($response['_http_code'] ?? 0);
+
+    if (is_array($response) && $httpCode >= 200 && $httpCode < 300) {
+        $fallback = [
+            'unread_count' => max(0, (int)($response['unread_count'] ?? 0)),
+            'latest_job_id' => !empty($response['latest_job_id'])
+                ? (int)$response['latest_job_id']
+                : null,
+        ];
+    }
+
+    $_SESSION[$cacheKey] = [
+        'fetched_at' => time(),
+        'summary' => $fallback,
+    ];
+
+    return $fallback;
+}
+
+function forgetMessageNotificationSummary()
+{
+    unset($_SESSION['message_notification_summary']);
+}
+
 function requireRole($roles)
 {
     requireLogin();
@@ -157,7 +212,7 @@ function supportEmail()
     return $frontendSupportEmail;
 }
 
-function apiRequest($method, $endpoint, $data = null)
+function apiRequest($method, $endpoint, $data = null, $timeout = null)
 {
     global $apiBase, $jwtToken, $apiTimeout, $verifyApiSsl;
 
@@ -167,8 +222,12 @@ function apiRequest($method, $endpoint, $data = null)
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($ch, CURLOPT_TIMEOUT, max(20, $apiTimeout));
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    $requestTimeout = $timeout === null
+        ? max(20, $apiTimeout)
+        : max(2, (int)$timeout);
+
+    curl_setopt($ch, CURLOPT_TIMEOUT, $requestTimeout);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(10, $requestTimeout));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$verifyApiSsl);
     curl_setopt($ch, CURLOPT_COOKIE, session_name() . '=' . session_id());
 

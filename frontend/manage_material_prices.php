@@ -81,22 +81,22 @@ include 'header.php';
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="save">
                 <input type="hidden" name="id" value="<?= (int)($editing['id'] ?? 0) ?>">
-                <div class="mp-field"><label>Material name</label><input name="name" value="<?= htmlspecialchars($editing['name'] ?? '') ?>" placeholder="Example: 1/2 inch drywall panel" required></div>
+                <div class="mp-field"><label for="mp_name">Material name</label><input id="mp_name" name="name" value="<?= htmlspecialchars($editing['name'] ?? '') ?>" placeholder="Example: 1/2 inch drywall panel" required></div>
                 <div class="mp-pair">
-                    <div class="mp-field"><label>Category</label><input name="category" value="<?= htmlspecialchars($editing['category'] ?? '') ?>" placeholder="drywall"></div>
-                    <div class="mp-field"><label>ZIP (blank = global)</label><input name="zip_code" maxlength="10" value="<?= htmlspecialchars($editing['zip_code'] ?? '') ?>" placeholder="80202"></div>
+                    <div class="mp-field"><label for="mp_category">Category</label><input id="mp_category" name="category" value="<?= htmlspecialchars($editing['category'] ?? '') ?>" placeholder="drywall"></div>
+                    <div class="mp-field"><label for="mp_zip_code">ZIP (blank = global)</label><input id="mp_zip_code" name="zip_code" maxlength="10" value="<?= htmlspecialchars($editing['zip_code'] ?? '') ?>" placeholder="80202"></div>
                 </div>
                 <div class="mp-pair">
-                    <div class="mp-field"><label>Unit</label><input name="unit" value="<?= htmlspecialchars($editing['unit'] ?? 'each') ?>" required></div>
-                    <div class="mp-field"><label>Observed unit price</label><input type="number" min="0" max="999999.99" step="0.01" name="unit_price" value="<?= htmlspecialchars($editing['unit_price'] ?? '') ?>" required></div>
+                    <div class="mp-field"><label for="mp_unit">Unit</label><input id="mp_unit" name="unit" value="<?= htmlspecialchars($editing['unit'] ?? 'each') ?>" required></div>
+                    <div class="mp-field"><label for="mp_unit_price">Observed unit price</label><input id="mp_unit_price" type="number" min="0" max="999999.99" step="0.01" name="unit_price" value="<?= htmlspecialchars($editing['unit_price'] ?? '') ?>" required></div>
                 </div>
                 <div class="mp-pair">
-                    <div class="mp-field"><label>Low unit price</label><input type="number" min="0" max="999999.99" step="0.01" name="low_unit_price" value="<?= htmlspecialchars($editing['low_unit_price'] ?? '') ?>"></div>
-                    <div class="mp-field"><label>High unit price</label><input type="number" min="0" max="999999.99" step="0.01" name="high_unit_price" value="<?= htmlspecialchars($editing['high_unit_price'] ?? '') ?>"></div>
+                    <div class="mp-field"><label for="mp_low_unit_price">Low unit price</label><input id="mp_low_unit_price" type="number" min="0" max="999999.99" step="0.01" name="low_unit_price" value="<?= htmlspecialchars($editing['low_unit_price'] ?? '') ?>"></div>
+                    <div class="mp-field"><label for="mp_high_unit_price">High unit price</label><input id="mp_high_unit_price" type="number" min="0" max="999999.99" step="0.01" name="high_unit_price" value="<?= htmlspecialchars($editing['high_unit_price'] ?? '') ?>"></div>
                 </div>
-                <div class="mp-field"><label>Source / store</label><input name="source_name" value="<?= htmlspecialchars($editing['source_name'] ?? '') ?>" placeholder="Store or supplier"></div>
-                <div class="mp-field"><label>Source URL</label><input type="url" name="source_url" value="<?= htmlspecialchars($editing['source_url'] ?? '') ?>" placeholder="https://..."></div>
-                <div class="mp-field"><label>Price observed date</label><input type="date" name="observed_at" value="<?= htmlspecialchars(substr((string)($editing['observed_at'] ?? ''), 0, 10)) ?>"></div>
+                <div class="mp-field"><label for="mp_source_name">Source / store</label><input id="mp_source_name" name="source_name" value="<?= htmlspecialchars($editing['source_name'] ?? '') ?>" placeholder="Store or supplier"></div>
+                <div class="mp-field"><label for="mp_source_url">Source URL</label><input id="mp_source_url" type="url" name="source_url" value="<?= htmlspecialchars($editing['source_url'] ?? '') ?>" placeholder="https://..."></div>
+                <div class="mp-field"><label for="mp_observed_at">Price observed date</label><input id="mp_observed_at" type="date" name="observed_at" value="<?= htmlspecialchars(substr((string)($editing['observed_at'] ?? ''), 0, 10)) ?>"></div>
                 <div class="mp-field"><label class="mp-check"><input type="checkbox" name="active" value="1" <?= !isset($editing['active']) || !empty($editing['active']) ? 'checked' : '' ?>> Active for new estimates</label></div>
                 <button type="submit" class="mp-save"><?= $editing ? 'Update Price' : 'Add to Catalog' ?></button>
                 <?php if ($editing) { ?><a href="manage_material_prices.php">Cancel edit</a><?php } ?>
@@ -106,7 +106,7 @@ include 'header.php';
         <section class="mp-card">
             <div style="display:flex;justify-content:space-between;gap:15px;align-items:end;flex-wrap:wrap">
                 <div><h2 style="margin-bottom:4px">Catalog</h2><span class="mp-source"><?= (int)($response['total'] ?? count($prices)) ?> price records</span></div>
-                <form method="GET" style="display:flex;gap:8px;align-items:end"><div><label style="display:block;font-weight:800">Search</label><input name="search" value="<?= htmlspecialchars($search) ?>"></div><button type="submit" style="width:auto">Find</button></form>
+                <form method="GET" style="display:flex;gap:8px;align-items:end"><div><label for="mp_search" style="display:block;font-weight:800">Search</label><input id="mp_search" name="search" value="<?= htmlspecialchars($search) ?>"></div><button type="submit" style="width:auto">Find</button></form>
             </div>
 
             <?php if (!$prices) { ?><p style="padding:25px 0">No material prices are stored yet. Add the first verified source on the left.</p><?php } ?>
@@ -116,7 +116,7 @@ include 'header.php';
                     <?php foreach ($prices as $price) { ?>
                         <tr>
                             <td><strong><?= htmlspecialchars($price['name'] ?? '') ?></strong><br><span class="mp-source"><?= htmlspecialchars($price['category'] ?? 'uncategorized') ?> &bull; per <?= htmlspecialchars($price['unit'] ?? 'each') ?></span></td>
-                            <td><?= htmlspecialchars($price['zip_code'] ?: 'All ZIP codes') ?><br><span class="mp-source"><?= htmlspecialchars($price['source_name'] ?? 'Source not listed') ?><?= !empty($price['observed_at']) ? ' &bull; ' . htmlspecialchars(substr($price['observed_at'], 0, 10)) : '' ?></span></td>
+                            <td><?= htmlspecialchars(($price['zip_code'] ?? '') ?: 'All ZIP codes') ?><br><span class="mp-source"><?= htmlspecialchars($price['source_name'] ?? 'Source not listed') ?><?= !empty($price['observed_at']) ? ' &bull; ' . htmlspecialchars(substr($price['observed_at'], 0, 10)) : '' ?></span></td>
                             <td class="num"><?= mpMoney($price['low_unit_price'] ?? $price['unit_price'] ?? 0) ?>–<?= mpMoney($price['high_unit_price'] ?? $price['unit_price'] ?? 0) ?></td>
                             <td class="<?= !empty($price['active']) ? 'mp-active' : 'mp-inactive' ?>"><?= !empty($price['active']) ? 'Active' : 'Inactive' ?></td>
                             <td><div class="mp-actions"><a href="manage_material_prices.php?edit=<?= (int)$price['id'] ?>">Edit</a><form method="POST" onsubmit="return confirm('Remove this material price record?');"><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$price['id'] ?>"><button class="mp-delete" type="submit">Delete</button></form></div></td>

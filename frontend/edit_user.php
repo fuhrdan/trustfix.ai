@@ -206,7 +206,11 @@ $user = apiRequest(
     "/admin/users/$userId"
 );
 
-if (!is_array($user) || isset($user['error']))
+if (
+    !is_array($user)
+    || (int)($user['_http_code'] ?? 500) >= 400
+    || isset($user['error'])
+)
 {
     renderFrontendError(404, 'User Not Found', 'This user account could not be loaded.');
 }
@@ -237,9 +241,10 @@ include 'header.php';
 
     <input type="hidden" name="action" value="update_user">
 
-    <label>Name</label><br>
+    <label for="admin_user_name">Name</label><br>
 
     <input
+        id="admin_user_name"
         type="text"
         name="name"
         required
@@ -248,9 +253,10 @@ include 'header.php';
 
     <br><br>
 
-    <label>Email</label><br>
+    <label for="admin_user_email">Email</label><br>
 
     <input
+        id="admin_user_email"
         type="email"
         name="email"
         required
@@ -259,9 +265,10 @@ include 'header.php';
 
     <br><br>
 
-    <label>Phone</label><br>
+    <label for="admin_user_phone">Phone</label><br>
 
     <input
+        id="admin_user_phone"
         type="text"
         name="phone"
         value="<?= htmlspecialchars($user['phone'] ?? '') ?>"
@@ -269,9 +276,10 @@ include 'header.php';
 
     <br><br>
 
-    <label>Address</label><br>
+    <label for="admin_user_address">Address</label><br>
 
     <input
+        id="admin_user_address"
         type="text"
         name="address"
         value="<?= htmlspecialchars($user['address'] ?? '') ?>"
@@ -279,9 +287,9 @@ include 'header.php';
 
     <br><br>
 
-    <label>Role</label><br>
+    <label for="admin_user_role">Role</label><br>
 
-    <select name="role">
+    <select id="admin_user_role" name="role">
 
         <option
             value="customer"
@@ -424,14 +432,16 @@ include 'header.php';
 
 <?php else: ?>
 
-    <table border="1" cellpadding="8" style="width:100%; border-collapse:collapse;">
+    <div class="tf-table-wrap">
+    <table>
+        <caption class="tf-sr-only">Contractor documents for this user</caption>
         <tr>
-            <th>Document</th>
-            <th>File</th>
-            <th>Status</th>
-            <th>Uploaded</th>
-            <th>Notes</th>
-            <th>Action</th>
+            <th scope="col">Document</th>
+            <th scope="col">File</th>
+            <th scope="col">Status</th>
+            <th scope="col">Uploaded</th>
+            <th scope="col">Notes</th>
+            <th scope="col">Action</th>
         </tr>
 
         <?php foreach ($documents as $document): ?>
@@ -449,7 +459,7 @@ include 'header.php';
 
                 <td>
                     <?php if (!empty($documentUrl)): ?>
-                        <a href="<?= htmlspecialchars($documentUrl) ?>" target="_blank">
+                        <a href="<?= htmlspecialchars($documentUrl) ?>" target="_blank" rel="noopener noreferrer">
                             <?= htmlspecialchars($document['original_filename'] ?? 'View Document') ?>
                         </a>
                     <?php else: ?>
@@ -475,7 +485,9 @@ include 'header.php';
                         <input type="hidden" name="action" value="update_document_status">
                         <input type="hidden" name="document_id" value="<?= $documentId ?>">
                         <input type="hidden" name="verification_status" value="1">
+                        <label class="tf-sr-only" for="approve_notes_<?= $documentId ?>">Approval notes</label>
                         <textarea
+                            id="approve_notes_<?= $documentId ?>"
                             name="notes"
                             rows="2"
                             placeholder="Optional admin notes"
@@ -492,7 +504,9 @@ include 'header.php';
                         <input type="hidden" name="action" value="update_document_status">
                         <input type="hidden" name="document_id" value="<?= $documentId ?>">
                         <input type="hidden" name="verification_status" value="2">
+                        <label class="tf-sr-only" for="deny_notes_<?= $documentId ?>">Reason for denial</label>
                         <input
+                            id="deny_notes_<?= $documentId ?>"
                             type="text"
                             name="notes"
                             value="<?= htmlspecialchars($document['notes'] ?? '') ?>"
@@ -513,6 +527,7 @@ include 'header.php';
 
         <?php endforeach; ?>
     </table>
+    </div>
 
 <?php endif; ?>
 

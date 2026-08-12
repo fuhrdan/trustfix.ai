@@ -12,7 +12,7 @@ if (!is_array($jobs) || isset($jobs['error']) || isset($jobs['message'])) {
 }
 
 $role = $user['role'] ?? ($_SESSION['user']['role'] ?? '');
-$isContractor = in_array($role, ['handyman', 'company', 'admin'], true);
+$isContractorRole = in_array($role, ['handyman', 'company', 'admin'], true);
 
 function jobText($value, $fallback = 'Not provided')
 {
@@ -70,7 +70,7 @@ $buckets = [
         'jobs' => [],
     ],
     'waiting' => [
-        'title' => $isContractor ? 'Waiting / Open' : 'Posted / Waiting',
+        'title' => $isContractorRole ? 'Waiting / Open' : 'Posted / Waiting',
         'statuses' => ['posted', 'requested'],
         'jobs' => [],
     ],
@@ -149,7 +149,7 @@ include 'header.php';
 </div>
 
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:25px;">
-    <?php if ($isContractor): ?>
+    <?php if ($isContractorRole): ?>
         <a class="tf-button tf-button-success" href="available_jobs.php">Find Available Jobs</a>
     <?php else: ?>
         <a class="tf-button" href="add_job.php">Post New Job</a>
@@ -178,6 +178,8 @@ include 'header.php';
                     $status = $job['status'] ?? '';
                     $customer = $job['customer']['name'] ?? '';
                     $contractor = $job['handyman']['name'] ?? '';
+                    $isAssignedContractor = (int)($job['handyman_id'] ?? 0) === (int)($user['id'] ?? 0);
+                    $isJobCustomer = (int)($job['customer_id'] ?? 0) === (int)($user['id'] ?? 0);
                     $images = $job['images'] ?? [];
                     $firstImage = $images[0]['image_path'] ?? '';
                 ?>
@@ -248,7 +250,7 @@ include 'header.php';
                             Smart Estimate
                         </a>
 
-                        <?php if ($isContractor && $status === 'accepted') { ?>
+                        <?php if ($isAssignedContractor && $status === 'accepted') { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">
@@ -259,7 +261,7 @@ include 'header.php';
                             </form>
                         <?php } ?>
 
-                        <?php if ($isContractor && $status === 'in_progress') { ?>
+                        <?php if ($isAssignedContractor && $status === 'in_progress') { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">
@@ -270,7 +272,7 @@ include 'header.php';
                             </form>
                         <?php } ?>
 
-                        <?php if (!$isContractor && in_array($status, ['posted', 'requested', 'accepted', 'scheduled'], true)) { ?>
+                        <?php if ($isJobCustomer && in_array($status, ['posted', 'requested', 'accepted', 'scheduled'], true)) { ?>
                             <form method="POST" action="job_status_action.php" style="margin:0;" onsubmit="return confirm('Cancel this job?');">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="job_id" value="<?= $jobId ?>">

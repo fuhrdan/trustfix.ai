@@ -21,7 +21,7 @@ $result = apiRequest('POST', '/jobs/' . $jobId . '/accept');
 
 if (($result['_http_code'] ?? 500) >= 200 && ($result['_http_code'] ?? 500) < 300) {
     $_SESSION['flash_success'] = 'Job accepted successfully. It has been moved to My Jobs.';
-    header('Location: list_jobs.php');
+    header('Location: my_jobs.php');
     exit;
 }
 

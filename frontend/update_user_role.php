@@ -5,8 +5,18 @@ requireRole('admin');
 
 requireValidCsrf();
 
+$returnQuery = trim(substr((string)($_POST['return_q'] ?? ''), 0, 255));
+$returnPage = max(1, (int)($_POST['return_page'] ?? 1));
+$returnParams = ['page' => $returnPage];
+
+if ($returnQuery !== '') {
+    $returnParams['q'] = $returnQuery;
+}
+
+$returnUrl = 'list_users.php?' . http_build_query($returnParams);
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: list_users.php');
+    header('Location: ' . $returnUrl);
     exit;
 }
 
@@ -22,15 +32,19 @@ $allowedRoles = [
 
 if ($userId <= 0 || !in_array($role, $allowedRoles, true)) {
     $_SESSION['flash_error'] = 'Invalid user role update.';
-    header('Location: list_users.php');
+    header('Location: ' . $returnUrl);
     exit;
 }
 
 $currentUser = apiRequest('GET', "/admin/users/$userId");
 
-if (!is_array($currentUser) || isset($currentUser['error'])) {
+if (
+    !is_array($currentUser)
+    || (int)($currentUser['_http_code'] ?? 500) >= 400
+    || isset($currentUser['error'])
+) {
     $_SESSION['flash_error'] = 'Unable to load user before updating role.';
-    header('Location: list_users.php');
+    header('Location: ' . $returnUrl);
     exit;
 }
 
@@ -51,8 +65,8 @@ $response = apiRequest(
 if (($response['success'] ?? false) === true) {
     $_SESSION['flash_success'] = 'User role updated.';
 } else {
-    $_SESSION['flash_error'] = 'User role update failed.';
+    $_SESSION['flash_error'] = apiMessage($response, 'User role update failed.');
 }
 
-header('Location: list_users.php');
+header('Location: ' . $returnUrl);
 exit;

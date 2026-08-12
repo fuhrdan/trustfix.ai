@@ -2,19 +2,23 @@
 require 'config.php';
 requireLogin();
 $currentUser = apiRequest('GET', '/me');
-include 'header.php';
 
 $jobId = (int)($_GET['id'] ?? 0);
 
 if (!$jobId) {
-    die('Missing job ID');
+    renderFrontendError(400, 'Missing Job', 'Choose a job before opening its workspace.');
 }
 
 $job = apiRequest('GET', '/jobs/' . $jobId . '/workspace');
 
 if (!is_array($job) || !empty($job['error'])) {
-    die('Job workspace not found or you do not have permission to view it.');
+    renderFrontendError(404, 'Job Workspace Not Found', 'This job is unavailable or you do not have permission to view it.');
 }
+
+// The workspace request marks incoming messages as read. Refresh the bell now.
+forgetMessageNotificationSummary();
+$pageTitle = 'Job Workspace';
+include 'header.php';
 
 $messages = $job['messages'] ?? [];
 $activities = $job['activities'] ?? [];

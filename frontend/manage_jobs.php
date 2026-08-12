@@ -5,36 +5,29 @@ requireRole('admin');
 
 $status = $_GET['status'] ?? '';
 $q = trim($_GET['q'] ?? '');
+$page = max(1, (int)($_GET['page'] ?? 1));
 
-$queryParts = [];
+$queryParts = ['page' => $page];
 
 if ($status !== '') {
     $queryParts['status'] = $status;
 }
 
+if ($q !== '') {
+    $queryParts['q'] = $q;
+}
+
 $result = apiRequest(
-    'GET',
-    '/admin/jobs' . (!empty($queryParts) ? '?' . http_build_query($queryParts) : '')
+    'GET', '/admin/jobs?' . http_build_query($queryParts)
 );
 
-$jobs = $result['data'] ?? [];
-
-if ($q !== '') {
-    $jobs = array_values(array_filter($jobs, function ($job) use ($q) {
-        $haystack = strtolower(implode(' ', [
-            $job['id'] ?? '',
-            $job['status'] ?? '',
-            $job['address'] ?? '',
-            $job['initial_description'] ?? '',
-            $job['customer']['name'] ?? '',
-            $job['customer']['email'] ?? '',
-            $job['handyman']['name'] ?? '',
-            $job['handyman']['email'] ?? '',
-        ]));
-
-        return str_contains($haystack, strtolower($q));
-    }));
-}
+$jobs = is_array($result['data'] ?? null) ? $result['data'] : [];
+$currentPage = max(1, (int)($result['current_page'] ?? $page));
+$lastPage = max(1, (int)($result['last_page'] ?? 1));
+$totalJobs = max(0, (int)($result['total'] ?? count($jobs)));
+$loadError = !isset($result['data'])
+    ? apiMessage($result, 'Unable to load jobs right now.')
+    : '';
 
 $statuses = [
     '' => 'All Statuses',
@@ -74,12 +67,40 @@ function adminJobAddress($job)
     return $job['address'] ?? '';
 }
 
+function adminJobListUrl($targetPage, $q, $status)
+{
+    $params = ['page' => max(1, (int)$targetPage)];
+
+    if ($q !== '') {
+        $params['q'] = $q;
+    }
+
+    if ($status !== '') {
+        $params['status'] = $status;
+    }
+
+    return 'manage_jobs.php?' . http_build_query($params);
+}
+
 $pageTitle = 'Manage Jobs';
+$pageContainerClass = 'tf-container-wide';
 include 'header.php';
 
 ?>
 
-<h1>Manage Jobs</h1>
+<div class="tf-page-heading">
+    <div>
+        <h1>Manage Jobs</h1>
+        <p class="tf-page-intro">Search every job, review assignments, and manage project records.</p>
+    </div>
+    <span class="tf-count-badge"><?= $totalJobs ?> job<?= $totalJobs === 1 ? '' : 's' ?></span>
+</div>
+
+<?php if ($loadError !== ''): ?>
+    <div class="tf-alert tf-alert-error" role="alert">
+        <?= htmlspecialchars($loadError, ENT_QUOTES, 'UTF-8') ?>
+    </div>
+<?php endif; ?>
 
 <form method="GET" style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
     <label class="tf-sr-only" for="admin_job_search">Search jobs</label>
@@ -113,18 +134,21 @@ include 'header.php';
 <div class="tf-table-wrap">
 <table>
     <caption class="tf-sr-only">All TrustFix jobs</caption>
-    <tr>
-        <th>ID</th>
-        <th>Status</th>
-        <th>Customer</th>
-        <th>Contractor</th>
-        <th>Address</th>
-        <th>Description</th>
-        <th>Price</th>
-        <th>Created</th>
-        <th>Edit</th>
-        <th>Delete</th>
-    </tr>
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Status</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Contractor</th>
+            <th scope="col">Address</th>
+            <th scope="col">Description</th>
+            <th scope="col">Price</th>
+            <th scope="col">Created</th>
+            <th scope="col">Edit</th>
+            <th scope="col">Delete</th>
+        </tr>
+    </thead>
+    <tbody>
 
     <?php if (empty($jobs)): ?>
         <tr>
@@ -179,6 +203,9 @@ include 'header.php';
                 >
                     <?= csrfField() ?>
                     <input type="hidden" name="job_id" value="<?= (int)($job['id'] ?? 0) ?>">
+                    <input type="hidden" name="return_q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="return_status" value="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="return_page" value="<?= $currentPage ?>">
                     <button type="submit" style="color:red;width:auto;margin:0;">
                         Delete
                     </button>
@@ -186,7 +213,27 @@ include 'header.php';
             </td>
         </tr>
     <?php endforeach; ?>
+    </tbody>
 </table>
 </div>
+
+<?php if ($lastPage > 1): ?>
+    <nav class="tf-pagination" aria-label="Job list pages">
+        <div class="tf-pagination-links">
+            <?php if ($currentPage > 1): ?>
+                <a class="tf-button tf-button-secondary" href="<?= htmlspecialchars(adminJobListUrl($currentPage - 1, $q, $status), ENT_QUOTES, 'UTF-8') ?>">Previous</a>
+            <?php endif; ?>
+
+            <span>Page <?= $currentPage ?> of <?= $lastPage ?></span>
+
+            <?php if ($currentPage < $lastPage): ?>
+                <a class="tf-button tf-button-secondary" href="<?= htmlspecialchars(adminJobListUrl($currentPage + 1, $q, $status), ENT_QUOTES, 'UTF-8') ?>">Next</a>
+            <?php endif; ?>
+        </div>
+        <span class="tf-muted">
+            Showing <?= (int)($result['from'] ?? 0) ?>–<?= (int)($result['to'] ?? 0) ?> of <?= $totalJobs ?>
+        </span>
+    </nav>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>

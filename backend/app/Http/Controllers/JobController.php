@@ -141,8 +141,13 @@ class JobController extends Controller
 
         $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images', 'messages', 'activities', 'estimate']);
 
-        if ($user->role == 'handyman') {
+        if ($user->role === 'handyman') {
             $query->where('handyman_id', $user->id);
+        } elseif (in_array($user->role, ['company', 'admin'], true)) {
+            $query->where(function ($jobQuery) use ($user) {
+                $jobQuery->where('customer_id', $user->id)
+                    ->orWhere('handyman_id', $user->id);
+            });
         } else {
             $query->where('customer_id', $user->id);
         }
@@ -158,7 +163,7 @@ class JobController extends Controller
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
-        $isAvailableForHandyman = $user->role == 'handyman'
+        $isAvailableForHandyman = in_array($user->role, ['handyman', 'company'], true)
             && !$job->handyman_id
             && in_array($job->status, ['posted', 'requested'], true);
         $isAdmin = $user->role == 'admin';

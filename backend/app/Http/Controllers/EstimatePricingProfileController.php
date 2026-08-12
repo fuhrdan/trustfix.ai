@@ -48,7 +48,7 @@ class EstimatePricingProfileController extends Controller
 
     private function authorizeRole(?string $role): void
     {
-        if (!in_array($role, ['handyman', 'admin'], true)) {
+        if (!in_array($role, ['handyman', 'company', 'admin'], true)) {
             abort(response()->json(['message' => 'Contractor or administrator access is required.'], 403));
         }
     }

@@ -8,6 +8,8 @@ use App\Models\ContractorDocument;
 use App\Models\Dispute;
 use App\Models\Document;
 use App\Models\Job;
+use App\Models\JobActivity;
+use App\Models\JobMessage;
 use App\Models\ProfileClaim;
 use App\Models\Report;
 use App\Models\Review;
@@ -101,6 +103,20 @@ class AdminDashboardController extends Controller
     {
         $user = User::findOrFail($id);
 
+        if ((int) auth('api')->id() === (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot delete the administrator account you are currently using.',
+            ], 422);
+        }
+
+        if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'TrustFix must keep at least one administrator account.',
+            ], 422);
+        }
+
         $user->delete();
 
         return response()->json([
@@ -126,7 +142,12 @@ class AdminDashboardController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
             'phone' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
             'role' => [
@@ -139,6 +160,17 @@ class AdminDashboardController extends Controller
                 ])
             ]
         ]);
+
+        if (
+            $user->role === 'admin'
+            && $validated['role'] !== 'admin'
+            && User::where('role', 'admin')->count() <= 1
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'TrustFix must keep at least one administrator account.',
+            ], 422);
+        }
 
         $user->update($validated);
 
@@ -255,6 +287,7 @@ class AdminDashboardController extends Controller
     public function jobs(Request $request)
     {
         $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
             'status' => [
                 'nullable',
                 Rule::in([
@@ -272,7 +305,37 @@ class AdminDashboardController extends Controller
             'handyman_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $query = Job::with(['customer', 'handyman', 'changeOrders', 'disputes']);
+        $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes']);
+
+        if (!empty($validated['q'])) {
+            $search = $validated['q'];
+
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('status', 'like', '%' . $search . '%')
+                    ->orWhere('address', 'like', '%' . $search . '%')
+                    ->orWhere('initial_description', 'like', '%' . $search . '%')
+                    ->orWhereHas('customer', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('handyman', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('property', function ($propertyQuery) use ($search) {
+                        $propertyQuery->where('street_address', 'like', '%' . $search . '%')
+                            ->orWhere('address_line_2', 'like', '%' . $search . '%')
+                            ->orWhere('apartment', 'like', '%' . $search . '%')
+                            ->orWhere('city', 'like', '%' . $search . '%')
+                            ->orWhere('state', 'like', '%' . $search . '%')
+                            ->orWhere('zip', 'like', '%' . $search . '%');
+                    });
+
+                if (ctype_digit($search)) {
+                    $subQuery->orWhere('id', (int) $search);
+                }
+            });
+        }
 
         if (!empty($validated['status'])) {
             $query->where('status', $validated['status']);
@@ -287,6 +350,95 @@ class AdminDashboardController extends Controller
         }
 
         return response()->json($query->latest()->paginate(20));
+    }
+
+    public function getJob($id)
+    {
+        return response()->json(
+            Job::with([
+                'customer',
+                'handyman',
+                'property',
+                'images',
+                'changeOrders',
+                'disputes',
+            ])->findOrFail($id)
+        );
+    }
+
+    public function updateJob(Request $request, $id)
+    {
+        $job = Job::findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                Rule::in([
+                    'posted',
+                    'requested',
+                    'accepted',
+                    'in_progress',
+                    'change_requested',
+                    'completed',
+                    'cancelled',
+                    'disputed',
+                ]),
+            ],
+            'address' => ['required', 'string', 'max:500'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'initial_description' => ['required', 'string', 'max:5000'],
+            'agreed_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'onsite_contact_name' => ['nullable', 'string', 'max:255'],
+            'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
+            'skills' => ['nullable', 'array'],
+            'skills.*' => ['string', 'max:100'],
+        ]);
+
+        $previousStatus = $job->status;
+        $job->update($validated);
+
+        if ($previousStatus !== $job->status) {
+            $admin = auth('api')->user();
+            $description = ($admin?->name ?? 'A TrustFix administrator')
+                . ' changed the job status from '
+                . str_replace('_', ' ', $previousStatus)
+                . ' to '
+                . str_replace('_', ' ', $job->status)
+                . '.';
+
+            JobActivity::create([
+                'job_id' => $job->id,
+                'user_id' => $admin?->id,
+                'activity_type' => 'job_status_changed',
+                'description' => $description,
+            ]);
+
+            JobMessage::create([
+                'job_id' => $job->id,
+                'sender_user_id' => null,
+                'message' => $description,
+                'message_type' => 'system',
+            ]);
+
+            $this->notifications->jobStatusChanged(
+                $job,
+                $job->status,
+                $admin
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'job' => $job->fresh([
+                'customer',
+                'handyman',
+                'property',
+                'images',
+                'changeOrders',
+                'disputes',
+            ]),
+        ]);
     }
 
     public function activity()
