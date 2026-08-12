@@ -29,6 +29,8 @@
             'manage_material_prices.php' => 'Material Prices',
             'estimate_training_data.php' => 'Estimate Training Data',
             'estimate_accuracy.php' => 'Estimate Accuracy',
+            'support.php' => 'Support',
+            'admin_operations.php' => 'Operations & Support',
         ];
         $resolvedPageTitle = $pageTitle
             ?? ($pageTitles[$scriptName] ?? 'TrustFix');
@@ -76,18 +78,20 @@
                 ['href' => 'manage_material_prices.php', 'label' => 'Material Prices'],
                 ['href' => 'estimate_training_data.php', 'label' => 'ML Data'],
                 ['href' => 'estimate_accuracy.php', 'label' => 'Estimate Accuracy'],
+                ['href' => 'admin_operations.php', 'label' => 'Operations & Support'],
             ];
         }
 
         $menuSections['Account'] = [
             ['href' => 'edit_profile.php', 'label' => 'Profile'],
+            ['href' => 'support.php', 'label' => 'Support'],
         ];
         $mainClasses = trim('container ' . ($pageContainerClass ?? ''));
     ?>
     <meta charset="utf-8">
     <title><?= htmlspecialchars($documentTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="TF-Style.css?v=20260812-sticky-nav">
+    <link rel="stylesheet" href="TF-Style.css?v=20260812-operations">
 </head>
 
 <body>

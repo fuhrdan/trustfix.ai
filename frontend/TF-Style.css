@@ -1150,3 +1150,562 @@ table th
         grid-template-columns: 1fr;
     }
 }
+
+/* Operations, audit, and support */
+
+.tf-section-block
+{
+    margin-top: 42px;
+}
+
+.tf-section-heading
+{
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 0 0 18px;
+}
+
+.tf-section-heading h2,
+.tf-section-heading p
+{
+    margin: 0;
+}
+
+.tf-section-heading p
+{
+    margin-top: 5px;
+    color: #52616b;
+}
+
+.tf-safety-notice
+{
+    margin-bottom: 22px;
+    padding: 16px 18px;
+    border: 1px solid #f2bd63;
+    border-left: 5px solid #c2410c;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #7c2d12;
+}
+
+.tf-safety-notice strong
+{
+    display: block;
+}
+
+.tf-support-layout
+{
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.8fr);
+    gap: 22px;
+    align-items: start;
+}
+
+.tf-support-form-card
+{
+    padding: clamp(22px, 3vw, 32px);
+}
+
+.tf-form-grid
+{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tf-response-guide
+{
+    position: sticky;
+    top: 92px;
+    background: linear-gradient(150deg, #07121a, #102b3b);
+    color: #ffffff;
+}
+
+.tf-response-guide h2,
+.tf-response-guide .tf-muted
+{
+    color: #ffffff;
+}
+
+.tf-response-guide .tf-muted
+{
+    opacity: 0.78;
+}
+
+.tf-procedure-list
+{
+    display: grid;
+    gap: 18px;
+    margin: 22px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tf-procedure-list li
+{
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.tf-procedure-list li > span
+{
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 50%;
+    background: rgba(78, 168, 222, 0.17);
+    font-weight: 800;
+}
+
+.tf-procedure-list strong,
+.tf-procedure-list small
+{
+    display: block;
+}
+
+.tf-procedure-list small
+{
+    margin-top: 3px;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+.tf-support-case-list,
+.tf-support-admin-list
+{
+    display: grid;
+    gap: 16px;
+}
+
+.tf-support-case,
+.tf-support-admin-card
+{
+    padding: 22px;
+    border: 1px solid var(--tf-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(31, 41, 51, 0.05);
+}
+
+.tf-support-case > p,
+.tf-support-admin-card > p
+{
+    overflow-wrap: anywhere;
+}
+
+.tf-support-case-heading
+{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.tf-support-case-heading h3
+{
+    margin: 4px 0 0;
+}
+
+.tf-case-number,
+.tf-eyebrow
+{
+    color: #2d6cdf;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tf-status-group
+{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.tf-status-pill
+{
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tf-status-normal
+{
+    background: #dcfce7;
+    color: #166534;
+}
+
+.tf-status-high
+{
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tf-status-urgent
+{
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.tf-status-neutral
+{
+    background: #e8eef5;
+    color: #334155;
+}
+
+.tf-case-meta
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 18px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e8eef5;
+    color: #52616b;
+    font-size: 13px;
+}
+
+.tf-operations-grid
+{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.tf-metric-card,
+.tf-monitor-card
+{
+    padding: 20px;
+    border: 1px solid var(--tf-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(31, 41, 51, 0.05);
+}
+
+.tf-metric-card > p
+{
+    min-height: 48px;
+    color: #52616b;
+}
+
+.tf-metric-heading
+{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.tf-metric-heading h3
+{
+    margin: 0;
+    font-size: 16px;
+}
+
+.tf-health-dot
+{
+    width: 11px;
+    height: 11px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #64748b;
+    box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.14);
+}
+
+.tf-health-dot.is-healthy
+{
+    background: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.14);
+}
+
+.tf-health-dot.is-warning
+{
+    background: #d97706;
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.14);
+}
+
+.tf-health-dot.is-danger
+{
+    background: #dc2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.14);
+}
+
+.tf-metric-value
+{
+    display: block;
+    margin-top: 15px;
+    color: #101820;
+    font-size: clamp(22px, 2.2vw, 29px);
+    line-height: 1.15;
+}
+
+.tf-compact-details
+{
+    display: grid;
+    gap: 7px;
+    margin: 0;
+}
+
+.tf-compact-details div
+{
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 7px;
+    border-top: 1px solid #edf2f7;
+}
+
+.tf-compact-details dt
+{
+    color: #64748b;
+}
+
+.tf-compact-details dd
+{
+    margin: 0;
+    text-align: right;
+    font-weight: 700;
+}
+
+.tf-monitor-grid
+{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tf-monitor-card-heading
+{
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tf-monitor-card-heading h3
+{
+    margin: 3px 0 0;
+}
+
+.tf-monitor-url
+{
+    color: #52616b;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+}
+
+.tf-monitor-stats
+{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 18px 0;
+}
+
+.tf-monitor-stats span
+{
+    padding: 10px;
+    border-radius: 8px;
+    background: #f4f8fb;
+    color: #64748b;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.tf-monitor-stats strong
+{
+    display: block;
+    color: #101820;
+    font-size: 16px;
+    text-transform: none;
+}
+
+.tf-inline-error
+{
+    padding: 10px;
+    border-radius: 8px;
+    background: #fff1f2;
+    color: #9f1239;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+
+.tf-runbook-grid
+{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.tf-runbook-grid > div
+{
+    display: grid;
+    gap: 3px;
+    padding: 16px;
+    border: 1px solid var(--tf-border);
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.tf-runbook-grid span
+{
+    color: #2d6cdf;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.tf-runbook-grid small
+{
+    color: #52616b;
+}
+
+.tf-filter-bar
+{
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 18px 0;
+    padding: 15px;
+    border: 1px solid var(--tf-border);
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.tf-filter-bar > div
+{
+    min-width: 190px;
+}
+
+.tf-filter-bar .tf-filter-grow
+{
+    flex: 1 1 320px;
+}
+
+.tf-filter-bar input,
+.tf-filter-bar select,
+.tf-filter-bar button
+{
+    margin: 0;
+}
+
+.tf-filter-bar a
+{
+    padding: 10px 5px;
+}
+
+.tf-support-admin-form
+{
+    display: grid;
+    grid-template-columns: minmax(170px, 0.55fr) minmax(170px, 0.55fr) minmax(280px, 1.5fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 10px;
+    background: #f4f8fb;
+}
+
+.tf-support-admin-form select,
+.tf-support-admin-form textarea,
+.tf-support-admin-form button
+{
+    margin: 0;
+}
+
+.tf-support-admin-form textarea
+{
+    min-height: 68px;
+}
+
+.tf-audit-table
+{
+    min-width: 980px;
+    font-size: 13px;
+}
+
+.tf-audit-table code
+{
+    color: #1d4ed8;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px)
+{
+    .tf-operations-grid
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tf-support-admin-form
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tf-support-notes-field
+    {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 800px)
+{
+    .tf-support-layout,
+    .tf-monitor-grid
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .tf-response-guide
+    {
+        position: static;
+    }
+
+    .tf-runbook-grid
+    {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px)
+{
+    .tf-form-grid,
+    .tf-operations-grid,
+    .tf-support-admin-form
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .tf-support-case-heading,
+    .tf-section-heading
+    {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .tf-status-group
+    {
+        justify-content: flex-start;
+    }
+
+    .tf-monitor-stats
+    {
+        grid-template-columns: 1fr;
+    }
+}

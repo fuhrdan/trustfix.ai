@@ -28,6 +28,9 @@ use App\Http\Controllers\EstimatePricingProfileController;
 use App\Http\Controllers\MaterialPriceController;
 use App\Http\Controllers\EstimateTrainingDataController;
 use App\Http\Controllers\EstimateAccuracyController;
+use App\Http\Controllers\OperationsController;
+use App\Http\Controllers\SupportCaseController;
+use App\Http\Middleware\AdminAuditMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -48,7 +51,7 @@ Route::get('/payments/config', [PaymentController::class, 'publicConfig']);
 Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
 
 // Protected routes
-Route::middleware(['auth:api', 'account.active'])->group(function () {
+Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/me/update', [AuthController::class, 'updateMe']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -97,6 +100,9 @@ Route::middleware(['auth:api', 'account.active'])->group(function () {
     Route::post('/reports', [ReportController::class, 'store']);
     Route::get('/reports/my', [ReportController::class, 'myReports']);
 
+    Route::post('/support-cases', [SupportCaseController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('/support-cases/my', [SupportCaseController::class, 'myCases']);
+
     Route::post('/jobs/{id}/disputes', [DisputeController::class, 'store']);
     Route::get('/disputes/my', [DisputeController::class, 'myDisputes']);
 
@@ -128,6 +134,10 @@ Route::middleware(['auth:api', 'account.active'])->group(function () {
     });
 
     Route::middleware(['role:admin'])->group(function () {
+        Route::get('/admin/operations/summary', [OperationsController::class, 'summary']);
+        Route::get('/admin/audit-logs', [OperationsController::class, 'auditLogs']);
+        Route::get('/admin/support-cases', [OperationsController::class, 'supportCases']);
+        Route::patch('/admin/support-cases/{id}', [OperationsController::class, 'updateSupportCase']);
         Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
         Route::get('/admin/dashboard/activity', [AdminDashboardController::class, 'activity']);
         Route::get('/admin/users', [AdminDashboardController::class, 'users']);

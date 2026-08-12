@@ -75,13 +75,22 @@ include 'header.php';
     <?php if ($isAdmin): ?>
         <section class="tf-card">
             <h2>Administration</h2>
-            <p>Review users, jobs, approvals, materials, and estimate performance.</p>
+            <p>Review users, jobs, system health, support cases, and administrator activity.</p>
             <div class="tf-actions">
                 <a class="tf-button" href="list_users.php">Manage Users</a>
                 <a class="tf-button tf-button-secondary" href="manage_jobs.php">Manage Jobs</a>
+                <a class="tf-button tf-button-success" href="admin_operations.php">Operations &amp; Support</a>
             </div>
         </section>
     <?php endif; ?>
+
+    <section class="tf-card">
+        <h2>Help &amp; Support</h2>
+        <p>Create a tracked support case and see its response target and current status.</p>
+        <div class="tf-actions">
+            <a class="tf-button tf-button-secondary" href="support.php">Open Support</a>
+        </div>
+    </section>
 </div>
 
 <?php include 'footer.php'; ?>

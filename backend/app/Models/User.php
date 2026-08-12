@@ -206,4 +206,19 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     {
         return $this->hasOne(EstimatePricingProfile::class);
     }
+
+    public function supportCases()
+    {
+        return $this->hasMany(SupportCase::class);
+    }
+
+    public function assignedSupportCases()
+    {
+        return $this->hasMany(SupportCase::class, 'assigned_admin_id');
+    }
+
+    public function administratorAuditEvents()
+    {
+        return $this->hasMany(AdminAuditLog::class, 'admin_user_id');
+    }
 }

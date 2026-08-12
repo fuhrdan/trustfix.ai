@@ -87,4 +87,9 @@ class Job extends Model
     {
         return $this->hasOne(JobEstimate::class);
     }
+
+    public function supportCases()
+    {
+        return $this->hasMany(SupportCase::class);
+    }
 }
