@@ -23,8 +23,6 @@ The project is intentionally more than a CRUD demo. It is built around **role-ba
 
 ## Screenshots
 
-> Add the two project screenshots to `docs/images/` using the instructions in [Adding Screenshots](#adding-screenshots).
-
 <p align="center">
   <img src="docs/images/trustfix-dashboard.png" alt="TrustFix dashboard" width="900">
 </p>
