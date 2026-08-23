@@ -31,6 +31,7 @@
             'estimate_accuracy.php' => 'Estimate Accuracy',
             'support.php' => 'Support',
             'admin_operations.php' => 'Operations & Support',
+            'admin_login_security.php' => 'Login Security',
         ];
         $resolvedPageTitle = $pageTitle
             ?? ($pageTitles[$scriptName] ?? 'TrustFix');
@@ -79,6 +80,7 @@
                 ['href' => 'estimate_training_data.php', 'label' => 'ML Data'],
                 ['href' => 'estimate_accuracy.php', 'label' => 'Estimate Accuracy'],
                 ['href' => 'admin_operations.php', 'label' => 'Operations & Support'],
+                ['href' => 'admin_login_security.php', 'label' => 'Login Security'],
             ];
         }
 
@@ -91,7 +93,7 @@
     <meta charset="utf-8">
     <title><?= htmlspecialchars($documentTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="TF-Style.css?v=20260812-operations">
+    <link rel="stylesheet" href="TF-Style.css?v=20260823-login-security">
 </head>
 
 <body>

@@ -1,6 +1,7 @@
 <?php
 
 require 'config.php';
+require 'login_security_client.php';
 
 if (!empty($_SESSION['jwt_token'])) {
 
@@ -18,10 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     requireValidCsrf();
 
-    $payload = [
+    $payload = array_merge([
         'email' => $_POST['email'],
         'password' => $_POST['password']
-    ];
+    ], trustFixLoginSecurityClientContext());
 
     $result = apiRequest(
         'POST',

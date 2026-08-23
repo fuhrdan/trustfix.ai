@@ -28,6 +28,7 @@ use App\Http\Controllers\EstimatePricingProfileController;
 use App\Http\Controllers\MaterialPriceController;
 use App\Http\Controllers\EstimateTrainingDataController;
 use App\Http\Controllers\EstimateAccuracyController;
+use App\Http\Controllers\LoginSecurityController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\SupportCaseController;
 use App\Http\Middleware\AdminAuditMiddleware;
@@ -35,7 +36,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])
@@ -138,6 +139,13 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
         Route::get('/admin/audit-logs', [OperationsController::class, 'auditLogs']);
         Route::get('/admin/support-cases', [OperationsController::class, 'supportCases']);
         Route::patch('/admin/support-cases/{id}', [OperationsController::class, 'updateSupportCase']);
+
+        Route::get('/admin/login-security/summary', [LoginSecurityController::class, 'summary']);
+        Route::get('/admin/login-security/attempts', [LoginSecurityController::class, 'attempts']);
+        Route::get('/admin/login-security/blocked-ips', [LoginSecurityController::class, 'blockedIps']);
+        Route::post('/admin/login-security/blocked-ips', [LoginSecurityController::class, 'block']);
+        Route::delete('/admin/login-security/blocked-ips/{id}', [LoginSecurityController::class, 'unblock']);
+
         Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
         Route::get('/admin/dashboard/activity', [AdminDashboardController::class, 'activity']);
         Route::get('/admin/users', [AdminDashboardController::class, 'users']);

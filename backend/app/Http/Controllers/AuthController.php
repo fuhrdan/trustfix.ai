@@ -4,18 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\LifecycleNotificationService;
+use App\Services\LoginSecurityService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function __construct(
-        private readonly LifecycleNotificationService $notifications
+        private readonly LifecycleNotificationService $notifications,
+        private readonly LoginSecurityService $loginSecurity,
     ) {
     }
 
@@ -117,7 +120,53 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $attemptedUser = User::where('email', $credentials['email'])->first();
+        $clientIp = $this->loginSecurity->clientIp($request);
+        $rateKey = 'login:'.hash('sha256', $clientIp);
+
+        if (RateLimiter::tooManyAttempts($rateKey, 10)) {
+            $this->loginSecurity->recordAttempt(
+                $request,
+                $attemptedUser,
+                $credentials['email'],
+                false,
+                'rate_limited'
+            );
+
+            return response()->json([
+                'message' => 'Too many sign-in attempts. Please try again shortly.',
+                'retry_after' => RateLimiter::availableIn($rateKey),
+            ], 429);
+        }
+
+        RateLimiter::hit($rateKey, 60);
+
+        $block = $this->loginSecurity->activeBlock($clientIp);
+
+        if ($block) {
+            $this->loginSecurity->recordAttempt(
+                $request,
+                $attemptedUser,
+                $credentials['email'],
+                false,
+                'blocked_ip'
+            );
+
+            return response()->json([
+                'message' => 'Sign-in from this network is currently unavailable.',
+                'blocked_until' => $block->blocked_until,
+            ], 403);
+        }
+
         if (!$token = Auth::guard('api')->attempt($credentials)) {
+            $this->loginSecurity->recordAttempt(
+                $request,
+                $attemptedUser,
+                $credentials['email'],
+                false,
+                'invalid_credentials'
+            );
+
             return response()->json([
                 'message' => 'The email or password is incorrect.',
             ], 401);
@@ -127,6 +176,13 @@ class AuthController extends Controller
 
         if (($user->account_status ?? 'active') !== 'active') {
             Auth::guard('api')->logout();
+            $this->loginSecurity->recordAttempt(
+                $request,
+                $user,
+                $credentials['email'],
+                false,
+                'account_inactive'
+            );
 
             return response()->json([
                 'message' => 'This account is not currently active. Contact TrustFix for assistance.',
@@ -136,6 +192,13 @@ class AuthController extends Controller
         if (!$user->hasVerifiedEmail()) {
             Auth::guard('api')->logout();
             $this->notifications->emailVerification($user);
+            $this->loginSecurity->recordAttempt(
+                $request,
+                $user,
+                $credentials['email'],
+                false,
+                'email_unverified'
+            );
 
             return response()->json([
                 'message' => 'Verify your email before signing in. A new verification link has been sent.',
@@ -145,6 +208,14 @@ class AuthController extends Controller
 
         $user->last_login_at = now();
         $user->save();
+
+        $this->loginSecurity->recordAttempt(
+            $request,
+            $user,
+            $credentials['email'],
+            true,
+            'success'
+        );
 
         return response()->json([
             'user' => $user,
