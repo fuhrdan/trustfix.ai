@@ -21,6 +21,57 @@ The project is intentionally more than a CRUD demo. It is built around **role-ba
 
 ---
 
+## Production Engineering
+
+TrustFix is designed as a multi-role production application rather than a standalone CRUD demonstration. The engineering work spans application security, persistent business workflows, external integrations, deployment, administration, and ongoing support.
+
+| Area                        | Production responsibility                                                                                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Identity & access**       | JWT-backed authentication, role middleware, ownership checks, account-status controls, email verification, password recovery, and request throttling           |
+| **Business workflows**      | Customer, contractor, company, and administrator workflows with explicit job, estimate, approval, support, dispute, and review lifecycles                      |
+| **Payments**                | Stripe payment and connected-account/payout workflows with secrets kept outside source control                                                                 |
+| **Files & documents**       | Property photos, job evidence, contractor credentials, and administrative review with controlled server-side handling                                          |
+| **Data lifecycle**          | MySQL production persistence, Laravel migrations, backup expectations, and explicit production migration procedures                                            |
+| **Administrative security** | Audit logging, account controls, document approval, moderation, support, disputes, and operational oversight                                                   |
+| **Deployment**              | HTTPS, production environment separation, cached Laravel configuration/routes/views, scheduler operation, SMTP configuration, and shared-hosting compatibility |
+| **Operations & support**    | [Support escalation procedure](docs/SUPPORT_ESCALATION_PROCEDURE.md), application logging, backups, smoke testing, and post-deployment verification            |
+
+### Application Trust Boundaries
+
+```mermaid
+flowchart LR
+    USER[Customer / Contractor / Admin]
+    FRONT[PHP Frontend]
+    API[Laravel API]
+    AUTH[Authentication + Authorization]
+    DB[(MySQL)]
+    FILES[Private / Controlled Files]
+    STRIPE[Stripe]
+    MAIL[Email Provider]
+    AUDIT[Audit / Security Logs]
+
+    USER --> FRONT
+    FRONT -->|HTTPS / JSON| API
+    API --> AUTH
+    AUTH --> DB
+    API --> FILES
+    API --> STRIPE
+    API --> MAIL
+    API --> AUDIT
+```
+
+The application does not treat authentication as sufficient authorization. Protected workflows also depend on role, account state, resource ownership, and server-side validation.
+
+### Operational Principles
+
+* **Production secrets stay outside the repository.**
+* **Authorization is enforced server-side, not only through UI visibility.**
+* **Database changes go through migrations rather than manual production edits.**
+* **Uploaded documents are treated as controlled application data, not executable content.**
+* **Administrative actions should remain attributable through audit history.**
+* **Production changes include operational verification, not just successful deployment.**
+* **Support and escalation are part of the application lifecycle, not an afterthought.**
+
 ## Screenshots
 
 <p align="center">
