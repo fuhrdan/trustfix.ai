@@ -23,3 +23,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/backend/vendor/
+/backend/node_modules/
+/backend/public/build/
+/backend/public/hot/
+/backend/public/storage
+/backend/storage/*.key
+/backend/storage/pail/
