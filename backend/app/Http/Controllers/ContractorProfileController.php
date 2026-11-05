@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\PublicContractorProfileResource;
 use App\Models\ContractorProfile;
 use App\Models\ContractorDocument;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class ContractorProfileController extends Controller
             'sort' => ['nullable', Rule::in(['newest', 'oldest', 'established_oldest', 'established_newest', 'business_name', 'rating_high'])],
         ]);
 
-        $query = ContractorProfile::with(['user', 'badges'])
+        $query = ContractorProfile::with(['badges'])
             ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
                 $reviewQuery->where('is_visible', true);
             }], 'rating')
@@ -38,10 +39,7 @@ class ContractorProfileController extends Controller
                     ->orWhere('service_area', 'like', '%' . $search . '%')
                     ->orWhere('license_number', 'like', '%' . $search . '%')
                     ->orWhere('state_license', 'like', '%' . $search . '%')
-                    ->orWhere('local_license', 'like', '%' . $search . '%')
-                    ->orWhereHas('user', function ($userQuery) use ($search) {
-                        $userQuery->where('name', 'like', '%' . $search . '%');
-                    });
+                    ->orWhere('local_license', 'like', '%' . $search . '%');
             });
         }
 
@@ -77,12 +75,19 @@ class ContractorProfileController extends Controller
             default => $query->latest(),
         };
 
-        return response()->json($query->paginate(20));
+        $profiles = $query->paginate(20);
+        $profiles->setCollection(
+            $profiles->getCollection()->map(
+                fn (ContractorProfile $profile) => (new PublicContractorProfileResource($profile))->resolve($request)
+            )
+        );
+
+        return response()->json($profiles);
     }
 
     public function show($id)
     {
-        $profile = ContractorProfile::with(['user', 'badges', 'visibleReviews.customer'])
+        $profile = ContractorProfile::with(['badges', 'visibleReviews.customer'])
             ->withAvg(['visibleReviews as average_rating' => function ($reviewQuery) {
                 $reviewQuery->where('is_visible', true);
             }], 'rating')
@@ -91,7 +96,9 @@ class ContractorProfileController extends Controller
             ->where('is_public', true)
             ->findOrFail($id);
 
-        return response()->json($profile);
+        return response()->json(
+            (new PublicContractorProfileResource($profile))->resolve(request())
+        );
     }
 
     public function myProfile()
