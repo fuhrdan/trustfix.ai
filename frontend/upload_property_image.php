@@ -36,6 +36,10 @@ if (
             throw new Exception('No uploaded file received');
         }
 
+        if (($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new Exception('The selected image could not be read.');
+        }
+
         //-------------------------------------------------
         // Build CURL File
         //-------------------------------------------------

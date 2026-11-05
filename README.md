@@ -223,6 +223,10 @@ Security-related application behavior includes:
 
 No credentials, API keys, production `.env` files, or private customer data should ever be committed to this repository.
 
+### Partner identity and integration staging
+
+TrustFix includes feature-gated foundations for OpenID Connect member sign-in, scoped partner service-request APIs, HMAC-signed status webhooks, and administrator-issued one-time contractor invitations. The integration paths are disabled by default and require deliberate environment configuration and sandbox validation. See [Crane OIDC, Partner API, and Contractor Invitation Update](docs/CRANE_OIDC_PARTNER_CONTRACTOR_INTEGRATION.md).
+
 ---
 
 ## Local Development

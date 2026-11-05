@@ -298,18 +298,17 @@ class JobController extends Controller
         }
 
         $request->validate([
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:5120'
+            'images' => ['required', 'array', 'min:1', 'max:10'],
+            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120']
         ]);
 
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+        foreach ($request->file('images') as $image) {
+            $path = $image->store('jobs/' . $job->id, 'public');
 
-                JobImage::create([
-                    'job_id' => $job->id,
-                    'image_path' => $path
-                ]);
-            }
+            JobImage::create([
+                'job_id' => $job->id,
+                'image_path' => $path
+            ]);
         }
 
         $job->refresh();
@@ -349,12 +348,8 @@ public function deleteImage($jobId, $imageId)
         ], 404);
     }
 
-    // Delete file from storage
-    $filePath = storage_path('app/public/' . $image->image_path);
-
-    if (file_exists($filePath)) {
-        unlink($filePath);
-    }
+    // Delete the public-disk file using the same disk used for uploads.
+    Storage::disk('public')->delete($image->image_path);
 
     // Delete DB record
     $image->delete();

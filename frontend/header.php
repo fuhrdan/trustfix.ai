@@ -32,6 +32,8 @@
             'support.php' => 'Support',
             'admin_operations.php' => 'Operations & Support',
             'admin_login_security.php' => 'Login Security',
+            'admin_partner_integrations.php' => 'Partner Integrations',
+            'contractor_join.php' => 'Join as a Contractor',
         ];
         $resolvedPageTitle = $pageTitle
             ?? ($pageTitles[$scriptName] ?? 'TrustFix');
@@ -81,6 +83,7 @@
                 ['href' => 'estimate_accuracy.php', 'label' => 'Estimate Accuracy'],
                 ['href' => 'admin_operations.php', 'label' => 'Operations & Support'],
                 ['href' => 'admin_login_security.php', 'label' => 'Login Security'],
+                ['href' => 'admin_partner_integrations.php', 'label' => 'Partner Integrations'],
             ];
         }
 

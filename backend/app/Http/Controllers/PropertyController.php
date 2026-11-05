@@ -187,7 +187,9 @@ class PropertyController extends Controller
         $request->validate([
             'images' => [
                 'required',
-                'array'
+                'array',
+                'min:1',
+                'max:10'
             ],
             'images.*' => [
                 'required',
@@ -197,19 +199,16 @@ class PropertyController extends Controller
             ]
         ]);
 
-        if ($request->hasFile('images'))
+        foreach ($request->file('images') as $image)
         {
-            foreach ($request->file('images') as $image)
-            {
-                $path = $image->store(
-                    'properties/' . $property->id,
-                    'public'
-                );
+            $path = $image->store(
+                'properties/' . $property->id,
+                'public'
+            );
 
-                $property->images()->create([
-                    'image_path' => $path
-                ]);
-            }
+            $property->images()->create([
+                'image_path' => $path
+            ]);
         }
 
         

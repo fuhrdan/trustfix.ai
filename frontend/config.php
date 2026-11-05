@@ -29,6 +29,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $apiBase = getenv('TRUSTFIX_API_BASE') ?: 'https://api.lakehousesoftware.com/api';
 $apiTimeout = (int)(getenv('TRUSTFIX_API_TIMEOUT') ?: 75);
 $verifyApiSsl = getenv('TRUSTFIX_VERIFY_API_SSL') !== 'false';
+$oidcBackendBase = getenv('TRUSTFIX_OIDC_BACKEND_BASE') ?: null;
+$craneOidcEnabled = filter_var(
+    getenv('TRUSTFIX_OIDC_CRANE_ENABLED') ?: false,
+    FILTER_VALIDATE_BOOLEAN
+);
 $localConfig = __DIR__ . '/config.local.php';
 
 if (is_file($localConfig)) {
@@ -36,6 +41,10 @@ if (is_file($localConfig)) {
 }
 
 $apiBase = rtrim($apiBase, '/');
+$oidcBackendBase = rtrim(
+    $oidcBackendBase ?: (string) preg_replace('#/api$#', '', $apiBase),
+    '/'
+);
 $frontendSupportEmail = getenv('TRUSTFIX_SUPPORT_EMAIL') ?: 't.tyler@trustfixai.com';
 
 $jwtToken = $_SESSION['jwt_token'] ?? '';
@@ -210,6 +219,25 @@ function supportEmail()
     global $frontendSupportEmail;
 
     return $frontendSupportEmail;
+}
+
+function craneOidcEnabled()
+{
+    global $craneOidcEnabled;
+
+    return (bool)$craneOidcEnabled;
+}
+
+function oidcStartUrl($provider)
+{
+    global $oidcBackendBase;
+
+    $provider = strtolower(trim((string)$provider));
+    if (!preg_match('/^[a-z0-9_-]{1,64}$/', $provider)) {
+        return '';
+    }
+
+    return $oidcBackendBase . '/auth/oidc/' . rawurlencode($provider);
 }
 
 function apiRequest($method, $endpoint, $data = null, $timeout = null)
