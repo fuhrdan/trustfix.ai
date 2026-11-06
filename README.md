@@ -450,6 +450,55 @@ Back up the database and both upload roots before the first `--execute` run.
 Stop if the command reports a missing file, invalid path, failed copy, or
 checksum mismatch; the command does not delete a mismatched public source.
 
+### Database engine and foreign-key hardening
+
+TrustFix expects MySQL/MariaDB tables to use InnoDB. The connection defaults
+new tables to InnoDB even when a hosting provider's server-wide default is
+MyISAM. Existing installations must be audited and converted separately:
+
+```bash
+# Read-only: reports table engines, schema/type problems, orphaned rows,
+# and missing or mismatched foreign keys.
+php artisan trustfix:harden-database --details
+```
+
+Never run a write phase while the application is serving traffic. Conversion
+is intentionally separate from constraint creation because old MyISAM tables
+may already contain orphaned data. Each write phase requires the exact active
+database name, Laravel maintenance mode, and a checksum-verified backup less
+than two hours old:
+
+```bash
+# 1. Enter maintenance mode and create a fresh backup. Use a securely generated
+# secret if authorized operators need temporary browser access.
+php artisan down
+php artisan trustfix:backup-database --force
+
+# 2. Convert tables. This is idempotent and may be rerun after an interruption.
+php artisan trustfix:harden-database \
+    --convert \
+    --confirm="<database name printed by the audit>"
+
+# 3. Audit again. Resolve every orphan, type, and nullability problem explicitly.
+php artisan trustfix:harden-database --details
+
+# 4. Back up the repaired data, then install the expected constraints.
+php artisan trustfix:backup-database --force
+php artisan trustfix:harden-database \
+    --add-constraints \
+    --confirm="<database name printed by the audit>"
+
+# 5. Require a clean final audit before reopening the application.
+php artisan trustfix:harden-database
+php artisan up
+```
+
+The backup service uses table locks while any MyISAM tables remain and switches
+to a single-transaction snapshot after all tables are InnoDB. A failed backup,
+missing artifact, stale backup, size mismatch, or checksum mismatch blocks the
+write phases. Do not repair reported orphaned data generically: identify the
+business record, document the decision, and use a targeted, reversible change.
+
 ---
 
 ## Database and Migrations
