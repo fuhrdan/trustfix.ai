@@ -276,7 +276,8 @@ class JobController extends Controller
             'onsite_contact_name' => ['nullable', 'string', 'max:255'],
             'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
             'skills' => ['nullable', 'array'],
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
 
         $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
@@ -312,7 +313,7 @@ class JobController extends Controller
         
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+                $path = $image->store('jobs/' . $job->id, 'private');
                 JobImage::create([
                     'job_id' => $job->id,
                     'image_path' => $path
@@ -344,8 +345,14 @@ class JobController extends Controller
             'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120']
         ]);
 
+        if ($job->images()->count() + count($request->file('images')) > 20) {
+            return response()->json([
+                'message' => 'A job may have no more than 20 images.',
+            ], 422);
+        }
+
         foreach ($request->file('images') as $image) {
-            $path = $image->store('jobs/' . $job->id, 'public');
+            $path = $image->store('jobs/' . $job->id, 'private');
 
             JobImage::create([
                 'job_id' => $job->id,
@@ -390,7 +397,7 @@ public function deleteImage($jobId, $imageId)
         ], 404);
     }
 
-    // Delete the public-disk file using the same disk used for uploads.
+    Storage::disk('private')->delete($image->image_path);
     Storage::disk('public')->delete($image->image_path);
 
     // Delete DB record
@@ -675,8 +682,18 @@ public function deleteImage($jobId, $imageId)
             'onsite_contact_name' => ['nullable', 'string', 'max:255'],
             'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
             'skills' => ['nullable', 'array'],
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
+
+        if (
+            $request->hasFile('images')
+            && $job->images()->count() + count($request->file('images')) > 20
+        ) {
+            return response()->json([
+                'message' => 'A job may have no more than 20 images.',
+            ], 422);
+        }
 
         $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
 
@@ -709,7 +726,7 @@ public function deleteImage($jobId, $imageId)
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+                $path = $image->store('jobs/' . $job->id, 'private');
 
                 JobImage::create([
                     'job_id' => $job->id,

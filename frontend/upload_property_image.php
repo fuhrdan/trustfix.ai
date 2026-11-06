@@ -84,22 +84,8 @@ if (
         if (!empty($property['images'])) {
 
             foreach ($property['images'] as $img) {
-
-                //-----------------------------------------
-                // Possible DB field names
-                //-----------------------------------------
-                $imagePath =
-                    $img['image_path']
-                    ?? $img['path']
-                    ?? $img['url']
-                    ?? '';
-
-                //-----------------------------------------
-                // Full URL
-                //-----------------------------------------
-                $url = storageUrl($imagePath);
-
                 $imageId = (int)($img['id'] ?? 0);
+                $url = privateMediaUrl('property-image', $imageId);
                 $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
                 $html .= "
                     <div style='position:relative;display:inline-block;margin:0 15px 15px 0;'>

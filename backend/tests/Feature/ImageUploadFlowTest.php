@@ -18,6 +18,7 @@ class ImageUploadFlowTest extends TestCase
 
     public function test_property_and_job_images_are_persisted_and_returned_to_the_owner(): void
     {
+        Storage::fake('private');
         Storage::fake('public');
 
         $user = User::create([
@@ -63,8 +64,10 @@ class ImageUploadFlowTest extends TestCase
 
         $propertyImage = $property->images()->firstOrFail();
         $jobImage = $job->images()->firstOrFail();
-        Storage::disk('public')->assertExists($propertyImage->image_path);
-        Storage::disk('public')->assertExists($jobImage->image_path);
+        Storage::disk('private')->assertExists($propertyImage->image_path);
+        Storage::disk('private')->assertExists($jobImage->image_path);
+        Storage::disk('public')->assertMissing($propertyImage->image_path);
+        Storage::disk('public')->assertMissing($jobImage->image_path);
 
         $this->withToken($token)->getJson("/api/properties/{$property->id}")
             ->assertOk()
@@ -72,6 +75,15 @@ class ImageUploadFlowTest extends TestCase
         $this->withToken($token)->getJson("/api/jobs/{$job->id}")
             ->assertOk()
             ->assertJsonPath('images.0.id', $jobImage->id);
+
+        $this->withToken($token)
+            ->get("/api/private-files/property-images/{$propertyImage->id}")
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->withToken($token)
+            ->get("/api/private-files/job-images/{$jobImage->id}")
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function test_image_routes_reject_an_empty_upload_instead_of_reporting_false_success(): void

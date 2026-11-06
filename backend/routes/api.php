@@ -34,6 +34,7 @@ use App\Http\Controllers\LoginSecurityController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\OidcController;
 use App\Http\Controllers\PartnerApiController;
+use App\Http\Controllers\PrivateFileController;
 use App\Http\Controllers\SupportCaseController;
 use App\Http\Middleware\AdminAuditMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,12 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::post('/auth/oidc/link', [OidcController::class, 'link'])->middleware('throttle:10,1');
     Route::get('/notifications/messages', [JobWorkspaceController::class, 'messageSummary']);
+
+    Route::get('/private-files/job-images/{image}', [PrivateFileController::class, 'jobImage']);
+    Route::get('/private-files/property-images/{image}', [PrivateFileController::class, 'propertyImage']);
+    Route::get('/private-files/contractor-documents/{document}', [PrivateFileController::class, 'contractorDocument']);
+    Route::get('/private-files/handyman-documents/{document}', [PrivateFileController::class, 'handymanDocument']);
+    Route::get('/private-files/profile-claim-documents/{claim}', [PrivateFileController::class, 'profileClaimDocument']);
 
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
     Route::get('/jobs/available', [JobController::class, 'availableJobs']);

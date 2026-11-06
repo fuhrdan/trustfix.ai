@@ -427,6 +427,29 @@ Additional production requirements:
 - Monitor application and web-server logs
 - Test email verification, authentication, uploads, and payment callbacks after deployment
 
+### Private upload cutover
+
+Job photos, property photos, and contractor documents are stored on Laravel's
+private disk and are delivered only through authenticated, relationship-aware
+endpoints. For an existing deployment, audit and migrate legacy public files in
+three separate steps:
+
+```bash
+# Inventory only; does not change files.
+php artisan trustfix:migrate-private-uploads
+
+# Copy to private storage and retain the public source for smoke testing.
+php artisan trustfix:migrate-private-uploads --execute
+
+# After authenticated image/document smoke tests pass, checksum and remove
+# only matching public sources.
+php artisan trustfix:migrate-private-uploads --execute --delete-public
+```
+
+Back up the database and both upload roots before the first `--execute` run.
+Stop if the command reports a missing file, invalid path, failed copy, or
+checksum mismatch; the command does not delete a mismatched public source.
+
 ---
 
 ## Database and Migrations

@@ -67,7 +67,7 @@ class HandymanController extends Controller
         ]);
 
         $user = Auth::guard('api')->user();
-        $path = $request->file('file')->store("private/docs/{$user->id}");
+        $path = $request->file('file')->store("handyman-documents/{$user->id}", 'private');
 
         $document = $user->documents()->create([
             'file_path' => $path,

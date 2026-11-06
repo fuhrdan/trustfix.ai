@@ -223,7 +223,7 @@ include 'header.php';
                     margin:0 15px 15px 0;
                 ">
                     <img
-                        src="<?= htmlspecialchars(storageUrl($img['image_path'])) ?>"
+                        src="<?= htmlspecialchars(privateMediaUrl('property-image', $img['id'] ?? 0)) ?>"
                         alt="Property photo"
                         style="
                             max-width:200px;

@@ -134,8 +134,9 @@ class PropertyController extends Controller
             'state' => ['required', 'string', 'max:500'],
             'zip' => ['required', 'string', 'max:20'],
             'county' => ['nullable', 'string', 'max:500'],
-            'description' => ['nullable', 'string', 'max:500'], 
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'description' => ['nullable', 'string', 'max:500'],
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
         
         $property = Property::create([
@@ -153,7 +154,7 @@ class PropertyController extends Controller
 
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
-                $path = $image->store('properties/' . $property->id, 'public');
+                $path = $image->store('properties/' . $property->id, 'private');
                 PropertyImage::create([
                     'property_id' => $property->id,
                     'image_path' => $path
@@ -199,11 +200,17 @@ class PropertyController extends Controller
             ]
         ]);
 
+        if ($property->images()->count() + count($request->file('images')) > 20) {
+            return response()->json([
+                'message' => 'A property may have no more than 20 images.',
+            ], 422);
+        }
+
         foreach ($request->file('images') as $image)
         {
             $path = $image->store(
                 'properties/' . $property->id,
-                'public'
+                'private'
             );
 
             $property->images()->create([
@@ -243,9 +250,8 @@ class PropertyController extends Controller
             ], 403);
         }
 
-        Storage::disk('public')->delete(
-            $image->image_path
-        );
+        Storage::disk('private')->delete($image->image_path);
+        Storage::disk('public')->delete($image->image_path);
 
         $image->delete();
 

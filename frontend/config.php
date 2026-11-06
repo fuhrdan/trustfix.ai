@@ -364,19 +364,24 @@ function apiMessage($response, $fallback = 'Something went wrong. Please try aga
     return $fallback;
 }
 
-function storageUrl($path)
+function privateMediaUrl($kind, $id)
 {
-    global $apiBase;
+    $allowedKinds = [
+        'job-image',
+        'property-image',
+        'contractor-document',
+        'handyman-document',
+        'profile-claim-document',
+    ];
+    $kind = (string)$kind;
+    $id = (int)$id;
 
-    if (empty($path)) {
+    if (!in_array($kind, $allowedKinds, true) || $id <= 0) {
         return '';
     }
 
-    if (preg_match('/^https?:\/\//', $path)) {
-        return $path;
-    }
-
-    $base = preg_replace('/\/api\/?$/', '', rtrim($apiBase, '/'));
-
-    return $base . '/storage/' . ltrim($path, '/');
+    return 'private_file.php?' . http_build_query([
+        'kind' => $kind,
+        'id' => $id,
+    ]);
 }

@@ -77,8 +77,7 @@ try {
 
     if (!empty($job['images'])) {
         foreach ($job['images'] as $img) {
-            $imagePath = $img['image_path'] ?? '';
-            $url = storageUrl($imagePath);
+            $url = privateMediaUrl('job-image', $img['id'] ?? 0);
 
             $html .= "
                 <div style='margin-bottom:15px;'>

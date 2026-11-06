@@ -167,7 +167,7 @@ class ContractorProfileController extends Controller
 
         $file = $request->file('file');
 
-        $path = $file->store("contractors/user_{$user->id}/documents", 'public');
+        $path = $file->store("contractor-documents/user_{$user->id}", 'private');
 
         $document = ContractorDocument::create([
             'user_id' => $user->id,

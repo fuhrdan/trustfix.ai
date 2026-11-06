@@ -47,10 +47,13 @@ return [
             'report' => false,
         ],
 
-	'private' => [
-	    'driver' => 'local',
-	    'root' => storage_path('app/private'),
-	],
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
 
         's3' => [
             'driver' => 's3',

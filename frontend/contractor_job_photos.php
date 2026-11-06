@@ -47,8 +47,9 @@ include 'header.php';
         <h2>Existing photos</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px">
         <?php foreach ($job['images'] as $image) { ?>
-            <a href="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" target="_blank">
-                <img src="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:9px">
+            <?php $imageUrl = privateMediaUrl('job-image', $image['id'] ?? 0); ?>
+            <a href="<?= htmlspecialchars($imageUrl) ?>" target="_blank">
+                <img src="<?= htmlspecialchars($imageUrl) ?>" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:9px">
             </a>
         <?php } ?>
         </div>

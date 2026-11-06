@@ -194,7 +194,7 @@ include 'header.php';
 ">
 
     <img
-        src="<?= htmlspecialchars(storageUrl($img['image_path'])) ?>"
+        src="<?= htmlspecialchars(privateMediaUrl('job-image', $img['id'] ?? 0)) ?>"
         alt="Job photo"
         style="
             max-width:200px;
