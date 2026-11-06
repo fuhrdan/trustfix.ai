@@ -479,10 +479,12 @@ php artisan trustfix:harden-database \
     --convert \
     --confirm="<database name printed by the audit>"
 
-# 3. Audit again. Resolve every orphan, type, and nullability problem explicitly.
+# 3. Apply forward-only compatibility migrations, then audit again.
+php artisan migrate --force
 php artisan trustfix:harden-database --details
 
-# 4. Back up the repaired data, then install the expected constraints.
+# 4. Resolve every orphan, type, and nullability problem explicitly. Back up
+# the repaired data, then install the expected constraints.
 php artisan trustfix:backup-database --force
 php artisan trustfix:harden-database \
     --add-constraints \
