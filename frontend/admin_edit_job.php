@@ -224,9 +224,10 @@ include 'header.php';
         <h3>Job Images</h3>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
             <?php foreach ($job['images'] as $imageIndex => $image): ?>
-                <a href="<?= htmlspecialchars(storageUrl($image['image_path'] ?? '')) ?>" target="_blank" rel="noopener noreferrer">
+                <?php $imageUrl = privateMediaUrl('job-image', $image['id'] ?? 0); ?>
+                <a href="<?= htmlspecialchars($imageUrl) ?>" target="_blank" rel="noopener noreferrer">
                     <img
-                        src="<?= htmlspecialchars(storageUrl($image['image_path'] ?? '')) ?>"
+                        src="<?= htmlspecialchars($imageUrl) ?>"
                         alt="Open job image <?= (int)$imageIndex + 1 ?>"
                         style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ccc;"
                     >

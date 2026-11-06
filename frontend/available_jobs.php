@@ -146,7 +146,7 @@ include 'header.php';
     <div class="tf-filter-grid">
         <div>
             <label for="available_search">Search</label>
-            <input id="available_search" type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Description, address, contact">
+            <input id="available_search" type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Description, skill, city, or state">
         </div>
 
         <div>
@@ -205,12 +205,9 @@ include 'header.php';
         ?>
 
         <div class="tf-job-card">
-            <?php $firstImage = $job['images'][0]['image_path'] ?? null; ?>
-            <?php if ($firstImage) { ?>
-                <img class="tf-job-thumb" src="<?= htmlspecialchars(storageUrl($firstImage)) ?>" alt="Job image">
-            <?php } else { ?>
-                <div class="tf-job-placeholder">No photos yet</div>
-            <?php } ?>
+            <div class="tf-job-placeholder">
+                <?= (int)($job['image_count'] ?? 0) ?> photo<?= (int)($job['image_count'] ?? 0) === 1 ? '' : 's' ?> shared after acceptance
+            </div>
 
             <div class="tf-job-card-body">
             <h3 style="margin-top:0;">
@@ -222,8 +219,8 @@ include 'header.php';
             </p>
 
             <p>
-                <strong>Address:</strong><br>
-                <?= htmlspecialchars($job['address'] ?? '') ?>
+                <strong>General location:</strong><br>
+                <?= htmlspecialchars($job['location'] ?? 'Location shared after acceptance') ?>
             </p>
 
             <p>

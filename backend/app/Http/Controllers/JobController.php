@@ -7,6 +7,7 @@
 //*****************************************************************************
 namespace App\Http\Controllers;
 
+use App\Http\Resources\AvailableJobResource;
 use App\Models\Job;
 use App\Models\User;
 use App\Models\JobImage;
@@ -70,7 +71,11 @@ class JobController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        $query = Job::with(['customer', 'property', 'images', 'messages', 'activities', 'estimate'])
+        $query = Job::with([
+            'property:id,city,state',
+            'estimate:id,job_id,estimate_low,estimate_high',
+        ])
+            ->withCount('images')
             ->whereNull('handyman_id')
             ->whereIn('status', ['posted', 'requested']);
 
@@ -79,8 +84,13 @@ class JobController extends Controller
 
             $query->where(function ($query) use ($search) {
                 $query->where('initial_description', 'like', '%' . $search . '%')
-                    ->orWhere('address', 'like', '%' . $search . '%')
-                    ->orWhere('onsite_contact_name', 'like', '%' . $search . '%');
+                    ->orWhere('skills', 'like', '%' . $search . '%')
+                    ->orWhereHas('property', function ($propertyQuery) use ($search) {
+                        $propertyQuery->where(function ($locationQuery) use ($search) {
+                            $locationQuery->where('city', 'like', '%' . $search . '%')
+                                ->orWhere('state', 'like', '%' . $search . '%');
+                        });
+                    });
             });
         }
 
@@ -130,9 +140,14 @@ class JobController extends Controller
                 break;
         }
 
-        return response()->json(
-            $query->paginate($validated['per_page'] ?? 20)
+        $jobs = $query->paginate($validated['per_page'] ?? 20);
+        $jobs->setCollection(
+            $jobs->getCollection()->map(
+                fn (Job $job) => (new AvailableJobResource($job))->resolve($request)
+            )
         );
+
+        return response()->json($jobs);
     }
 
     public function myJobs()
@@ -159,18 +174,45 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'reports', 'images', 'messages.sender', 'activities.user', 'estimate'])->findOrFail($id);
+        $job = Job::findOrFail($id);
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
         $isAvailableForHandyman = in_array($user->role, ['handyman', 'company'], true)
             && !$job->handyman_id
-            && in_array($job->status, ['posted', 'requested'], true);
+            && in_array($job->status, ['posted', 'requested'], true)
+            && ContractorProfile::where('user_id', $user->id)
+                ->where('status', 'approved')
+                ->exists();
         $isAdmin = $user->role == 'admin';
 
         if (!$isCustomer && !$isAssignedHandyman && !$isAvailableForHandyman && !$isAdmin) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
+
+        if ($isAvailableForHandyman && !$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+            $job->load([
+                'property:id,city,state',
+                'estimate:id,job_id,estimate_low,estimate_high',
+            ])->loadCount('images');
+
+            return response()->json(
+                (new AvailableJobResource($job))->resolve(request())
+            );
+        }
+
+        $job->load([
+            'customer',
+            'handyman',
+            'property',
+            'changeOrders',
+            'disputes',
+            'reports',
+            'images',
+            'messages.sender',
+            'activities.user',
+            'estimate',
+        ]);
 
         return response()->json($job);
     }
@@ -234,7 +276,8 @@ class JobController extends Controller
             'onsite_contact_name' => ['nullable', 'string', 'max:255'],
             'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
             'skills' => ['nullable', 'array'],
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
 
         $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
@@ -270,7 +313,7 @@ class JobController extends Controller
         
         if($request->hasFile('images')) {
             foreach($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+                $path = $image->store('jobs/' . $job->id, 'private');
                 JobImage::create([
                     'job_id' => $job->id,
                     'image_path' => $path
@@ -298,18 +341,23 @@ class JobController extends Controller
         }
 
         $request->validate([
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:5120'
+            'images' => ['required', 'array', 'min:1', 'max:10'],
+            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120']
         ]);
 
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+        if ($job->images()->count() + count($request->file('images')) > 20) {
+            return response()->json([
+                'message' => 'A job may have no more than 20 images.',
+            ], 422);
+        }
 
-                JobImage::create([
-                    'job_id' => $job->id,
-                    'image_path' => $path
-                ]);
-            }
+        foreach ($request->file('images') as $image) {
+            $path = $image->store('jobs/' . $job->id, 'private');
+
+            JobImage::create([
+                'job_id' => $job->id,
+                'image_path' => $path
+            ]);
         }
 
         $job->refresh();
@@ -349,12 +397,8 @@ public function deleteImage($jobId, $imageId)
         ], 404);
     }
 
-    // Delete file from storage
-    $filePath = storage_path('app/public/' . $image->image_path);
-
-    if (file_exists($filePath)) {
-        unlink($filePath);
-    }
+    Storage::disk('private')->delete($image->image_path);
+    Storage::disk('public')->delete($image->image_path);
 
     // Delete DB record
     $image->delete();
@@ -638,8 +682,18 @@ public function deleteImage($jobId, $imageId)
             'onsite_contact_name' => ['nullable', 'string', 'max:255'],
             'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
             'skills' => ['nullable', 'array'],
-            'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
+
+        if (
+            $request->hasFile('images')
+            && $job->images()->count() + count($request->file('images')) > 20
+        ) {
+            return response()->json([
+                'message' => 'A job may have no more than 20 images.',
+            ], 422);
+        }
 
         $property = $this->getAccessibleProperty($validated['property_id'] ?? null);
 
@@ -672,7 +726,7 @@ public function deleteImage($jobId, $imageId)
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'public');
+                $path = $image->store('jobs/' . $job->id, 'private');
 
                 JobImage::create([
                     'job_id' => $job->id,

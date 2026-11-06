@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ContractorProfile;
 use App\Models\Job;
 use App\Models\JobActivity;
 use App\Models\JobEstimate;
@@ -364,12 +363,7 @@ class JobEstimateController extends Controller
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedContractor = $job->handyman_id == $user->id;
         $isAdmin = $user->role === 'admin';
-        $isAvailableContractor = $user->role === 'handyman'
-            && !$job->handyman_id
-            && in_array($job->status, ['posted', 'requested'], true)
-            && ContractorProfile::where('user_id', $user->id)->where('status', 'approved')->exists();
-
-        if (!$isCustomer && !$isAssignedContractor && !$isAdmin && !$isAvailableContractor) {
+        if (!$isCustomer && !$isAssignedContractor && !$isAdmin) {
             abort(response()->json(['error' => 'Forbidden'], 403));
         }
 

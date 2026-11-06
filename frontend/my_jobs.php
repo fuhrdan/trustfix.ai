@@ -181,12 +181,12 @@ include 'header.php';
                     $isAssignedContractor = (int)($job['handyman_id'] ?? 0) === (int)($user['id'] ?? 0);
                     $isJobCustomer = (int)($job['customer_id'] ?? 0) === (int)($user['id'] ?? 0);
                     $images = $job['images'] ?? [];
-                    $firstImage = $images[0]['image_path'] ?? '';
+                    $firstImageId = (int)($images[0]['id'] ?? 0);
                 ?>
 
                 <article style="background:white;border:1px solid #ddd;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
-                    <?php if (!empty($firstImage)) { ?>
-                        <img src="<?= htmlspecialchars(storageUrl($firstImage)) ?>" alt="Job image" style="width:100%;height:150px;object-fit:cover;display:block;">
+                    <?php if ($firstImageId > 0) { ?>
+                        <img src="<?= htmlspecialchars(privateMediaUrl('job-image', $firstImageId)) ?>" alt="Job image" style="width:100%;height:150px;object-fit:cover;display:block;">
                     <?php } ?>
 
                     <div style="padding:18px;">

@@ -41,6 +41,8 @@ if (!is_array($customer)) {
     $customer = [];
 }
 
+$isPreview = !empty($job['is_preview']);
+
 function statusLabel($status)
 {
     $labels = [
@@ -188,10 +190,12 @@ include 'header.php';
     <a href="available_jobs.php">&larr; Back to Available Jobs</a>
     &nbsp; | &nbsp;
     <a href="my_jobs.php">My Jobs</a>
-    &nbsp; | &nbsp;
-    <a href="job_workspace.php?id=<?= (int)$job['id'] ?>">Open Workspace</a>
-    &nbsp; | &nbsp;
-    <a href="estimate_job.php?id=<?= (int)$job['id'] ?>">Smart Estimate</a>
+    <?php if (!$isPreview) { ?>
+        &nbsp; | &nbsp;
+        <a href="job_workspace.php?id=<?= (int)$job['id'] ?>">Open Workspace</a>
+        &nbsp; | &nbsp;
+        <a href="estimate_job.php?id=<?= (int)$job['id'] ?>">Smart Estimate</a>
+    <?php } ?>
 </p>
 
 <div class="tf-detail-grid">
@@ -215,7 +219,7 @@ include 'header.php';
 
                 <div class="tf-meta-box">
                     <span>Location</span>
-                    <strong><?= htmlspecialchars($job['address'] ?? 'Not listed') ?></strong>
+                    <strong><?= htmlspecialchars($isPreview ? ($job['location'] ?? 'Shared after acceptance') : ($job['address'] ?? 'Not listed')) ?></strong>
                 </div>
 
                 <div class="tf-meta-box">
@@ -239,14 +243,15 @@ include 'header.php';
                 <div class="tf-image-grid">
                     <?php foreach ($images as $image) { ?>
                         <?php if (!empty($image['image_path'])) { ?>
-                            <a href="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" target="_blank" rel="noopener noreferrer">
-                                <img src="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" alt="Job image">
+                            <?php $imageUrl = privateMediaUrl('job-image', $image['id'] ?? 0); ?>
+                            <a href="<?= htmlspecialchars($imageUrl) ?>" target="_blank" rel="noopener noreferrer">
+                                <img src="<?= htmlspecialchars($imageUrl) ?>" alt="Job image">
                             </a>
                         <?php } ?>
                     <?php } ?>
                 </div>
             <?php } else { ?>
-                <p>No pictures have been added to this job yet.</p>
+                <p><?= $isPreview ? 'Job photos are shared after acceptance.' : 'No pictures have been added to this job yet.' ?></p>
             <?php } ?>
         </div>
     </div>
@@ -276,22 +281,26 @@ include 'header.php';
 
         <div class="tf-card">
             <h2>Customer</h2>
-            <p>
-                <strong><?= htmlspecialchars($customer['name'] ?? 'Customer') ?></strong>
-            </p>
-
-            <?php if (!empty($customer['phone'])) { ?>
+            <?php if ($isPreview) { ?>
+                <p>Customer identity and contact details are shared after you accept the job.</p>
+            <?php } else { ?>
                 <p>
-                    <strong>Phone:</strong><br>
-                    <?= htmlspecialchars($customer['phone']) ?>
+                    <strong><?= htmlspecialchars($customer['name'] ?? 'Customer') ?></strong>
                 </p>
-            <?php } ?>
 
-            <?php if (!empty($customer['email'])) { ?>
-                <p>
-                    <strong>Email:</strong><br>
-                    <?= htmlspecialchars($customer['email']) ?>
-                </p>
+                <?php if (!empty($customer['phone'])) { ?>
+                    <p>
+                        <strong>Phone:</strong><br>
+                        <?= htmlspecialchars($customer['phone']) ?>
+                    </p>
+                <?php } ?>
+
+                <?php if (!empty($customer['email'])) { ?>
+                    <p>
+                        <strong>Email:</strong><br>
+                        <?= htmlspecialchars($customer['email']) ?>
+                    </p>
+                <?php } ?>
             <?php } ?>
         </div>
 
@@ -308,7 +317,9 @@ include 'header.php';
         <div class="tf-card">
             <h2>Property</h2>
 
-            <?php if (!empty($property)) { ?>
+            <?php if ($isPreview) { ?>
+                <p><?= htmlspecialchars($job['location'] ?? 'Property details are shared after acceptance.') ?></p>
+            <?php } elseif (!empty($property)) { ?>
                 <p>
                     <strong><?= htmlspecialchars($property['street_address'] ?? $job['address'] ?? '') ?></strong><br>
                     <?= htmlspecialchars(trim(($property['city'] ?? '') . ', ' . ($property['state'] ?? '') . ' ' . ($property['zip'] ?? ''))) ?>

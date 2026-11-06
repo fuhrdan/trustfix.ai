@@ -22,6 +22,8 @@ use Illuminate\Foundation\Configuration\Middleware;
         $middleware->alias([
             'account.active' => \App\Http\Middleware\EnsureAccountActive::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'partner.auth' => \App\Http\Middleware\AuthenticatePartnerApiClient::class,
+            'partner.scope' => \App\Http\Middleware\RequirePartnerScope::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

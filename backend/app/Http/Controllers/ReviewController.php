@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\PublicReviewResource;
 use App\Models\ContractorProfile;
 use App\Models\Job;
 use App\Models\Review;
@@ -57,15 +58,23 @@ class ReviewController extends Controller
         return response()->json($review->load(['job', 'customer', 'handyman', 'contractorProfile']), 201);
     }
 
-    public function contractorReviews($contractorProfileId)
+    public function contractorReviews(Request $request, $contractorProfileId)
     {
-        $profile = ContractorProfile::findOrFail($contractorProfileId);
+        $profile = ContractorProfile::where('status', 'approved')
+            ->where('is_public', true)
+            ->findOrFail($contractorProfileId);
 
         $reviews = Review::with(['customer'])
             ->where('contractor_profile_id', $profile->id)
             ->where('is_visible', true)
             ->latest()
             ->paginate(20);
+
+        $reviews->setCollection(
+            $reviews->getCollection()->map(
+                fn (Review $review) => (new PublicReviewResource($review))->resolve($request)
+            )
+        );
 
         return response()->json($reviews);
     }

@@ -11,6 +11,8 @@ use Throwable;
 
 class DatabaseBackupService
 {
+    private string $consistencyMode = 'unknown';
+
     public function __construct(
         private readonly OperationsAlertService $alerts,
     ) {
@@ -22,6 +24,7 @@ class DatabaseBackupService
             throw new RuntimeException('Database backups are disabled. Use --force to run one manually.');
         }
 
+        $this->consistencyMode = 'unknown';
         $startedAt = now();
         $clockStartedAt = microtime(true);
         $run = OperationRun::create([
@@ -78,6 +81,7 @@ class DatabaseBackupService
                 'details' => [
                     'connection' => $connectionName,
                     'driver' => $driver,
+                    'consistency_mode' => $this->consistencyMode,
                     'retention_days' => (int) config('operations.backups.retention_days'),
                 ],
                 'artifact_disk' => $disk,
@@ -95,7 +99,10 @@ class DatabaseBackupService
                 'finished_at' => now(),
                 'duration_ms' => $this->elapsedMilliseconds($clockStartedAt),
                 'summary' => 'Database backup failed.',
-                'details' => ['error' => $safeMessage],
+                'details' => [
+                    'error' => $safeMessage,
+                    'consistency_mode' => $this->consistencyMode,
+                ],
             ]);
 
             $this->alerts->send('Database backup failed', [
@@ -168,12 +175,12 @@ class DatabaseBackupService
             $command = [
                 (string) config('operations.backups.binary', 'mysqldump'),
                 '--defaults-extra-file='.$credentialsPath,
-                '--single-transaction',
                 '--quick',
-                '--skip-lock-tables',
                 '--hex-blob',
                 '--default-character-set=utf8mb4',
             ];
+
+            array_push($command, ...$this->mysqlConsistencyArguments());
 
             if (config('operations.backups.no_tablespaces', true)) {
                 $command[] = '--no-tablespaces';
@@ -215,6 +222,7 @@ class DatabaseBackupService
 
     private function snapshotSqliteDatabase(array $connection): string
     {
+        $this->consistencyMode = 'sqlite-vacuum-into';
         $sourcePath = (string) ($connection['database'] ?? '');
 
         if ($sourcePath === '' || $sourcePath === ':memory:' || !is_file($sourcePath)) {
@@ -262,6 +270,33 @@ class DatabaseBackupService
         }
 
         return $outputPath;
+    }
+
+    /** @return list<string> */
+    private function mysqlConsistencyArguments(): array
+    {
+        $row = DB::connection((string) config('database.default'))->selectOne(
+            'SELECT COUNT(*) AS aggregate
+               FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_TYPE = ?
+                AND UPPER(COALESCE(ENGINE, ?)) <> ?',
+            ['BASE TABLE', '', 'INNODB']
+        );
+        $nonInnoDbTables = (int) ($row->aggregate ?? 0);
+
+        if ($nonInnoDbTables > 0) {
+            // One-database table locks provide a consistent snapshot while
+            // legacy MyISAM tables are still present. The maintenance-mode
+            // deployment runbook also prevents application writes.
+            $this->consistencyMode = 'table-locks';
+
+            return ['--lock-tables'];
+        }
+
+        $this->consistencyMode = 'single-transaction';
+
+        return ['--single-transaction', '--skip-lock-tables'];
     }
 
     private function mergeDatabaseUrl(array $connection): array

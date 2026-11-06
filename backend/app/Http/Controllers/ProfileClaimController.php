@@ -26,7 +26,10 @@ class ProfileClaimController extends Controller
         $proofPath = null;
 
         if ($request->hasFile('proof_document')) {
-            $proofPath = $request->file('proof_document')->store("private/profile-claims/{$user->id}");
+            $proofPath = $request->file('proof_document')->store(
+                "profile-claims/{$user->id}",
+                'private'
+            );
         }
 
         $claim = ProfileClaim::updateOrCreate(

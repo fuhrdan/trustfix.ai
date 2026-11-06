@@ -11,8 +11,10 @@ use App\Http\Controllers\AdminBadgeController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminPartnerIntegrationController;
 use App\Http\Controllers\ChangeOrderController;
 use App\Http\Controllers\ContractorProfileController;
+use App\Http\Controllers\ContractorInvitationController;
 use App\Http\Controllers\ContractorDashboardController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\HandymanController;
@@ -30,6 +32,9 @@ use App\Http\Controllers\EstimateTrainingDataController;
 use App\Http\Controllers\EstimateAccuracyController;
 use App\Http\Controllers\LoginSecurityController;
 use App\Http\Controllers\OperationsController;
+use App\Http\Controllers\OidcController;
+use App\Http\Controllers\PartnerApiController;
+use App\Http\Controllers\PrivateFileController;
 use App\Http\Controllers\SupportCaseController;
 use App\Http\Middleware\AdminAuditMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +49,10 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
     ->middleware('throttle:6,1')
     ->name('verification.verify');
+Route::post('/auth/oidc/complete', [OidcController::class, 'complete'])
+    ->middleware('throttle:10,1');
+Route::post('/contractor-invitations/accept', [ContractorInvitationController::class, 'accept'])
+    ->middleware('throttle:10,1');
 
 Route::get('/contractors', [ContractorProfileController::class, 'index']);
 Route::get('/contractors/{id}', [ContractorProfileController::class, 'show']);
@@ -51,13 +60,34 @@ Route::get('/contractors/{id}/reviews', [ReviewController::class, 'contractorRev
 Route::get('/payments/config', [PaymentController::class, 'publicConfig']);
 Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
 
+// Partner credentials are intentionally separate from customer JWTs. Each
+// route checks a scoped, revocable client credential and never impersonates a
+// customer account without an explicit member-account mapping.
+Route::prefix('/partner/v1')->middleware(['partner.auth'])->group(function () {
+    Route::post('/service-requests', [PartnerApiController::class, 'createServiceRequest'])
+        ->middleware('partner.scope:service_requests:write');
+    Route::get('/service-requests/{externalRequestId}', [PartnerApiController::class, 'showServiceRequest'])
+        ->middleware('partner.scope:service_requests:read');
+    Route::get('/service-requests/{externalRequestId}/activities', [PartnerApiController::class, 'activities'])
+        ->middleware('partner.scope:service_requests:read');
+    Route::post('/service-requests/{externalRequestId}/schedule', [PartnerApiController::class, 'recordSchedule'])
+        ->middleware('partner.scope:service_requests:schedule');
+});
+
 // Protected routes
 Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/me/update', [AuthController::class, 'updateMe']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/auth/oidc/link', [OidcController::class, 'link'])->middleware('throttle:10,1');
     Route::get('/notifications/messages', [JobWorkspaceController::class, 'messageSummary']);
+
+    Route::get('/private-files/job-images/{image}', [PrivateFileController::class, 'jobImage']);
+    Route::get('/private-files/property-images/{image}', [PrivateFileController::class, 'propertyImage']);
+    Route::get('/private-files/contractor-documents/{document}', [PrivateFileController::class, 'contractorDocument']);
+    Route::get('/private-files/handyman-documents/{document}', [PrivateFileController::class, 'handymanDocument']);
+    Route::get('/private-files/profile-claim-documents/{claim}', [PrivateFileController::class, 'profileClaimDocument']);
 
     Route::get('/jobs/my', [JobController::class, 'myJobs']);
     Route::get('/jobs/available', [JobController::class, 'availableJobs']);
@@ -135,6 +165,18 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
     });
 
     Route::middleware(['role:admin'])->group(function () {
+        Route::get('/admin/partner-clients', [AdminPartnerIntegrationController::class, 'index']);
+        Route::post('/admin/partner-clients', [AdminPartnerIntegrationController::class, 'store']);
+        Route::put('/admin/partner-clients/{id}', [AdminPartnerIntegrationController::class, 'update']);
+        Route::post('/admin/partner-clients/{id}/rotate-api-token', [AdminPartnerIntegrationController::class, 'rotateApiToken']);
+        Route::post('/admin/partner-clients/{id}/rotate-webhook-secret', [AdminPartnerIntegrationController::class, 'rotateWebhookSecret']);
+        Route::get('/admin/partner-clients/{id}/member-accounts', [AdminPartnerIntegrationController::class, 'memberAccounts']);
+        Route::post('/admin/partner-clients/{id}/member-accounts', [AdminPartnerIntegrationController::class, 'storeMemberAccount']);
+
+        Route::get('/admin/contractor-invitations', [ContractorInvitationController::class, 'index']);
+        Route::post('/admin/contractor-invitations', [ContractorInvitationController::class, 'store']);
+        Route::post('/admin/contractor-invitations/{id}/revoke', [ContractorInvitationController::class, 'revoke']);
+
         Route::get('/admin/operations/summary', [OperationsController::class, 'summary']);
         Route::get('/admin/audit-logs', [OperationsController::class, 'auditLogs']);
         Route::get('/admin/support-cases', [OperationsController::class, 'supportCases']);

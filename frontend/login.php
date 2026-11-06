@@ -10,9 +10,24 @@ if (!empty($_SESSION['jwt_token'])) {
 }
 
 $error = '';
+$incomingLinkToken = (string)($_GET['oidc_link_token'] ?? '');
+if ($incomingLinkToken !== '') {
+    if (preg_match('/^[A-Za-z0-9_-]{32,128}$/', $incomingLinkToken)) {
+        $_SESSION['oidc_link_token'] = $incomingLinkToken;
+        header('Location: login.php?oidc_link=1');
+        exit;
+    }
+
+    $error = 'The account-linking request is invalid or has expired.';
+}
+
 $success = !empty($_GET['verified'])
     ? 'Your email is verified. You can now sign in.'
     : '';
+
+if (!empty($_GET['oidc_error'])) {
+    $error = substr(trim((string)$_GET['oidc_error']), 0, 500);
+}
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -37,6 +52,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['jwt_token'] = $result['token'];
 
         $_SESSION['user'] = $result['user'] ?? [];
+
+        $linkToken = (string)($_SESSION['oidc_link_token'] ?? '');
+        if ($linkToken !== '') {
+            unset($_SESSION['oidc_link_token']);
+            $linkResult = apiRequest('POST', '/auth/oidc/link', [
+                'link_token' => $linkToken,
+            ]);
+
+            if (!empty($linkResult['linked'])) {
+                $_SESSION['flash_success'] = 'Your Crane identity is now linked to this TrustFix account.';
+            } else {
+                $_SESSION['flash_error'] = 'You signed in, but TrustFix could not link the external identity. Start the Crane sign-in process again if you still need to link it.';
+            }
+        }
 
         header('Location: dashboard.php');
         exit;
@@ -88,6 +117,17 @@ include 'header.php';
     </button>
 
 </form>
+
+<?php if (craneOidcEnabled()): ?>
+    <div style="display:flex;align-items:center;gap:12px;margin:24px 0;color:#667085;">
+        <span style="height:1px;background:#d0d5dd;flex:1;"></span>
+        <span>or</span>
+        <span style="height:1px;background:#d0d5dd;flex:1;"></span>
+    </div>
+    <p>
+        <a class="tf-button tf-button-secondary" href="<?= htmlspecialchars(oidcStartUrl('crane'), ENT_QUOTES, 'UTF-8') ?>">Sign in with Crane</a>
+    </p>
+<?php endif; ?>
 
 <p>
     Need an account?

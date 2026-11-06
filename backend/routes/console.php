@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schedule;
 use App\Models\AdminAuditLog;
 use App\Models\OperationRun;
 use App\Models\UptimeCheck;
+use App\Models\OidcFlowToken;
 use App\Services\DatabaseBackupService;
 use App\Services\SupportEscalationService;
 use App\Services\UptimeMonitorService;
@@ -87,12 +88,18 @@ Artisan::command('trustfix:prune-operations', function () {
         '<',
         now()->subDays((int) config('operations.backups.history_days', 90))
     )->delete();
+    $oidcTokensDeleted = OidcFlowToken::where(
+        'expires_at',
+        '<',
+        now()->subHours((int) config('identity.oidc.flow_token_retention_hours', 24))
+    )->delete();
 
     $this->info(sprintf(
-        'Pruned %d audit events, %d uptime checks, and %d operation runs.',
+        'Pruned %d audit events, %d uptime checks, %d operation runs, and %d expired OIDC handoff records.',
         $auditDeleted,
         $checksDeleted,
-        $runsDeleted
+        $runsDeleted,
+        $oidcTokensDeleted
     ));
 
     return Command::SUCCESS;

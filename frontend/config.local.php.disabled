@@ -1,5 +1,0 @@
-<?php
-
-$apiBase = 'https://api.lakehousesoftware.com//api';
-$apiTimeout = 75;
-$verifyApiSsl = true;

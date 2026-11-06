@@ -187,11 +187,23 @@ class JobAnalysisManager
 
         foreach ($job->images()->limit($limit)->get() as $jobImage) {
             $path = $jobImage->image_path;
-            if (!$path || !Storage::disk('public')->exists($path)) {
+            if (!$path) {
                 continue;
             }
 
-            $absolutePath = Storage::disk('public')->path($path);
+            $disk = null;
+            foreach (['private', 'public'] as $diskName) {
+                if (Storage::disk($diskName)->exists($path)) {
+                    $disk = Storage::disk($diskName);
+                    break;
+                }
+            }
+
+            if (!$disk) {
+                continue;
+            }
+
+            $absolutePath = $disk->path($path);
             $size = @filesize($absolutePath);
             $mediaType = @mime_content_type($absolutePath);
 

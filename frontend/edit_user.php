@@ -43,18 +43,9 @@ function contractorDocumentStatus($status)
     return '<span style="color:#b36b00;font-weight:bold;">Pending Approval</span>';
 }
 
-function contractorDocumentUrl($storedFilename)
+function contractorDocumentUrl($documentId)
 {
-    global $apiBase;
-
-    if (empty($storedFilename))
-    {
-        return '';
-    }
-
-    $base = preg_replace('#/api/?$#', '', $apiBase);
-
-    return rtrim($base, '/') . '/storage/' . ltrim($storedFilename, '/');
+    return privateMediaUrl('contractor-document', $documentId);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -448,7 +439,7 @@ include 'header.php';
 
             <?php
                 $documentId = (int)($document['id'] ?? 0);
-                $documentUrl = contractorDocumentUrl($document['stored_filename'] ?? '');
+                $documentUrl = contractorDocumentUrl($documentId);
                 $status = (int)($document['verification_status'] ?? 0);
             ?>
 

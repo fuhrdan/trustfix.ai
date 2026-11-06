@@ -221,4 +221,19 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     {
         return $this->hasMany(AdminAuditLog::class, 'admin_user_id');
     }
+
+    public function oidcIdentities()
+    {
+        return $this->hasMany(OidcIdentity::class);
+    }
+
+    public function partnerMemberAccounts()
+    {
+        return $this->hasMany(PartnerMemberAccount::class);
+    }
+
+    public function contractorInvitationsAccepted()
+    {
+        return $this->hasMany(ContractorInvitation::class, 'accepted_user_id');
+    }
 }

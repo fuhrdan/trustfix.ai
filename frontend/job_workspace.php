@@ -241,8 +241,9 @@ function wsTitle($text)
                 <div class="workspace-images">
                     <?php foreach ($images as $image) { ?>
                         <?php if (!empty($image['image_path'])) { ?>
-                            <a href="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" target="_blank">
-                                <img src="<?= htmlspecialchars(storageUrl($image['image_path'])) ?>" alt="Job image">
+                            <?php $imageUrl = privateMediaUrl('job-image', $image['id'] ?? 0); ?>
+                            <a href="<?= htmlspecialchars($imageUrl) ?>" target="_blank">
+                                <img src="<?= htmlspecialchars($imageUrl) ?>" alt="Job image">
                             </a>
                         <?php } ?>
                     <?php } ?>

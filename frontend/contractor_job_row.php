@@ -1,10 +1,10 @@
 <?php
-$firstImage = $job['images'][0]['image_path'] ?? '';
+$firstImageId = (int)($job['images'][0]['id'] ?? 0);
 $payment = $job['payments'][0] ?? [];
 ?>
 <article class="cd-job">
-    <?php if ($firstImage) { ?>
-        <img class="cd-thumb" src="<?= htmlspecialchars(storageUrl($firstImage)) ?>" alt="">
+    <?php if ($firstImageId > 0) { ?>
+        <img class="cd-thumb" src="<?= htmlspecialchars(privateMediaUrl('job-image', $firstImageId)) ?>" alt="">
     <?php } else { ?>
         <div class="cd-thumb cd-placeholder">No image</div>
     <?php } ?>
