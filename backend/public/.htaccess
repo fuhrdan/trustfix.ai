@@ -23,3 +23,7 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+<FilesMatch "(?i)(^\.|^config\.local\.php(?:\.|$)|^error_log$|^download$|\.(?:bak|old|orig|save|tmp|test|disabled|new)$)">
+    Require all denied
+</FilesMatch>

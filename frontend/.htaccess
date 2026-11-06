@@ -1,4 +1,9 @@
 RewriteEngine On
+
+<FilesMatch "(?i)(^\.|^config\.local\.php(?:\.|$)|^error_log$|^download$|\.(?:bak|old|orig|save|tmp|test|disabled|new)$)">
+    Require all denied
+</FilesMatch>
+
 RewriteCond %{REQUEST_URI} ^/$
 RewriteRule ^$ /login.php [L,R=302]
 DirectoryIndex login.php
