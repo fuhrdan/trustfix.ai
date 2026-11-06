@@ -193,10 +193,10 @@ class HardenDatabase extends Command
             );
         }
 
-        $this->verifyRecentBackup();
+        $this->verifyRecentBackup($integrity->hasNonInnoDbTables());
     }
 
-    private function verifyRecentBackup(): void
+    private function verifyRecentBackup(bool $requiresTableLocks): void
     {
         $backup = OperationRun::query()
             ->where('operation', 'database_backup')
@@ -223,6 +223,12 @@ class HardenDatabase extends Command
         if (!in_array($consistencyMode, ['table-locks', 'single-transaction'], true)) {
             throw new RuntimeException(
                 'The latest backup does not record a verified MySQL consistency mode. Create a fresh backup.'
+            );
+        }
+
+        if ($requiresTableLocks && $consistencyMode !== 'table-locks') {
+            throw new RuntimeException(
+                'MyISAM tables require a fresh table-locks backup before a database write phase.'
             );
         }
 

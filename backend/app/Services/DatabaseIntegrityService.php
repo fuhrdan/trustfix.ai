@@ -25,6 +25,20 @@ class DatabaseIntegrityService
         return $name;
     }
 
+    public function hasNonInnoDbTables(): bool
+    {
+        $row = $this->connection()->selectOne(
+            'SELECT COUNT(*) AS aggregate
+               FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_TYPE = ?
+                AND UPPER(COALESCE(ENGINE, ?)) <> ?',
+            ['BASE TABLE', '', 'INNODB']
+        );
+
+        return (int) ($row->aggregate ?? 0) > 0;
+    }
+
     /** @return array<string, mixed> */
     public function audit(): array
     {
