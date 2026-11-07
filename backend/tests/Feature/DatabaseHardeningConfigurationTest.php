@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Services\DatabaseIntegrityService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class DatabaseHardeningConfigurationTest extends TestCase
@@ -42,6 +44,46 @@ class DatabaseHardeningConfigurationTest extends TestCase
                 && $relation['referenced_column'] === 'id'
                 && $relation['on_delete'] === 'CASCADE'
         ));
+    }
+
+    public function test_constraint_audit_accepts_equivalent_mysql_actions(): void
+    {
+        $service = app(DatabaseIntegrityService::class);
+        $method = new ReflectionMethod($service, 'constraintStatus');
+        $cases = [
+            ['CASCADE', 'CASCADE', 'NO ACTION', 'correct'],
+            ['SET NULL', 'SET NULL', 'NO ACTION', 'correct'],
+            ['RESTRICT', 'NO ACTION', 'NO ACTION', 'correct'],
+            ['RESTRICT', 'RESTRICT', 'RESTRICT', 'correct'],
+            [' restrict ', ' no action ', ' restrict ', 'correct'],
+            ['CASCADE', 'SET NULL', 'NO ACTION', 'mismatch'],
+            ['CASCADE', 'CASCADE', 'CASCADE', 'mismatch'],
+        ];
+
+        foreach ($cases as [$onDelete, $deleteRule, $updateRule, $expected]) {
+            $foreignKey = (object) [
+                'child_table' => 'job_images',
+                'child_column' => 'job_id',
+                'referenced_table' => 'jobs',
+                'referenced_column' => 'id',
+                'delete_rule' => $deleteRule,
+                'update_rule' => $updateRule,
+            ];
+
+            $this->assertSame(
+                $expected,
+                $method->invoke(
+                    $service,
+                    'job_images',
+                    'job_id',
+                    'jobs',
+                    'id',
+                    $onDelete,
+                    [$foreignKey]
+                ),
+                'Expected '.$onDelete.' with DELETE '.$deleteRule.' / UPDATE '.$updateRule
+            );
+        }
     }
 
     public function test_hardening_command_refuses_the_sqlite_test_database(): void
