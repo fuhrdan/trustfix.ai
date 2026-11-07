@@ -78,6 +78,7 @@ class DatabaseIntegrityService
           LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS r
                  ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
                 AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+                AND r.TABLE_NAME = k.TABLE_NAME
               WHERE k.TABLE_SCHEMA = DATABASE()
                 AND k.REFERENCED_TABLE_NAME IS NOT NULL'
         );
@@ -364,14 +365,35 @@ class DatabaseIntegrityService
             if (
                 (string) $foreignKey->referenced_table === $referencedTable
                 && (string) $foreignKey->referenced_column === $referencedColumn
-                && strtoupper((string) $foreignKey->delete_rule) === $onDelete
-                && strtoupper((string) $foreignKey->update_rule) === 'RESTRICT'
+                && $this->referentialActionsMatch(
+                    (string) $foreignKey->delete_rule,
+                    $onDelete
+                )
+                && $this->referentialActionsMatch(
+                    (string) $foreignKey->update_rule,
+                    'RESTRICT'
+                )
             ) {
                 return 'correct';
             }
         }
 
         return $foundForColumn ? 'mismatch' : 'missing';
+    }
+
+    private function referentialActionsMatch(
+        string $actual,
+        string $expected
+    ): bool {
+        $normalize = static function (string $action): string {
+            $action = strtoupper(trim($action));
+
+            return $action === 'NO ACTION'
+                ? 'RESTRICT'
+                : $action;
+        };
+
+        return $normalize($actual) === $normalize($expected);
     }
 
     private function constraintName(string $table, string $column): string
