@@ -6,6 +6,7 @@ use App\Models\ContractorProfile;
 use App\Models\Job;
 use App\Models\Payment;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentSafetyGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -19,9 +20,9 @@ class PaymentController extends Controller
 
     private function stripe()
     {
-        $secret = config('services.stripe.secret');
-
-        abort_if(!$secret, 503, 'Stripe is not configured.');
+        $guard = app(PaymentSafetyGuard::class);
+        $guard->assertPaymentsEnabled();
+        $secret = $guard->apiSecret();
 
         return Http::asForm()
             ->withToken($secret)
@@ -30,13 +31,18 @@ class PaymentController extends Controller
 
     public function publicConfig()
     {
+        $key = app(PaymentSafetyGuard::class)->publishableKey();
+
         return response()->json([
-            'publishable_key' => config('services.stripe.key'),
+            'publishable_key' => $key,
+            'enabled' => $key !== null,
         ]);
     }
 
     public function createConnectAccount()
     {
+        app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
+
         $user = Auth::guard('api')->user();
         $profile = ContractorProfile::where('user_id', $user->id)->firstOrFail();
 
@@ -62,6 +68,8 @@ class PaymentController extends Controller
 
     public function refreshConnectAccount()
     {
+        app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
+
         $user = Auth::guard('api')->user();
         $profile = ContractorProfile::where('user_id', $user->id)->firstOrFail();
 
@@ -96,6 +104,8 @@ class PaymentController extends Controller
 
     public function createIntent(Request $request, $jobId)
     {
+        app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
+
         $user = Auth::guard('api')->user();
         $job = Job::with('handyman')->findOrFail($jobId);
 
@@ -167,6 +177,8 @@ class PaymentController extends Controller
         abort_unless($this->validSignature($payload, $signature), 400, 'Invalid Stripe signature.');
 
         $event = json_decode($payload, true);
+        abort_unless(is_array($event), 400, 'Invalid Stripe event.');
+        app(PaymentSafetyGuard::class)->assertWebhookAllowed($event);
         $intent = $event['data']['object'] ?? [];
 
         if (($event['type'] ?? '') === 'account.updated') {
