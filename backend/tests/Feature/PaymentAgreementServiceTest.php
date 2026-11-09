@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ChangeOrderController;
+use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobEstimateController;
 use App\Models\Job;
@@ -919,6 +920,109 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertSame(1, DB::table('change_orders')->count());
         self::assertSame('pending', DB::table('change_orders')->find(11)->status);
         self::assertSame('125.00', Job::findOrFail(1)->agreed_price);
+    }
+
+    public function test_reserved_job_blocks_unfunded_progress_and_generic_cancel_and_delete(): void
+    {
+        $this->reserve($this->proposal());
+        config(['payments.enabled' => false]);
+        $controller = app(JobController::class);
+        $this->actAsJobUser(2, 'handyman');
+        $this->denied(fn () => $controller->startJob(1), 409);
+        $this->denied(fn () => $controller->updateStatus(
+            ControllerRequest::create('/api/jobs/1/status', 'POST', ['status' => 'in_progress']), 1
+        ), 409);
+        $this->job(['status' => 'in_progress']);
+        $this->denied(fn () => $controller->completeJob(1), 409);
+
+        $this->actAsJobUser(1, 'customer');
+        $this->denied(fn () => $controller->cancelJob(1), 409);
+        $this->denied(fn () => $controller->updateStatus(
+            ControllerRequest::create('/api/jobs/1/status', 'POST', ['status' => 'cancelled']), 1
+        ), 409);
+        $this->denied(fn () => $controller->destroy(1), 409);
+        self::assertSame('in_progress', Job::findOrFail(1)->status);
+        self::assertSame(1, DB::table('payment_installments')->count());
+    }
+
+    public function test_reserved_progress_requires_matching_success_fact_and_no_open_dispute(): void
+    {
+        $this->checkout();
+        $this->reserve($this->proposal());
+        $paymentId = DB::table('payments')->value('id');
+        DB::table('payments')->where('id', $paymentId)->update([
+            'status' => 'succeeded', 'stripe_payment_intent_id' => 'pi_funding_fixture',
+        ]);
+
+        $advance = fn () => DB::transaction(function (): bool {
+            Job::query()->lockForUpdate()->findOrFail(1);
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed(1, 'in_progress');
+
+            return true;
+        });
+        $this->denied($advance, 409);
+
+        foreach ([12499, 12500] as $amount) {
+            $payload = json_encode(['id' => 'evt_funding_' . $amount], JSON_THROW_ON_ERROR);
+            $receiptId = DB::table('stripe_event_receipts')->insertGetId([
+                'stripe_event_id' => 'evt_funding_' . $amount,
+                'event_type' => 'payment_intent.succeeded',
+                'api_version' => '2026-10-28.endive',
+                'livemode' => false,
+                'stripe_created_at' => time(),
+                'payload_encrypted' => Crypt::encryptString($payload),
+                'payload_sha256' => hash('sha256', $payload),
+            ]);
+            DB::table('payment_journal_entries')->insert([
+                'payment_id' => $paymentId,
+                'entry_key' => 'funding_fixture_' . $amount,
+                'entry_type' => 'payment_succeeded',
+                'amount_cents' => $amount,
+                'currency' => 'usd',
+                'stripe_object_id' => 'pi_funding_fixture',
+                'stripe_event_receipt_id' => $receiptId,
+            ]);
+            if ($amount === 12499) {
+                $this->denied($advance, 409);
+            }
+        }
+
+        self::assertTrue($advance());
+        DB::table('disputes')->insert(['job_id' => 1, 'status' => 'open']);
+        $this->denied($advance, 409);
+    }
+
+    public function test_reserved_job_dispute_resolution_does_not_advance_work(): void
+    {
+        Schema::table('disputes', function (Blueprint $table): void {
+            $table->unsignedBigInteger('opened_by')->nullable();
+            $table->string('reason')->nullable();
+            $table->text('details')->nullable();
+            $table->unsignedBigInteger('resolved_by')->nullable();
+            $table->timestamp('resolved_at')->nullable();
+            $table->text('resolution_notes')->nullable();
+            $table->timestamps();
+        });
+        $this->reserve($this->proposal());
+        $this->job(['status' => 'completed']);
+
+        $controller = app(DisputeController::class);
+        $this->actAsJobUser(1, 'customer');
+        $opened = $controller->store(
+            ControllerRequest::create('/api/jobs/1/disputes', 'POST', ['reason' => 'Fixture issue']), 1
+        );
+        self::assertSame(201, $opened->getStatusCode());
+        $id = $opened->getData(true)['id'];
+        self::assertSame('open', DB::table('disputes')->find($id)->status);
+        self::assertSame('completed', Job::findOrFail(1)->status);
+
+        $this->actAsJobUser(3, 'admin');
+        $resolved = $controller->adminUpdateStatus(
+            ControllerRequest::create("/api/admin/disputes/$id/status", 'POST', ['status' => 'resolved']), $id
+        );
+        self::assertSame(200, $resolved->getStatusCode());
+        self::assertSame('resolved', DB::table('disputes')->find($id)->status);
+        self::assertSame('completed', Job::findOrFail(1)->status);
     }
 
     private function actAsJobUser(int $id, string $role): void

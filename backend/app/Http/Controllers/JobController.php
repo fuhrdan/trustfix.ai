@@ -488,21 +488,31 @@ public function deleteImage($jobId, $imageId)
     public function startJob($id)
     {
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($id);
 
-        if ($job->handyman_id != $user->id) {
-            return response()->json(['error' => 'Forbidden'], 403);
+        $job = DB::transaction(function () use ($id, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
+
+            if ($job->handyman_id != $user->id) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            if ($job->status != 'accepted') {
+                return response()->json(['error' => 'Job must be accepted before it can start'], 409);
+            }
+
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed((int) $job->id, 'in_progress');
+
+            $job->update([
+                'status' => 'in_progress',
+            ]);
+
+            $this->logJobEvent($job, $user, 'job_started', $user->name . ' started this job.');
+            return $job;
+        }, 3);
+        if (!($job instanceof Job)) {
+            return $job;
         }
 
-        if ($job->status != 'accepted') {
-            return response()->json(['error' => 'Job must be accepted before it can start'], 409);
-        }
-
-        $job->update([
-            'status' => 'in_progress',
-        ]);
-
-        $this->logJobEvent($job, $user, 'job_started', $user->name . ' started this job.');
         $this->notifications->jobStatusChanged($job, 'in_progress', $user);
 
         return response()->json($job->load(['messages', 'activities']));
@@ -511,34 +521,44 @@ public function deleteImage($jobId, $imageId)
     public function completeJob($id)
     {
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($id);
 
-        if ($job->handyman_id != $user->id) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
+        $job = DB::transaction(function () use ($id, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
 
-        if ($job->status != 'in_progress') {
-            return response()->json(['error' => 'Job must be in progress before completion'], 409);
-        }
+            if ($job->handyman_id != $user->id) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
 
-        $job->update([
-            'status' => 'completed',
-        ]);
+            if ($job->status != 'in_progress') {
+                return response()->json(['error' => 'Job must be in progress before completion'], 409);
+            }
 
-        $estimate = $job->estimate;
-        if (
-            $estimate
-            && $estimate->actual_hours !== null
-            && $estimate->actual_material_cost !== null
-            && $estimate->final_invoice !== null
-        ) {
-            $estimate->update([
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed((int) $job->id, 'completed');
+
+            $job->update([
                 'status' => 'completed',
-                'completed_at' => now(),
             ]);
+
+            $estimate = $job->estimate()->lockForUpdate()->first();
+            if (
+                $estimate
+                && $estimate->actual_hours !== null
+                && $estimate->actual_material_cost !== null
+                && $estimate->final_invoice !== null
+            ) {
+                $estimate->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                ]);
+            }
+
+            $this->logJobEvent($job, $user, 'job_completed', $user->name . ' marked this job complete.');
+            return $job;
+        }, 3);
+        if (!($job instanceof Job)) {
+            return $job;
         }
 
-        $this->logJobEvent($job, $user, 'job_completed', $user->name . ' marked this job complete.');
         $this->notifications->jobStatusChanged($job, 'completed', $user);
 
         return response()->json($job->load(['messages', 'activities']));
@@ -547,21 +567,31 @@ public function deleteImage($jobId, $imageId)
     public function cancelJob($id)
     {
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($id);
 
-        if ($job->customer_id != $user->id) {
-            return response()->json(['error' => 'Forbidden'], 403);
+        $job = DB::transaction(function () use ($id, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
+
+            if ($job->customer_id != $user->id) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            if (in_array($job->status, ['completed', 'cancelled'], true)) {
+                return response()->json(['error' => 'Job cannot be cancelled'], 409);
+            }
+
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed((int) $job->id, 'cancelled');
+
+            $job->update([
+                'status' => 'cancelled',
+            ]);
+
+            $this->logJobEvent($job, $user, 'job_cancelled', $user->name . ' cancelled this job.');
+            return $job;
+        }, 3);
+        if (!($job instanceof Job)) {
+            return $job;
         }
 
-        if (in_array($job->status, ['completed', 'cancelled'], true)) {
-            return response()->json(['error' => 'Job cannot be cancelled'], 409);
-        }
-
-        $job->update([
-            'status' => 'cancelled',
-        ]);
-
-        $this->logJobEvent($job, $user, 'job_cancelled', $user->name . ' cancelled this job.');
         $this->notifications->jobStatusChanged($job, 'cancelled', $user);
 
         return response()->json($job->load(['messages', 'activities']));
@@ -570,88 +600,98 @@ public function deleteImage($jobId, $imageId)
     public function updateStatus(Request $request, $id)
     {
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($id);
 
-        $validated = $request->validate([
-            'status' => [
-                'required',
-                Rule::in([
-                    'posted',
-                    'requested',
-                    'accepted',
-                    'in_progress',
-                    'change_requested',
-                    'completed',
-                    'cancelled',
-                ]),
-            ],
-        ]);
+        $job = DB::transaction(function () use ($request, $id, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
 
-        $isAdmin = $user->role === 'admin';
-        $isCustomer = $job->customer_id == $user->id;
-        $isContractor = $job->handyman_id == $user->id;
+            $validated = $request->validate([
+                'status' => [
+                    'required',
+                    Rule::in([
+                        'posted',
+                        'requested',
+                        'accepted',
+                        'in_progress',
+                        'change_requested',
+                        'completed',
+                        'cancelled',
+                    ]),
+                ],
+            ]);
 
-        if (!$isAdmin && !$isCustomer && !$isContractor) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            $isAdmin = $user->role === 'admin';
+            $isCustomer = $job->customer_id == $user->id;
+            $isContractor = $job->handyman_id == $user->id;
+
+            if (!$isAdmin && !$isCustomer && !$isContractor) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $transitions = [
+                'posted' => ['requested', 'cancelled'],
+                'requested' => ['accepted', 'cancelled'],
+                'accepted' => ['in_progress', 'change_requested', 'cancelled'],
+                'in_progress' => ['completed', 'change_requested', 'cancelled'],
+                'change_requested' => ['accepted', 'in_progress', 'cancelled'],
+                'completed' => [],
+                'cancelled' => [],
+            ];
+            $newStatus = $validated['status'];
+
+            if (!in_array($newStatus, $transitions[$job->status] ?? [], true)) {
+                return response()->json([
+                    'message' => 'That job status transition is not allowed.',
+                ], 409);
+            }
+
+            if (
+                !$isAdmin
+                && $isCustomer
+                && !in_array($newStatus, ['change_requested', 'cancelled'], true)
+            ) {
+                return response()->json([
+                    'message' => 'Customers can request a change or cancel an active job.',
+                ], 403);
+            }
+
+            if (
+                !$isAdmin
+                && $isContractor
+                && !in_array(
+                    $newStatus,
+                    ['accepted', 'in_progress', 'change_requested', 'completed'],
+                    true
+                )
+            ) {
+                return response()->json([
+                    'message' => 'Contractors cannot apply that job status.',
+                ], 403);
+            }
+
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed((int) $job->id, $newStatus);
+
+            $previousStatus = $job->status;
+            $job->update(['status' => $newStatus]);
+
+            $description = $user->name
+                . ' changed the job status from '
+                . str_replace('_', ' ', $previousStatus)
+                . ' to '
+                . str_replace('_', ' ', $newStatus)
+                . '.';
+            $this->logJobEvent(
+                $job,
+                $user,
+                'job_status_changed',
+                $description
+            );
+            return $job;
+        }, 3);
+        if (!($job instanceof Job)) {
+            return $job;
         }
 
-        $transitions = [
-            'posted' => ['requested', 'cancelled'],
-            'requested' => ['accepted', 'cancelled'],
-            'accepted' => ['in_progress', 'change_requested', 'cancelled'],
-            'in_progress' => ['completed', 'change_requested', 'cancelled'],
-            'change_requested' => ['accepted', 'in_progress', 'cancelled'],
-            'completed' => [],
-            'cancelled' => [],
-        ];
-        $newStatus = $validated['status'];
-
-        if (!in_array($newStatus, $transitions[$job->status] ?? [], true)) {
-            return response()->json([
-                'message' => 'That job status transition is not allowed.',
-            ], 409);
-        }
-
-        if (
-            !$isAdmin
-            && $isCustomer
-            && !in_array($newStatus, ['change_requested', 'cancelled'], true)
-        ) {
-            return response()->json([
-                'message' => 'Customers can request a change or cancel an active job.',
-            ], 403);
-        }
-
-        if (
-            !$isAdmin
-            && $isContractor
-            && !in_array(
-                $newStatus,
-                ['accepted', 'in_progress', 'change_requested', 'completed'],
-                true
-            )
-        ) {
-            return response()->json([
-                'message' => 'Contractors cannot apply that job status.',
-            ], 403);
-        }
-
-        $previousStatus = $job->status;
-        $job->update(['status' => $newStatus]);
-
-        $description = $user->name
-            . ' changed the job status from '
-            . str_replace('_', ' ', $previousStatus)
-            . ' to '
-            . str_replace('_', ' ', $newStatus)
-            . '.';
-        $this->logJobEvent(
-            $job,
-            $user,
-            'job_status_changed',
-            $description
-        );
-        $this->notifications->jobStatusChanged($job, $newStatus, $user);
+        $this->notifications->jobStatusChanged($job, $job->status, $user);
 
         return response()->json($job->load(['messages', 'activities']));
     }
@@ -759,20 +799,26 @@ public function deleteImage($jobId, $imageId)
     {
         $user = Auth::guard('api')->user();
 
-        $job = Job::findOrFail($id);
+        return DB::transaction(function () use ($id, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
 
-        if ($user->role !== 'admin' && $job->customer_id != $user->id) {
+            if ($user->role !== 'admin' && $job->customer_id != $user->id) {
+
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $agreement = DB::table('payment_agreements')->where('job_id', $job->id)->lockForUpdate()->first(['id']);
+            $payment = DB::table('payments')->where('job_id', $job->id)->lockForUpdate()->first(['id']);
+            abort_if($agreement !== null || $payment !== null, 409, 'Jobs with payment history cannot be deleted.');
+
+            $job->delete();
 
             return response()->json([
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $job->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Job deleted successfully'
-        ]);
+                'success' => true,
+                'message' => 'Job deleted successfully'
+            ]);
+        }, 3);
     }
 }

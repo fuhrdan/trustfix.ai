@@ -157,15 +157,67 @@ final class PaymentAgreementService
     // Call inside a transaction holding the jobs row lock.
     public function assertJobTermsEditable(int $jobId): void
     {
+        abort_if($this->jobHasReservedPayable($jobId), 409,
+            'A payable already exists; changes require a separate reviewed agreement.');
+    }
+
+    public function jobHasReservedPayable(int $jobId): bool
+    {
+        return $this->reservedPayables($jobId)->lockForUpdate()->first(['payment_installments.id']) !== null;
+    }
+
+    // Call with the job row locked. A mutable payment status alone is insufficient.
+    public function assertJobStatusChangeAllowed(int $jobId, string $nextStatus): void
+    {
+        $payables = $this->reservedPayables($jobId)
+            ->join('payments', 'payments.id', '=', 'payment_installments.payment_id')
+            ->lockForUpdate()->get([
+                'payment_installments.payment_id',
+                'payment_installments.amount_cents',
+                'payment_installments.currency',
+                'payments.status',
+                'payments.stripe_payment_intent_id',
+                'payments.amount_cents as recorded_amount_cents',
+                'payments.currency as recorded_currency',
+            ]);
+        if ($payables->isEmpty()) {
+            return;
+        }
+
+        abort_unless(in_array($nextStatus, ['in_progress', 'completed'], true), 409,
+            'This job requires the payment cancellation or change-order workflow.');
+        $openDispute = DB::table('disputes')->where('job_id', $jobId)
+            ->whereIn('status', ['open', 'under_review'])->lockForUpdate()->first(['id']);
+        abort_if($openDispute !== null, 409, 'An open dispute holds this job.');
+
+        foreach ($payables as $payable) {
+            abort_unless($payable->status === 'succeeded' && $payable->stripe_payment_intent_id
+                && (int) $payable->recorded_amount_cents === (int) $payable->amount_cents
+                && $payable->recorded_currency === $payable->currency, 409,
+                'Verified funding is required to advance this job.');
+            $funded = DB::table('payment_journal_entries as journal')
+                ->join('stripe_event_receipts as receipt', 'receipt.id', '=', 'journal.stripe_event_receipt_id')
+                ->where('journal.payment_id', $payable->payment_id)
+                ->where('journal.entry_type', 'payment_succeeded')
+                ->where('journal.stripe_object_id', $payable->stripe_payment_intent_id)
+                ->where('journal.amount_cents', $payable->amount_cents)
+                ->where('journal.currency', $payable->currency)
+                ->where('receipt.event_type', 'payment_intent.succeeded')
+                ->where('receipt.livemode', false)
+                ->lockForUpdate()->first(['journal.id']);
+            abort_if($funded === null, 409, 'Verified funding is required to advance this job.');
+        }
+    }
+
+    private function reservedPayables(int $jobId): \Illuminate\Database\Query\Builder
+    {
         if (DB::transactionLevel() === 0) {
             throw new LogicException('Checking reserved job terms requires the job transaction.');
         }
 
-        $reserved = DB::table('payment_installments')
+        return DB::table('payment_installments')
             ->join('payment_agreements', 'payment_agreements.id', '=', 'payment_installments.payment_agreement_id')
-            ->where('payment_agreements.job_id', $jobId)
-            ->lockForUpdate()->first(['payment_installments.id']);
-        abort_if($reserved !== null, 409, 'A payable already exists; changes require a separate reviewed agreement.');
+            ->where('payment_agreements.job_id', $jobId);
     }
 
     private function agreement(int $id): object
