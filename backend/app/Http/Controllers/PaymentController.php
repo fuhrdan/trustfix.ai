@@ -7,9 +7,14 @@ use App\Models\Job;
 use App\Models\Payment;
 use App\Services\LifecycleNotificationService;
 use App\Services\PaymentSafetyGuard;
+use App\Services\StripeEventInbox;
+use App\Services\StripePaymentIntentReconciler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PaymentController extends Controller
 {
@@ -171,72 +176,75 @@ class PaymentController extends Controller
 
     public function webhook(Request $request)
     {
-        $payload = $request->getContent();
-        $signature = $request->header('Stripe-Signature', '');
+        $receiptId = app(StripeEventInbox::class)->receive(
+            $request->getContent(), $request->header('Stripe-Signature', '')
+        );
 
-        abort_unless($this->validSignature($payload, $signature), 400, 'Invalid Stripe signature.');
-
-        $event = json_decode($payload, true);
-        abort_unless(is_array($event), 400, 'Invalid Stripe event.');
-        app(PaymentSafetyGuard::class)->assertWebhookAllowed($event);
-        $intent = $event['data']['object'] ?? [];
-
-        if (($event['type'] ?? '') === 'account.updated') {
-            ContractorProfile::where('stripe_account_id', $intent['id'] ?? '')
-                ->update([
-                    'stripe_details_submitted' => (bool)($intent['details_submitted'] ?? false),
-                    'stripe_charges_enabled' => (bool)($intent['charges_enabled'] ?? false),
-                    'stripe_payouts_enabled' => (bool)($intent['payouts_enabled'] ?? false),
-                ]);
-
-            return response()->json(['received' => true]);
+        try {
+            $outcome = app(StripePaymentIntentReconciler::class)
+                ->process($receiptId, $this->applyLegacyWebhook(...));
+            $status = in_array($outcome, ['processed', 'ignored', 'already_processed'], true) ? 200 : 503;
+        } catch (Throwable $exception) {
+            Log::warning('Stripe event processing requires retry or review.', [
+                'receipt_id' => $receiptId,
+                'exception_type' => $exception::class,
+            ]);
+            $status = 503;
         }
 
-        $payment = Payment::where('stripe_payment_intent_id', $intent['id'] ?? '')->first();
+        return response()->json(['received' => true], $status);
+    }
 
-        if (!$payment) {
-            return response()->json(['received' => true]);
+    private function applyLegacyWebhook(#[\SensitiveParameter] array $event): string
+    {
+        $object = $event['data']['object'];
+        if ($event['type'] === 'account.updated' && $object['object'] === 'account') {
+            ContractorProfile::where('stripe_account_id', $object['id'])->update([
+                'stripe_details_submitted' => (bool) ($object['details_submitted'] ?? false),
+                'stripe_charges_enabled' => (bool) ($object['charges_enabled'] ?? false),
+                'stripe_payouts_enabled' => (bool) ($object['payouts_enabled'] ?? false),
+            ]);
+
+            return 'processed';
         }
 
-        $status = match ($event['type'] ?? '') {
+        $status = match ($event['type']) {
             'payment_intent.succeeded' => 'succeeded',
             'payment_intent.processing' => 'processing',
             'payment_intent.payment_failed' => 'failed',
             'payment_intent.canceled' => 'cancelled',
             default => null,
         };
-
-        if ($status && $payment->status !== $status) {
-            $payment->update([
-                'status' => $status,
-                'paid_at' => $status === 'succeeded' ? now() : $payment->paid_at,
-                'metadata' => ['stripe_event_id' => $event['id'] ?? null],
-            ]);
-
-            $this->notifications->paymentUpdated($payment->fresh());
+        if ($status === null || $object['object'] !== 'payment_intent') {
+            return 'ignored';
         }
 
-        return response()->json(['received' => true]);
-    }
-
-    private function validSignature(string $payload, string $header): bool
-    {
-        $secret = config('services.stripe.webhook_secret');
-        preg_match('/(?:^|,)t=(\d+)/', $header, $timestamp);
-        preg_match_all('/(?:^|,)v1=([a-f0-9]+)/', $header, $signatures);
-
-        if (!$secret || empty($timestamp[1]) || empty($signatures[1]) || abs(time() - (int)$timestamp[1]) > 300) {
-            return false;
+        $jobId = Payment::where('stripe_payment_intent_id', $object['id'])->value('job_id');
+        if ($jobId === null || !DB::table('jobs')->where('id', $jobId)->lockForUpdate()->first(['id'])) {
+            return 'ignored';
         }
 
-        $expected = hash_hmac('sha256', $timestamp[1] . '.' . $payload, $secret);
-
-        foreach ($signatures[1] as $candidate) {
-            if (hash_equals($expected, $candidate)) {
-                return true;
-            }
+        $payment = Payment::where('job_id', $jobId)
+            ->where('stripe_payment_intent_id', $object['id'])->lockForUpdate()->first();
+        if (!$payment || $payment->status === $status
+            || in_array($payment->status, ['succeeded', 'cancelled', 'refunded'], true)) {
+            return 'ignored';
         }
 
-        return false;
+        // Reserved payments use the funding reconciler. Keep other snapshots in the inbox.
+        $reserved = DB::table('payment_installments')->where('payment_id', $payment->id)
+            ->lockForUpdate()->first(['id']);
+        if ($reserved) {
+            return 'ignored';
+        }
+
+        $payment->update([
+            'status' => $status,
+            'paid_at' => $status === 'succeeded' ? now() : $payment->paid_at,
+            'metadata' => ['stripe_event_id' => $event['id']],
+        ]);
+        DB::afterCommit(fn () => $this->notifications->paymentUpdated($payment));
+
+        return 'processed';
     }
 }

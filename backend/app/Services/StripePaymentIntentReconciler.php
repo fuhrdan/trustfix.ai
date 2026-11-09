@@ -11,15 +11,20 @@ final class StripePaymentIntentReconciler
     {
     }
 
-    public function process(int $receiptId): string
+    /** @param null|callable(array): string $legacyHandler */
+    public function process(int $receiptId, ?callable $legacyHandler = null): string
     {
-        return $this->processor->process($receiptId, $this->recordSuccess(...));
+        return $this->processor->process(
+            $receiptId,
+            fn (array $event, int $id): string => $this->recordSuccess($event, $id)
+                ?? ($legacyHandler === null ? 'ignored' : $legacyHandler($event))
+        );
     }
 
-    private function recordSuccess(#[\SensitiveParameter] array $event, int $receiptId): string
+    private function recordSuccess(#[\SensitiveParameter] array $event, int $receiptId): ?string
     {
         if ($event['type'] !== 'payment_intent.succeeded') {
-            return 'ignored';
+            return null;
         }
 
         $intent = $event['data']['object'];
@@ -42,7 +47,7 @@ final class StripePaymentIntentReconciler
                 throw new RuntimeException('Stripe intent binding is pending.');
             }
 
-            return 'ignored';
+            return null;
         }
 
         $job = DB::table('jobs')->where('id', $terms->job_id)->lockForUpdate()->first(['id']);

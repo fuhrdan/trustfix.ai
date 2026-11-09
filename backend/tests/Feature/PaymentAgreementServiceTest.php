@@ -107,6 +107,7 @@ class PaymentAgreementServiceTest extends TestCase
             $table->char('currency', 3)->default('usd');
             $table->string('stripe_payment_intent_id')->nullable();
             $table->timestamp('paid_at')->nullable();
+            $table->json('metadata')->nullable();
             $table->string('status')->default('requires_payment_method');
             $table->timestamps();
         });
@@ -968,6 +969,147 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertSame('failed', $state->status);
         self::assertSame(1, (int) $state->attempts);
         self::assertNull($state->processed_at);
+    }
+
+    public function test_webhook_requires_a_signature_and_routes_reserved_funding_once(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+
+        $success = $this->fundingEvent($ids, 'evt_webhook_funding');
+        $this->postStripeSnapshot($success, false)->assertStatus(400);
+        self::assertSame(0, DB::table('stripe_event_receipts')->count());
+
+        $processing = $success;
+        $processing['id'] = 'evt_webhook_reserved_processing';
+        $processing['type'] = 'payment_intent.processing';
+        $processing['data']['object']['status'] = 'processing';
+        unset($processing['data']['object']['metadata']);
+        $this->postStripeSnapshot($processing)->assertOk();
+        self::assertSame('requires_payment_method', DB::table('payments')->find($ids['payment_id'])->status);
+
+        $this->postStripeSnapshot($success)->assertOk()->assertExactJson(['received' => true]);
+        $this->postStripeSnapshot($success)->assertOk();
+        $late = $processing;
+        $late['id'] = 'evt_webhook_reserved_late_failure';
+        $late['type'] = 'payment_intent.payment_failed';
+        $late['data']['object']['status'] = 'requires_payment_method';
+        $this->postStripeSnapshot($late)->assertOk();
+
+        self::assertSame('succeeded', DB::table('payments')->find($ids['payment_id'])->status);
+        self::assertSame(1, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+        self::assertSame(3, DB::table('stripe_event_receipts')->count());
+        self::assertSame(2, DB::table('stripe_event_processing')->where('status', 'ignored')->count());
+    }
+
+    public function test_webhook_returns_retry_until_an_early_success_can_be_reconciled(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $event = $this->fundingEvent($ids, 'evt_webhook_retry');
+        $receipt = $this->receiveFundingEvent($event);
+        $state = DB::table('stripe_event_processing')->where('stripe_event_receipt_id', $receipt);
+        $state->update([
+            'status' => 'processing',
+            'attempts' => 1,
+            'lease_token' => str_repeat('a', 64),
+            'lease_expires_at' => now()->addMinute(),
+        ]);
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        self::assertSame(1, (int) (clone $state)->value('attempts'));
+
+        $state->update(['lease_expires_at' => now()->subSecond()]);
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        self::assertSame('failed', (clone $state)->value('status'));
+
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        $this->postStripeSnapshot($event)->assertOk();
+        self::assertSame('processed', (clone $state)->value('status'));
+        self::assertSame(3, (int) (clone $state)->value('attempts'));
+        self::assertSame(1, DB::table('stripe_event_receipts')->count());
+    }
+
+    public function test_webhook_keeps_legacy_updates_without_reopening_a_terminal_payment(): void
+    {
+        $this->checkout();
+        $id = $this->payment(['stripe_payment_intent_id' => 'pi_webhook_legacy']);
+        $event = [
+            'id' => 'evt_webhook_legacy_processing',
+            'object' => 'event',
+            'type' => 'payment_intent.processing',
+            'created' => time(),
+            'livemode' => false,
+            'data' => ['object' => [
+                'id' => 'pi_webhook_legacy', 'object' => 'payment_intent', 'status' => 'processing',
+            ]],
+        ];
+        $this->postStripeSnapshot($event)->assertOk();
+        $payment = DB::table('payments')->where('id', $id);
+        self::assertSame('processing', (clone $payment)->value('status'));
+        self::assertSame(['stripe_event_id' => 'evt_webhook_legacy_processing'],
+            json_decode((clone $payment)->value('metadata'), true, 512, JSON_THROW_ON_ERROR));
+
+        $payment->update(['status' => 'succeeded']);
+        $event['id'] = 'evt_webhook_legacy_late_failure';
+        $event['type'] = 'payment_intent.payment_failed';
+        $event['data']['object']['status'] = 'requires_payment_method';
+        $this->postStripeSnapshot($event)->assertOk();
+        self::assertSame('succeeded', (clone $payment)->value('status'));
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+    }
+
+    public function test_webhook_records_and_deduplicates_connected_account_updates(): void
+    {
+        $this->checkout();
+        Schema::create('contractor_profiles', function (Blueprint $table): void {
+            $table->id();
+            $table->string('stripe_account_id');
+            $table->boolean('stripe_details_submitted')->default(false);
+            $table->boolean('stripe_charges_enabled')->default(false);
+            $table->boolean('stripe_payouts_enabled')->default(false);
+            $table->timestamps();
+        });
+        DB::table('contractor_profiles')->insert(['stripe_account_id' => 'acct_webhook_fixture']);
+        $event = [
+            'id' => 'evt_webhook_account',
+            'object' => 'event',
+            'type' => 'account.updated',
+            'account' => 'acct_webhook_fixture',
+            'created' => time(),
+            'livemode' => false,
+            'data' => ['object' => [
+                'id' => 'acct_webhook_fixture',
+                'object' => 'account',
+                'details_submitted' => true,
+                'charges_enabled' => false,
+                'payouts_enabled' => true,
+            ]],
+        ];
+
+        $this->postStripeSnapshot($event)->assertOk();
+        $profile = DB::table('contractor_profiles')->first();
+        self::assertSame(1, (int) $profile->stripe_details_submitted);
+        self::assertSame(0, (int) $profile->stripe_charges_enabled);
+        self::assertSame(1, (int) $profile->stripe_payouts_enabled);
+        $this->postStripeSnapshot($event)->assertOk();
+        self::assertSame(1, DB::table('stripe_event_receipts')->count());
+        self::assertSame(1, (int) DB::table('stripe_event_processing')->value('attempts'));
+    }
+
+    private function postStripeSnapshot(array $event, bool $valid = true): \Illuminate\Testing\TestResponse
+    {
+        $payload = json_encode($event, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "$timestamp.$payload", config('services.stripe.webhook_secret'));
+
+        return $this->call('POST', '/api/stripe/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_STRIPE_SIGNATURE' => $valid ? "t=$timestamp,v1=$signature" : 'invalid',
+        ], $payload);
     }
 
     private function executionFixture(): array
