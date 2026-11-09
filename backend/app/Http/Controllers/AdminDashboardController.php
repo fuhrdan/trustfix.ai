@@ -160,8 +160,14 @@ class AdminDashboardController extends Controller
                     'company',
                     'admin'
                 ])
-            ]
+            ],
+            'email_verified' => ['sometimes', 'boolean'],
         ]);
+
+        $requestedEmailVerification = array_key_exists('email_verified', $validated)
+            ? (bool) $validated['email_verified']
+            : null;
+        unset($validated['email_verified']);
 
         if (
             $user->role === 'admin'
@@ -174,11 +180,47 @@ class AdminDashboardController extends Controller
             ], 422);
         }
 
+        if (
+            $requestedEmailVerification === false
+            && $user->hasVerifiedEmail()
+            && (int) (auth('api')->id() ?? 0) === (int) $user->id
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot mark the administrator account you are currently using as unverified.',
+            ], 422);
+        }
+
+        if (
+            $requestedEmailVerification === false
+            && $user->role === 'admin'
+            && $user->hasVerifiedEmail()
+            && User::where('role', 'admin')
+                ->whereNotNull('email_verified_at')
+                ->count() <= 1
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'TrustFix must keep at least one verified administrator account.',
+            ], 422);
+        }
+
         $user->update($validated);
+
+        if (
+            $requestedEmailVerification !== null
+            && $requestedEmailVerification !== $user->hasVerifiedEmail()
+        ) {
+            $user->forceFill([
+                'email_verified_at' => $requestedEmailVerification ? now() : null,
+            ])->save();
+        }
+
+        $user->refresh();
 
         return response()->json([
             'success' => true,
-            'user' => $user
+            'user' => $user,
         ]);
     }
 

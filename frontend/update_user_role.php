@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $userId = (int)($_POST['user_id'] ?? 0);
 $role = $_POST['role'] ?? '';
+$emailVerified = (string)($_POST['email_verified'] ?? '');
 
 $allowedRoles = [
     'customer',
@@ -30,8 +31,12 @@ $allowedRoles = [
     'admin',
 ];
 
-if ($userId <= 0 || !in_array($role, $allowedRoles, true)) {
-    $_SESSION['flash_error'] = 'Invalid user role update.';
+if (
+    $userId <= 0
+    || !in_array($role, $allowedRoles, true)
+    || !in_array($emailVerified, ['0', '1'], true)
+) {
+    $_SESSION['flash_error'] = 'Invalid user role or email verification update.';
     header('Location: ' . $returnUrl);
     exit;
 }
@@ -43,7 +48,7 @@ if (
     || (int)($currentUser['_http_code'] ?? 500) >= 400
     || isset($currentUser['error'])
 ) {
-    $_SESSION['flash_error'] = 'Unable to load user before updating role.';
+    $_SESSION['flash_error'] = 'Unable to load user before updating the account.';
     header('Location: ' . $returnUrl);
     exit;
 }
@@ -54,6 +59,7 @@ $payload = [
     'phone' => $currentUser['phone'] ?? '',
     'address' => $currentUser['address'] ?? '',
     'role' => $role,
+    'email_verified' => $emailVerified === '1',
 ];
 
 $response = apiRequest(
@@ -63,9 +69,9 @@ $response = apiRequest(
 );
 
 if (($response['success'] ?? false) === true) {
-    $_SESSION['flash_success'] = 'User role updated.';
+    $_SESSION['flash_success'] = 'User role and email verification updated.';
 } else {
-    $_SESSION['flash_error'] = apiMessage($response, 'User role update failed.');
+    $_SESSION['flash_error'] = apiMessage($response, 'User account update failed.');
 }
 
 header('Location: ' . $returnUrl);

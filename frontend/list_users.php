@@ -113,6 +113,7 @@ include 'header.php';
         ?? 0
     );
     $isCurrentAdmin = (int)($user['id'] ?? 0) === (int)($currentAdmin['id'] ?? 0);
+    $isEmailVerified = !empty($user['email_verified_at']);
 ?>
 
 <tr>
@@ -178,7 +179,26 @@ include 'header.php';
                 <?php endforeach; ?>
             </select>
 
-            <button type="submit">Save Role</button>
+            <label for="email_verified_<?= (int)$user['id'] ?>">Email verification</label>
+            <select
+                id="email_verified_<?= (int)$user['id'] ?>"
+                name="email_verified"
+                aria-label="Email verification for <?= htmlspecialchars($user['name'] ?? $user['email'] ?? 'user', ENT_QUOTES, 'UTF-8') ?>"
+                <?= $isCurrentAdmin ? 'disabled' : '' ?>
+            >
+                <option value="1" <?= $isEmailVerified ? 'selected' : '' ?>>Verified</option>
+                <option value="0" <?= !$isEmailVerified ? 'selected' : '' ?>>Unverified</option>
+            </select>
+
+            <?php if ($isCurrentAdmin): ?>
+                <input
+                    type="hidden"
+                    name="email_verified"
+                    value="<?= $isEmailVerified ? '1' : '0' ?>"
+                >
+            <?php endif; ?>
+
+            <button type="submit">Save Role &amp; Verification</button>
         </form>
     </td>
 
