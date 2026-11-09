@@ -538,6 +538,7 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertSame((int) $agreement->id, (int) $installment->payment_agreement_id);
         self::assertSame('job:1:initial', $installment->payable_key);
         self::assertSame(12500, $payload['amount_cents']);
+        self::assertSame('never', $payload['allow_redirects']);
         self::assertSame($installment->transfer_group, $payload['transfer_group']);
         self::assertSame($ids['payment_id'], $payload['metadata']['trustfix_payment_id']);
         self::assertSame($agreement->agreement_sha256, $payload['metadata']['trustfix_agreement_sha256']);
@@ -703,6 +704,26 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertSame(str_repeat('b', 64), $this->operationState()->lease_token);
         self::assertNull(DB::table('payments')->find($ids['payment_id'])->stripe_payment_intent_id);
         self::assertFalse(DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_created')->exists());
+    }
+
+    public function test_executor_holds_a_request_reserved_before_the_redirect_policy(): void
+    {
+        [$executor, $ids, $saved] = $this->executionFixture();
+        $payload = json_decode(Crypt::decryptString($saved->payload_encrypted), true, 512, JSON_THROW_ON_ERROR);
+        unset($payload['allow_redirects']);
+        $plaintext = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        // Re-create an old request in this isolated SQLite fixture.
+        DB::unprepared('DROP TRIGGER stripe_operation_requests_no_update');
+        DB::table('stripe_operation_requests')->where('id', $ids['operation_id'])->update([
+            'payload_encrypted' => Crypt::encryptString($plaintext),
+            'payload_sha256' => hash('sha256', $plaintext),
+        ]);
+
+        self::assertSame('reconciliation_required', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('invalid_saved_request', $this->operationState()->last_error_code);
+        self::assertSame(0, (int) $this->operationState()->attempts);
+        Http::assertNothingSent();
     }
 
     public function test_executor_holds_an_expired_request_without_contacting_stripe(): void
@@ -1238,7 +1259,7 @@ class PaymentAgreementServiceTest extends TestCase
     public function test_checkout_api_reuses_the_intent_and_reads_current_status_without_exposing_the_secret(): void
     {
         $data = $this->approvedCheckoutRequest();
-        $this->expectedStripeResponses = 6;
+        $this->expectedStripeResponses = 8;
         $status = 'requires_payment_method';
         $details = [];
         Http::fake(function (Request $request) use (&$status, &$details) {
@@ -1251,10 +1272,19 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertStringContainsString('no-store', (string) $first->baseResponse->headers->get('Cache-Control'));
         $this->postJson('/api/jobs/1/payment-agreement')->assertOk()->assertJsonPath('agreement.checkout_reserved', true);
         $status = 'requires_action';
+        $details = ['next_action' => ['type' => 'use_stripe_sdk']];
         $this->postJson($url, $data)->assertOk()->assertJsonPath('stripe_status', 'requires_action')
-            ->assertJsonPath('payment.id', $first->json('payment.id'));
+            ->assertJsonPath('payment.id', $first->json('payment.id'))
+            ->assertJsonPath('client_secret', 'pi_executor_fixture_secret_fixture');
 
+        $details = ['next_action' => ['type' => 'redirect_to_url']];
+        $this->postJson($url, $data)->assertStatus(409)
+            ->assertJsonPath('checkout_status', 'reconciliation_required')->assertJsonMissingPath('client_secret');
         $status = 'requires_payment_method';
+        $details = ['automatic_payment_methods' => ['enabled' => true, 'allow_redirects' => 'always']];
+        $this->postJson($url, $data)->assertStatus(409)
+            ->assertJsonPath('checkout_status', 'reconciliation_required')->assertJsonMissingPath('client_secret');
+
         $details = ['last_payment_error' => ['code' => 'card_declined', 'message' => 'Private fixture error']];
         config(['payments.enabled' => false]);
         $read = $this->getJson($url)->assertOk()->assertJsonPath('payment_failed', true)
@@ -1347,6 +1377,7 @@ class PaymentAgreementServiceTest extends TestCase
         $intent['status'] = $status;
         $intent['amount_received'] = $status === 'succeeded' ? $intent['amount'] : 0;
         $intent['client_secret'] = 'pi_executor_fixture_secret_fixture';
+        $intent['automatic_payment_methods'] = ['enabled' => true, 'allow_redirects' => 'never'];
 
         return Http::response(array_replace($intent, $overrides), 200, ['Request-Id' => 'req_checkout_read_fixture']);
     }
@@ -1393,6 +1424,9 @@ class PaymentAgreementServiceTest extends TestCase
             'amount' => (int) $data['amount'], 'currency' => $data['currency'],
             'transfer_group' => $data['transfer_group'], 'metadata' => array_map('strval', $data['metadata']),
             'capture_method' => 'automatic', 'status' => 'requires_payment_method',
+            'automatic_payment_methods' => [
+                'enabled' => true, 'allow_redirects' => $data['automatic_payment_methods']['allow_redirects'],
+            ],
             'client_secret' => 'pi_executor_fixture_secret_fixture',
         ], 200, ['Request-Id' => 'req_executor_fixture']);
     }

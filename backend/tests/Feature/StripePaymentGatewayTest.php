@@ -54,6 +54,7 @@ class StripePaymentGatewayTest extends TestCase
             self::assertSame('12500', (string) $data['amount']);
             self::assertSame('usd', $data['currency']);
             self::assertSame('automatic', $data['capture_method']);
+            self::assertSame('never', $data['automatic_payment_methods']['allow_redirects']);
             self::assertSame(self::GROUP, $data['transfer_group']);
             self::assertSame('42', $data['metadata']['trustfix_payment_id']);
             self::assertSame(StripePaymentGateway::PAYMENT_MODEL, $data['metadata']['trustfix_payment_model']);
@@ -256,6 +257,7 @@ class StripePaymentGatewayTest extends TestCase
             ['amount' => 12501], ['currency' => 'eur'], ['transfer_group' => 'other_group'],
             ['metadata' => $wrongMetadata], ['capture_method' => 'manual'],
             ['client_secret' => null], ['client_secret' => ''],
+            ['automatic_payment_methods' => ['enabled' => true, 'allow_redirects' => 'always']],
             ['transfer_data' => ['destination' => 'acct_unassigned_fixture']],
             ['application_fee_amount' => 0], ['on_behalf_of' => 'acct_unassigned_fixture'],
         ];
@@ -458,6 +460,7 @@ class StripePaymentGatewayTest extends TestCase
     private function intent(array $overrides = []): array
     {
         return array_replace([
+            'automatic_payment_methods' => ['enabled' => true, 'allow_redirects' => 'never'],
             'id' => 'pi_gateway_fixture',
             'object' => 'payment_intent',
             'livemode' => false,

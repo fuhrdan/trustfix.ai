@@ -16,6 +16,7 @@ final class StripePaymentGateway
 {
     public const API_VERSION = '2026-10-28.endive';
     public const PAYMENT_MODEL = 'separate_charges_transfers_v1';
+    public const CHECKOUT_REDIRECTS = 'never';
 
     public function __construct(private readonly PaymentSafetyGuard $guard)
     {
@@ -75,7 +76,9 @@ final class StripePaymentGateway
             'amount' => $amountCents,
             'currency' => 'usd',
             'capture_method' => 'automatic',
-            'automatic_payment_methods' => ['enabled' => 'true'],
+            'automatic_payment_methods' => [
+                'enabled' => 'true', 'allow_redirects' => self::CHECKOUT_REDIRECTS,
+            ],
             'transfer_group' => $transferGroup,
             'metadata' => $normalized,
         ];
@@ -106,7 +109,8 @@ final class StripePaymentGateway
             || $intent['client_secret'] === ''
             || ($intent['transfer_data'] ?? null) !== null
             || ($intent['application_fee_amount'] ?? null) !== null
-            || ($intent['on_behalf_of'] ?? null) !== null) {
+            || ($intent['on_behalf_of'] ?? null) !== null
+            || !self::excludesRedirects($intent)) {
             throw new StripeApiException(
                 'intent_mismatch', $result['http_status'], $result['request_id'], true
             );
@@ -138,6 +142,14 @@ final class StripePaymentGateway
             'ch_',
             $id
         );
+    }
+
+    public static function excludesRedirects(#[\SensitiveParameter] array $intent): bool
+    {
+        $methods = $intent['automatic_payment_methods'] ?? null;
+
+        return is_array($methods) && ($methods['enabled'] ?? null) === true
+            && ($methods['allow_redirects'] ?? null) === self::CHECKOUT_REDIRECTS;
     }
 
     private function identifier(string $id, string $prefix): void

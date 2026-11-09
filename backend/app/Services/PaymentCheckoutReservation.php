@@ -80,6 +80,7 @@ final class PaymentCheckoutReservation
                 'amount_cents' => $amount,
                 'transfer_group' => $transferGroup,
                 'description' => "TrustFix job #{$jobId}",
+                'allow_redirects' => StripePaymentGateway::CHECKOUT_REDIRECTS,
                 'metadata' => [
                     'trustfix_job_id' => $jobId,
                     'trustfix_payment_id' => $paymentId,

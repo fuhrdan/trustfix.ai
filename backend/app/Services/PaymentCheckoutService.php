@@ -81,6 +81,11 @@ final class PaymentCheckoutService
             'canceled' => 'awaiting_cancellation',
             default => abort(409, 'Stripe checkout status requires reconciliation.'),
         };
+        if ($status === 'ready' && (!StripePaymentGateway::excludesRedirects($intent)
+            || ($stripeStatus === 'requires_action' && ($intent['next_action']['type'] ?? null) !== 'use_stripe_sdk'))) {
+            return $this->result($current, 'reconciliation_required');
+        }
+
         $result = $this->result($current, $status) + [
             'stripe_status' => $stripeStatus,
             'payment_failed' => $stripeStatus === 'requires_payment_method'

@@ -159,7 +159,7 @@ include __DIR__ . '/header.php';
               data-key="<?= $escape($publishableKey) ?>"
               data-secret="<?= $escape($secret) ?>"
               data-resume="<?= $resume ? 'true' : 'false' ?>"
-              data-return="payment_return.php?job_id=<?= $jobId ?>">
+              data-status-url="pay_job.php?id=<?= $jobId ?>">
             <div id="payment-element"></div>
             <p id="payment-message" role="alert"></p>
             <button id="payment-submit" type="submit" disabled><?= $resume ? 'Continue verification' : 'Pay securely' ?></button>
@@ -176,7 +176,6 @@ include __DIR__ . '/header.php';
             }
             const stripe = Stripe(form.dataset.key);
             const resume = form.dataset.resume === 'true';
-            const returnUrl = new URL(form.dataset.return, window.location.href).href;
             let elements;
             if (!resume) {
                 elements = stripe.elements({clientSecret: form.dataset.secret});
@@ -190,13 +189,11 @@ include __DIR__ . '/header.php';
                 try {
                     const result = resume
                         ? await stripe.handleNextAction({clientSecret: form.dataset.secret})
-                        : await stripe.confirmPayment({
-                            elements, confirmParams: {return_url: returnUrl}, redirect: 'if_required'
-                        });
+                        : await stripe.confirmPayment({elements, redirect: 'if_required'});
                     if (result.error) {
                         message.textContent = result.error.message || 'The payment could not be completed.';
                     } else {
-                        window.location.assign(returnUrl);
+                        window.location.assign(form.dataset.statusUrl);
                         return;
                     }
                 } catch {

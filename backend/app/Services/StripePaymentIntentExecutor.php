@@ -221,6 +221,7 @@ final class StripePaymentIntentExecutor
             'amount_cents' => (int) $request->amount_cents,
             'transfer_group' => $request->transfer_group,
             'description' => "TrustFix job #{$request->job_id}",
+            'allow_redirects' => StripePaymentGateway::CHECKOUT_REDIRECTS,
             'metadata' => [
                 'trustfix_job_id' => (int) $request->job_id,
                 'trustfix_payment_id' => (int) $request->payment_id,
