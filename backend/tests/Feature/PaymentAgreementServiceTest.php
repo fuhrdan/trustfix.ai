@@ -11,7 +11,10 @@ use App\Models\Job;
 use App\Models\User;
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutReservation;
+use App\Services\StripeEventInbox;
+use App\Services\StripePaymentGateway;
 use App\Services\StripePaymentIntentExecutor;
+use App\Services\StripePaymentIntentReconciler;
 use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
@@ -103,6 +106,7 @@ class PaymentAgreementServiceTest extends TestCase
             $table->unsignedBigInteger('platform_fee_cents')->default(0);
             $table->char('currency', 3)->default('usd');
             $table->string('stripe_payment_intent_id')->nullable();
+            $table->timestamp('paid_at')->nullable();
             $table->string('status')->default('requires_payment_method');
             $table->timestamps();
         });
@@ -799,6 +803,171 @@ class PaymentAgreementServiceTest extends TestCase
         }
         self::assertSame(3, $attempts);
         self::assertSame(3, (int) $this->operationState()->attempts);
+    }
+
+    public function test_verified_success_records_one_funding_fact_and_unlocks_progress(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        config(['payments.enabled' => false]);
+
+        $event = $this->fundingEvent($ids, 'evt_funding_success');
+        $reconciler = app(StripePaymentIntentReconciler::class);
+        $receipt = $this->receiveFundingEvent($event);
+        self::assertSame('processed', $reconciler->process($receipt));
+        self::assertSame($receipt, $this->receiveFundingEvent($event));
+        self::assertSame('already_processed', $reconciler->process($receipt));
+
+        $event['id'] = 'evt_funding_success_again';
+        $duplicate = $this->receiveFundingEvent($event);
+        self::assertSame('ignored', $reconciler->process($duplicate));
+
+        $payment = DB::table('payments')->find($ids['payment_id']);
+        self::assertSame('succeeded', $payment->status);
+        self::assertNotNull($payment->paid_at);
+        $entries = DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->get();
+        self::assertCount(1, $entries);
+        $entry = $entries->first();
+        self::assertSame($ids['payment_id'], (int) $entry->payment_id);
+        self::assertSame($receipt, (int) $entry->stripe_event_receipt_id);
+        self::assertSame(12500, (int) $entry->amount_cents);
+        self::assertSame('usd', $entry->currency);
+        self::assertSame('pi_executor_fixture', $entry->stripe_object_id);
+        self::assertSame(['stripe_charge_id' => 'ch_funding_fixture'],
+            json_decode($entry->details, true, 512, JSON_THROW_ON_ERROR));
+
+        DB::transaction(function (): void {
+            Job::query()->lockForUpdate()->findOrFail(1);
+            app(PaymentAgreementService::class)->assertJobStatusChangeAllowed(1, 'in_progress');
+        });
+    }
+
+    public function test_early_success_retries_after_the_reserved_intent_is_bound(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $receipt = $this->receiveFundingEvent($this->fundingEvent($ids, 'evt_funding_early'));
+        $this->assertFundingRetry($receipt, 'Stripe intent binding is pending.');
+        self::assertSame('requires_payment_method', DB::table('payments')->find($ids['payment_id'])->status);
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('processed', app(StripePaymentIntentReconciler::class)->process($receipt));
+        $state = DB::table('stripe_event_processing')->where('stripe_event_receipt_id', $receipt)->first();
+        self::assertSame('processed', $state->status);
+        self::assertSame(2, (int) $state->attempts);
+    }
+
+    public function test_signed_success_with_wrong_money_scope_or_account_cannot_fund_a_payment(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+
+        $event = $this->fundingEvent($ids, 'evt_funding_underpaid');
+        $event['data']['object']['amount_received'] = 12499;
+        $this->assertFundingRetry($this->receiveFundingEvent($event),
+            'Stripe funding snapshot does not match reserved terms.');
+
+        $event = $this->fundingEvent($ids, 'evt_funding_wrong_scope');
+        $event['data']['object']['metadata']['trustfix_agreement_sha256'] = str_repeat('0', 64);
+        $this->assertFundingRetry($this->receiveFundingEvent($event),
+            'Stripe funding metadata does not match reserved terms.');
+
+        $event = $this->fundingEvent($ids, 'evt_funding_wrong_account');
+        $event['account'] = 'acct_funding_other';
+        $this->assertFundingRetry($this->receiveFundingEvent($event),
+            'Stripe funding snapshot does not match reserved terms.');
+
+        $event = $this->fundingEvent($ids, 'evt_funding_wrong_version');
+        $event['api_version'] = '2026-01-01.unexpected';
+        $this->assertFundingRetry($this->receiveFundingEvent($event),
+            'Stripe funding snapshot does not match reserved terms.');
+
+        $payment = DB::table('payments')->find($ids['payment_id']);
+        self::assertSame('requires_payment_method', $payment->status);
+        self::assertNull($payment->paid_at);
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+    }
+
+    public function test_late_success_cannot_overwrite_cancelled_or_refunded_payment_state(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+
+        foreach (['cancelled', 'refunded'] as $status) {
+            DB::table('payments')->where('id', $ids['payment_id'])->update(['status' => $status]);
+            $receipt = $this->receiveFundingEvent($this->fundingEvent($ids, 'evt_funding_late_' . $status));
+            $this->assertFundingRetry($receipt, 'Stripe funding conflicts with the local payment state.');
+            self::assertSame($status, DB::table('payments')->find($ids['payment_id'])->status);
+        }
+
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+    }
+
+    private function fundingEvent(array $ids, string $eventId): array
+    {
+        $installment = DB::table('payment_installments')->find($ids['installment_id']);
+        $agreement = DB::table('payment_agreements')->find($installment->payment_agreement_id);
+
+        return [
+            'id' => $eventId,
+            'object' => 'event',
+            'type' => 'payment_intent.succeeded',
+            'api_version' => StripePaymentGateway::API_VERSION,
+            'created' => time(),
+            'livemode' => false,
+            'data' => ['object' => [
+                'id' => 'pi_executor_fixture',
+                'object' => 'payment_intent',
+                'livemode' => false,
+                'status' => 'succeeded',
+                'capture_method' => 'automatic',
+                'amount' => (int) $installment->amount_cents,
+                'amount_received' => (int) $installment->amount_cents,
+                'currency' => $installment->currency,
+                'latest_charge' => 'ch_funding_fixture',
+                'transfer_group' => $installment->transfer_group,
+                'metadata' => [
+                    'trustfix_payment_model' => StripePaymentGateway::PAYMENT_MODEL,
+                    'trustfix_job_id' => (string) $agreement->job_id,
+                    'trustfix_payment_id' => (string) $ids['payment_id'],
+                    'trustfix_installment_id' => (string) $installment->id,
+                    'trustfix_agreement_id' => (string) $agreement->id,
+                    'trustfix_agreement_sha256' => $agreement->agreement_sha256,
+                ],
+            ]],
+        ];
+    }
+
+    private function receiveFundingEvent(array $event): int
+    {
+        $payload = json_encode($event, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "$timestamp.$payload", config('services.stripe.webhook_secret'));
+
+        return app(StripeEventInbox::class)->receive($payload, "t=$timestamp,v1=$signature");
+    }
+
+    private function assertFundingRetry(int $receipt, string $message): void
+    {
+        try {
+            app(StripePaymentIntentReconciler::class)->process($receipt);
+            self::fail('Expected funding reconciliation to require retry or review.');
+        } catch (RuntimeException $exception) {
+            self::assertSame($message, $exception->getMessage());
+        }
+
+        $state = DB::table('stripe_event_processing')->where('stripe_event_receipt_id', $receipt)->first();
+        self::assertSame('failed', $state->status);
+        self::assertSame(1, (int) $state->attempts);
+        self::assertNull($state->processed_at);
     }
 
     private function executionFixture(): array
