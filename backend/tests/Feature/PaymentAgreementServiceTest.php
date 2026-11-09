@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Services\PaymentAgreementService;
+use App\Services\PaymentCheckoutReservation;
 use Illuminate\Database\Connection;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -493,6 +496,135 @@ class PaymentAgreementServiceTest extends TestCase
         } finally {
             ini_set('zend.exception_ignore_args', $previous);
         }
+    }
+
+    public function test_checkout_reserves_one_payment_and_one_immutable_stripe_request(): void
+    {
+        $this->change(11, 'approved', '25.00');
+        $agreement = $this->proposal();
+        $this->both($agreement);
+        $checkout = $this->checkout();
+        $ids = $checkout->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256);
+
+        $payment = DB::table('payments')->find($ids['payment_id']);
+        $installment = DB::table('payment_installments')->find($ids['installment_id']);
+        $request = DB::table('stripe_operation_requests')->find($ids['operation_id']);
+        $state = DB::table('stripe_operation_processing')->where('operation_request_id', $request->id)->first();
+        $journal = DB::table('payment_journal_entries')->first();
+        $plaintext = Crypt::decryptString($request->payload_encrypted);
+        $payload = json_decode($plaintext, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(12500, (int) $payment->amount_cents);
+        self::assertSame(1250, (int) $payment->platform_fee_cents);
+        self::assertSame('requires_payment_method', $payment->status);
+        self::assertNull($payment->stripe_payment_intent_id);
+        self::assertSame((int) $agreement->id, (int) $installment->payment_agreement_id);
+        self::assertSame('job:1:initial', $installment->payable_key);
+        self::assertSame(12500, $payload['amount_cents']);
+        self::assertSame($installment->transfer_group, $payload['transfer_group']);
+        self::assertSame($ids['payment_id'], $payload['metadata']['trustfix_payment_id']);
+        self::assertSame($agreement->agreement_sha256, $payload['metadata']['trustfix_agreement_sha256']);
+        self::assertSame(hash('sha256', $plaintext), $request->payload_sha256);
+        self::assertMatchesRegularExpression('/\Atrustfix_intent_[a-f0-9]{32}\z/', $request->idempotency_key);
+        self::assertSame(23 * 3600, strtotime($request->retry_until) - strtotime($request->created_at));
+        self::assertSame('pending', $state->status);
+        self::assertSame(0, (int) $state->attempts);
+        self::assertSame('collection_authorized', $journal->entry_type);
+        self::assertSame(1, (int) $journal->actor_id);
+
+        self::assertSame($ids, $checkout->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256));
+        self::assertSame((array) $request, (array) DB::table('stripe_operation_requests')->find($request->id));
+        foreach (['payments', 'payment_installments', 'stripe_operation_requests',
+            'stripe_operation_processing', 'payment_journal_entries'] as $table) {
+            self::assertSame(1, DB::table($table)->count());
+        }
+    }
+
+    public function test_checkout_requires_current_terms_and_the_authorizing_customer(): void
+    {
+        $agreement = $this->proposal();
+        $id = (int) $agreement->id;
+        $hash = $agreement->agreement_sha256;
+        $checkout = $this->checkout();
+        $this->decide($agreement, 1);
+        $this->denied(fn () => $checkout->reserveInitial(1, $id, 1, $hash), 409);
+        $this->decide($agreement, 2);
+        $this->denied(fn () => $checkout->reserveInitial(1, $id, 2, $hash), 403);
+        $this->denied(fn () => $checkout->reserveInitial(2, $id, 1, $hash), 409);
+        $this->denied(fn () => $checkout->reserveInitial(1, $id, 1, str_repeat('0', 64)), 409);
+        $this->job(['agreed_price' => '126.00']);
+        $this->denied(fn () => $checkout->reserveInitial(1, $id, 1, $hash), 409);
+        foreach (['payments', 'payment_installments', 'stripe_operation_requests',
+            'stripe_operation_processing', 'payment_journal_entries'] as $table) {
+            self::assertSame(0, DB::table($table)->count());
+        }
+    }
+
+    public function test_checkout_rolls_back_every_reservation_row_when_authorization_cannot_be_recorded(): void
+    {
+        $agreement = $this->proposal();
+        $this->both($agreement);
+        $checkout = $this->checkout();
+        Schema::create('checkout_fixture_fault', function (Blueprint $table) {
+            $table->boolean('enabled');
+        });
+        DB::table('checkout_fixture_fault')->insert(['enabled' => true]);
+        DB::unprepared('CREATE TRIGGER checkout_fixture_abort BEFORE INSERT ON payment_journal_entries '
+            . 'WHEN (SELECT enabled FROM checkout_fixture_fault) = 1 '
+            . "BEGIN SELECT RAISE(ABORT, 'checkout_fixture_abort'); END");
+
+        try {
+            $checkout->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256);
+            self::fail('The failed journal write must abort the reservation.');
+        } catch (QueryException $exception) {
+            self::assertStringContainsString('checkout_fixture_abort', $exception->getMessage());
+        }
+        foreach (['payments', 'payment_installments', 'stripe_operation_requests',
+            'stripe_operation_processing', 'payment_journal_entries'] as $table) {
+            self::assertSame(0, DB::table($table)->count());
+        }
+        self::assertSame(2, DB::table('payment_agreement_consents')->count());
+
+        DB::table('checkout_fixture_fault')->update(['enabled' => false]);
+        $checkout->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256);
+        self::assertSame(1, DB::table('stripe_operation_requests')->count());
+        self::assertSame(1, DB::table('payment_journal_entries')->count());
+    }
+
+    public function test_checkout_preserves_the_request_after_credential_change_or_an_update_attempt(): void
+    {
+        $agreement = $this->proposal();
+        $this->both($agreement);
+        $checkout = $this->checkout();
+        $ids = $checkout->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256);
+        $before = $this->rows('stripe_operation_requests');
+        try {
+            DB::table('stripe_operation_requests')->where('id', $ids['operation_id'])
+                ->update(['idempotency_key' => 'fixture_replacement_key']);
+            self::fail('A reserved Stripe request must be immutable.');
+        } catch (QueryException $exception) {
+            self::assertStringContainsString('append-only', $exception->getMessage());
+        }
+
+        config(['services.stripe.secret' => 'sk_test_different_agreement_fixture']);
+        $this->denied(fn () => $checkout->reserveInitial(
+            1, (int) $agreement->id, 1, $agreement->agreement_sha256
+        ), 409);
+        self::assertSame($before, $this->rows('stripe_operation_requests'));
+        self::assertSame(1, DB::table('payments')->count());
+    }
+
+    private function checkout(): PaymentCheckoutReservation
+    {
+        foreach ([
+            '2026_11_08_000000_create_payment_journal_tables.php',
+            '2026_11_08_000200_create_stripe_operation_tables.php',
+        ] as $name) {
+            $migration = require database_path('migrations/' . $name);
+            $migration->up();
+        }
+
+        return app(PaymentCheckoutReservation::class);
     }
 
     private function proposal(int $job = 1, int $actor = 1): object

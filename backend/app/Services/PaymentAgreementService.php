@@ -35,18 +35,18 @@ final class PaymentAgreementService
             $this->assertNoLegacyPayments($jobId);
 
             $latestInitial = DB::table('payment_agreements')->where('job_id', $jobId)
-                ->where('agreement_kind', 'initial')->orderByDesc('version')->first();
+                ->where('agreement_kind', 'initial')->orderByDesc('version')->lockForUpdate()->first();
             if ($latestInitial && $this->matchesCurrentTerms($job, $latestInitial)) {
                 return $latestInitial;
             }
 
             $reserved = DB::table('payment_installments')
                 ->join('payment_agreements', 'payment_agreements.id', '=', 'payment_installments.payment_agreement_id')
-                ->where('payment_agreements.job_id', $jobId)->exists();
-            abort_if($reserved, 409, 'A payable already exists; changes require a separate reviewed agreement.');
+                ->where('payment_agreements.job_id', $jobId)->lockForUpdate()->first(['payment_installments.id']);
+            abort_if($reserved !== null, 409, 'A payable already exists; changes require a separate reviewed agreement.');
 
             $previous = DB::table('payment_agreements')->where('job_id', $jobId)
-                ->orderByDesc('version')->first();
+                ->orderByDesc('version')->lockForUpdate()->first();
             $version = $previous ? (int) $previous->version : 0;
             abort_if($version >= 4294967295, 409, 'Agreement version limit requires reconciliation.');
             $terms = $this->terms($job, $version + 1, $previous ? (int) $previous->id : null, $actorId);
@@ -87,14 +87,14 @@ final class PaymentAgreementService
             return DB::transaction(function () use ($agreement, $identity, $eventType): object {
                 $job = Job::query()->lockForUpdate()->findOrFail($agreement->job_id);
                 $existing = DB::table('payment_agreement_consents')
-                    ->where('decision_key', $identity['decision_key'])->first();
+                    ->where('decision_key', $identity['decision_key'])->lockForUpdate()->first();
                 if ($existing) {
                     return $this->matchingDecision($existing, $identity);
                 }
 
                 $hasPayable = DB::table('payment_installments')
-                    ->where('payment_agreement_id', $agreement->id)->exists();
-                abort_if($hasPayable, 409, 'A payable already exists; use cancellation or refund handling.');
+                    ->where('payment_agreement_id', $agreement->id)->lockForUpdate()->first(['id']);
+                abort_if($hasPayable !== null, 409, 'A payable already exists; use cancellation or refund handling.');
                 if ($eventType === 'scope_accepted') {
                     $this->assertActive($job);
                     $this->assertNoLegacyPayments((int) $job->id);
@@ -107,7 +107,7 @@ final class PaymentAgreementService
         } catch (UniqueConstraintViolationException $exception) {
             // A globally reused key can race across different job locks.
             $existing = DB::table('payment_agreement_consents')->useWritePdo()
-                ->where('decision_key', $decisionKey)->first();
+                ->where('decision_key', $decisionKey)->lockForUpdate()->first();
             if (!$existing) {
                 throw $exception;
             }
@@ -116,6 +116,8 @@ final class PaymentAgreementService
     }
 
     // Invoke inside the transaction that reserves the payable and operation.
+    // The initial agreement lookup locates immutable terms. Eligibility reads
+    // under the job lock must see current rows even in an older read snapshot.
     // This returns approved terms, never a confirmation of payment or transfer.
     public function lockApprovedInitial(int $agreementId, int $actorId, string $expectedHash): object
     {
@@ -140,7 +142,7 @@ final class PaymentAgreementService
             $decision = DB::table('payment_agreement_consents')
                 ->where('payment_agreement_id', $agreementId)->where('actor_id', $id)
                 ->whereIn('event_type', ['scope_accepted', 'consent_revoked'])
-                ->orderByDesc('id')->first();
+                ->orderByDesc('id')->lockForUpdate()->first();
             abort_unless($decision && $decision->actor_role === $role
                 && $decision->event_type === 'scope_accepted'
                 && hash_equals($agreement->agreement_sha256, $decision->agreement_sha256),
@@ -175,20 +177,21 @@ final class PaymentAgreementService
             409, 'A distinct assigned contractor is required.');
         abort_unless(in_array($job->status, ['accepted', 'scheduled', 'in_progress'], true),
             409, 'The job is not available for initial payment terms.');
-        abort_if($job->disputes()->whereIn('status', ['open', 'under_review'])->exists(),
+        abort_if($job->disputes()->whereIn('status', ['open', 'under_review'])->lockForUpdate()
+                ->first(['id']) !== null,
             409, 'An unresolved dispute blocks payment authorization.');
-        abort_if($job->changeOrders()->where('status', 'pending')->exists(),
+        abort_if($job->changeOrders()->where('status', 'pending')->lockForUpdate()
+                ->first(['id']) !== null,
             409, 'Review pending change orders before authorizing payment.');
     }
 
     private function assertNoLegacyPayments(int $jobId): void
     {
-        $legacy = DB::table('payments')->where('job_id', $jobId)
-            ->whereNotExists(function ($query): void {
-                $query->selectRaw('1')->from('payment_installments')
-                    ->whereColumn('payment_installments.payment_id', 'payments.id');
-            })->exists();
-        abort_if($legacy, 409, 'Existing payment records require reconciliation before collecting again.');
+        $legacy = DB::table('payments')
+            ->leftJoin('payment_installments', 'payment_installments.payment_id', '=', 'payments.id')
+            ->where('payments.job_id', $jobId)->whereNull('payment_installments.id')
+            ->lockForUpdate()->first(['payments.id']);
+        abort_if($legacy !== null, 409, 'Existing payment records require reconciliation before collecting again.');
     }
 
     private function assertCurrent(
@@ -196,7 +199,7 @@ final class PaymentAgreementService
         #[\SensitiveParameter] object $agreement
     ): void {
         $latest = DB::table('payment_agreements')->where('job_id', $job->id)
-            ->where('agreement_kind', 'initial')->orderByDesc('version')->first();
+            ->where('agreement_kind', 'initial')->orderByDesc('version')->lockForUpdate()->first();
         abort_unless($latest && (int) $latest->id === (int) $agreement->id
             && $this->matchesCurrentTerms($job, $agreement),
             409, 'Agreement terms changed; review the current proposal.');
@@ -243,7 +246,7 @@ final class PaymentAgreementService
             abort_unless($amount >= 50, 409, 'The approved amount must be at least USD 0.50.');
             $fee = PaymentAmounts::platformFeeCents($amount, self::FEE_BASIS_POINTS);
             $changes = ChangeOrder::query()->where('job_id', $job->id)->where('status', 'approved')
-                ->orderBy('id')->get()->map(static fn (ChangeOrder $change): array => [
+                ->orderBy('id')->lockForUpdate()->get()->map(static fn (ChangeOrder $change): array => [
                     'id' => (int) $change->id,
                     'description' => (string) $change->description,
                     'price_delta_cents' => PaymentAmounts::decimalToCents($change->price_delta),
