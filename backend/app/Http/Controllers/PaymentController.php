@@ -128,7 +128,10 @@ class PaymentController extends Controller
             'version' => (int) $agreement->version,
             'agreement_sha256' => $agreement->agreement_sha256,
             'amount_cents' => (int) $agreement->amount_cents,
+            'platform_fee_cents' => (int) $agreement->platform_fee_cents,
             'currency' => $agreement->currency,
+            'checkout_reserved' => DB::table('payment_installments')->useWritePdo()
+                ->where('payment_agreement_id', $agreement->id)->exists(),
             'scope' => json_decode($agreement->scope_snapshot, true, 512, JSON_THROW_ON_ERROR),
             'consents' => $consents,
         ]], 200, ['Cache-Control' => 'private, no-store']);

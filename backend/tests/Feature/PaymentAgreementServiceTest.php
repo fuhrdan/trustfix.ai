@@ -1207,7 +1207,9 @@ class PaymentAgreementServiceTest extends TestCase
         $this->postJson('/api/jobs/1/payment-agreement')->assertForbidden();
         $this->actAsJobUser(1, 'customer');
         $agreement = $this->postJson('/api/jobs/1/payment-agreement')->assertOk()
-            ->assertJsonPath('agreement.amount_cents', 12500)->json('agreement');
+            ->assertJsonPath('agreement.amount_cents', 12500)
+            ->assertJsonPath('agreement.platform_fee_cents', 1250)
+            ->assertJsonPath('agreement.checkout_reserved', false)->json('agreement');
         $data = ['agreement_id' => $agreement['id'], 'agreement_sha256' => $agreement['agreement_sha256']];
         $this->postJson('/api/jobs/1/payment-intent')->assertStatus(422);
         $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409);
@@ -1247,6 +1249,7 @@ class PaymentAgreementServiceTest extends TestCase
         $first = $this->postJson($url, $data)->assertOk()->assertJsonPath('checkout_status', 'ready')
             ->assertJsonPath('client_secret', 'pi_executor_fixture_secret_fixture');
         self::assertStringContainsString('no-store', (string) $first->baseResponse->headers->get('Cache-Control'));
+        $this->postJson('/api/jobs/1/payment-agreement')->assertOk()->assertJsonPath('agreement.checkout_reserved', true);
         $status = 'requires_action';
         $this->postJson($url, $data)->assertOk()->assertJsonPath('stripe_status', 'requires_action')
             ->assertJsonPath('payment.id', $first->json('payment.id'));
