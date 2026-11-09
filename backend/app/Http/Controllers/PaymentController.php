@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ContractorProfile;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\LifecycleNotificationService;
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutService;
@@ -46,69 +47,225 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function createConnectAccount()
+    public function createConnectAccount(): JsonResponse
     {
         app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
 
-        $user = Auth::guard('api')->user();
-        $profile = ContractorProfile::where('user_id', $user->id)->firstOrFail();
-
-        abort_unless($profile->status === 'approved', 403, 'Contractor approval is required.');
+        $user = $this->onboardingUser();
+        $profile = $this->profileForOnboarding($user);
 
         if (!$profile->stripe_account_id) {
-            $response = $this->stripe()->post('/accounts', [
-                'type' => 'express',
-                'country' => 'US',
-                'email' => $user->email,
-                'capabilities[card_payments][requested]' => 'true',
-                'capabilities[transfers][requested]' => 'true',
-                'business_profile[url]' => $profile->website ?: config('app.url'),
-                'metadata[trustfix_user_id]' => $user->id,
-            ])->throw()->json();
+            $account = $this->stripe()
+                ->withHeaders([
+                    'Idempotency-Key' =>
+                        'trustfix-connect-account-user-' . $user->id,
+                ])
+                ->post('/accounts', [
+                    'type' => 'express',
+                    'country' => 'US',
+                    'email' => $user->email,
+                    'capabilities[card_payments][requested]' => 'true',
+                    'capabilities[transfers][requested]' => 'true',
+                    'business_profile[url]' =>
+                        $profile->website
+                            ?: config('services.stripe.frontend_url'),
+                    'metadata[trustfix_user_id]' => (string) $user->id,
+                ])
+                ->throw()
+                ->json();
 
-            $profile->stripe_account_id = $response['id'];
-            $profile->save();
+            $accountId = (string) ($account['id'] ?? '');
+
+            abort_unless(
+                preg_match('/\Aacct_[A-Za-z0-9_]+\z/', $accountId) === 1,
+                502,
+                'Stripe returned an invalid connected-account identifier.'
+            );
+
+            $profile = DB::transaction(function () use (
+                $profile,
+                $account,
+                $accountId
+            ): ContractorProfile {
+                $locked = ContractorProfile::whereKey($profile->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($locked->stripe_account_id === null) {
+                    $locked->update([
+                        'stripe_account_id' => $accountId,
+                        'stripe_details_submitted' =>
+                            (bool) ($account['details_submitted'] ?? false),
+                        'stripe_charges_enabled' =>
+                            (bool) ($account['charges_enabled'] ?? false),
+                        'stripe_payouts_enabled' =>
+                            (bool) ($account['payouts_enabled'] ?? false),
+                    ]);
+                } elseif (!hash_equals(
+                    (string) $locked->stripe_account_id,
+                    $accountId
+                )) {
+                    throw new \LogicException(
+                        'Concurrent Stripe onboarding returned a different account.'
+                    );
+                }
+
+                return $locked->fresh();
+            });
         }
 
         return $this->createAccountLink($profile);
     }
 
-    public function refreshConnectAccount()
+    public function refreshConnectAccount(): JsonResponse
     {
         app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
 
-        $user = Auth::guard('api')->user();
-        $profile = ContractorProfile::where('user_id', $user->id)->firstOrFail();
+        $user = $this->onboardingUser();
+        $profile = ContractorProfile::where('user_id', $user->id)->first();
 
-        abort_unless($profile->stripe_account_id, 409, 'Create a payout account first.');
+        abort_unless(
+            $profile && $profile->stripe_account_id,
+            409,
+            'Start payout onboarding first.'
+        );
 
         $account = $this->stripe()
             ->get('/accounts/' . $profile->stripe_account_id)
             ->throw()
             ->json();
 
+        abort_unless(
+            hash_equals(
+                (string) $profile->stripe_account_id,
+                (string) ($account['id'] ?? '')
+            ),
+            502,
+            'Stripe returned a different connected account.'
+        );
+
         $profile->update([
-            'stripe_details_submitted' => (bool)($account['details_submitted'] ?? false),
-            'stripe_charges_enabled' => (bool)($account['charges_enabled'] ?? false),
-            'stripe_payouts_enabled' => (bool)($account['payouts_enabled'] ?? false),
+            'stripe_details_submitted' =>
+                (bool) ($account['details_submitted'] ?? false),
+            'stripe_charges_enabled' =>
+                (bool) ($account['charges_enabled'] ?? false),
+            'stripe_payouts_enabled' =>
+                (bool) ($account['payouts_enabled'] ?? false),
         ]);
 
-        return response()->json($profile);
+        return response()->json(
+            $profile->fresh(),
+            200,
+            ['Cache-Control' => 'private, no-store']
+        );
     }
 
-    private function createAccountLink(ContractorProfile $profile)
+    private function onboardingUser(): User
     {
-        $frontend = rtrim(config('services.stripe.frontend_url'), '/');
+        $user = Auth::guard('api')->user();
+
+        abort_unless($user instanceof User, 401, 'Unauthenticated.');
+
+        abort_unless(
+            in_array($user->role, ['handyman', 'company'], true),
+            403,
+            'A contractor account is required.'
+        );
+
+        abort_unless(
+            $user->email_verified_at !== null,
+            403,
+            'Verify your email before starting payout onboarding.'
+        );
+
+        return $user;
+    }
+
+    private function profileForOnboarding(User $user): ContractorProfile
+    {
+        return DB::transaction(function () use ($user): ContractorProfile {
+            DB::table('users')
+                ->where('id', $user->id)
+                ->lockForUpdate()
+                ->first(['id']);
+
+            return ContractorProfile::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'business_name' =>
+                        trim((string) $user->name) !== ''
+                            ? trim((string) $user->name)
+                            : 'Contractor Profile',
+                    'status' => 'pending',
+                    'is_public' => false,
+                    'is_verified' => false,
+                    'stripe_details_submitted' => false,
+                    'stripe_charges_enabled' => false,
+                    'stripe_payouts_enabled' => false,
+                ]
+            );
+        });
+    }
+
+    private function createAccountLink(
+        ContractorProfile $profile
+    ): JsonResponse {
+        $frontend = rtrim(
+            (string) config('services.stripe.frontend_url'),
+            '/'
+        );
+
+        abort_unless(
+            filter_var($frontend, FILTER_VALIDATE_URL) !== false &&
+                strtolower((string) parse_url($frontend, PHP_URL_SCHEME))
+                    === 'https',
+            500,
+            'The contractor onboarding return URL is invalid.'
+        );
+
         $link = $this->stripe()->post('/account_links', [
             'account' => $profile->stripe_account_id,
-            'refresh_url' => $frontend . '/contractor_payout_return.php?refresh=1',
-            'return_url' => $frontend . '/contractor_payout_return.php',
+            'refresh_url' =>
+                $frontend . '/contractor_payout_return.php?refresh=1',
+            'return_url' =>
+                $frontend . '/contractor_payout_return.php',
             'type' => 'account_onboarding',
         ])->throw()->json();
 
-        return response()->json(['url' => $link['url']]);
+        $url = (string) ($link['url'] ?? '');
+
+        abort_unless(
+            $this->isStripeOnboardingUrl($url),
+            502,
+            'Stripe returned an invalid onboarding URL.'
+        );
+
+        return response()->json(
+            [
+                'url' => $url,
+                'details_submitted' =>
+                    (bool) $profile->stripe_details_submitted,
+                'charges_enabled' =>
+                    (bool) $profile->stripe_charges_enabled,
+                'payouts_enabled' =>
+                    (bool) $profile->stripe_payouts_enabled,
+            ],
+            200,
+            ['Cache-Control' => 'private, no-store']
+        );
     }
 
+    private function isStripeOnboardingUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        return is_array($parts)
+            && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
+            && strtolower((string) ($parts['host'] ?? ''))
+                === 'connect.stripe.com'
+            && !isset($parts['user'], $parts['pass'], $parts['port'])
+            && str_starts_with((string) ($parts['path'] ?? ''), '/');
+    }
     public function proposeAgreement(Request $request, $jobId): JsonResponse
     {
         $agreement = app(PaymentAgreementService::class)->proposeInitial(
