@@ -58,13 +58,15 @@ class PaymentController extends Controller
             $account = $this->stripe()
                 ->withHeaders([
                     'Idempotency-Key' =>
-                        'trustfix-connect-account-user-' . $user->id,
+                        'trustfix-connect-account-v2-user-' . $user->id,
                 ])
                 ->post('/accounts', [
-                    'type' => 'express',
                     'country' => 'US',
                     'email' => $user->email,
-                    'capabilities[card_payments][requested]' => 'true',
+                    'controller[fees][payer]' => 'application',
+                    'controller[losses][payments]' => 'application',
+                    'controller[requirement_collection]' => 'stripe',
+                    'controller[stripe_dashboard][type]' => 'express',
                     'capabilities[transfers][requested]' => 'true',
                     'business_profile[url]' =>
                         $profile->website

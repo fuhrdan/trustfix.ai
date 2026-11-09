@@ -97,8 +97,36 @@ class ContractorOnboardingTest extends TestCase
                 return false;
             }
 
-            return ($request->header('Idempotency-Key')[0] ?? null)
-                === 'trustfix-connect-account-user-' . $user->id;
+            parse_str($request->body(), $parameters);
+
+            return
+                ($request->header('Idempotency-Key')[0] ?? null)
+                    === 'trustfix-connect-account-v2-user-' . $user->id
+                && !array_key_exists('type', $parameters)
+                && data_get(
+                    $parameters,
+                    'controller.fees.payer'
+                ) === 'application'
+                && data_get(
+                    $parameters,
+                    'controller.losses.payments'
+                ) === 'application'
+                && data_get(
+                    $parameters,
+                    'controller.requirement_collection'
+                ) === 'stripe'
+                && data_get(
+                    $parameters,
+                    'controller.stripe_dashboard.type'
+                ) === 'express'
+                && data_get(
+                    $parameters,
+                    'capabilities.card_payments.requested'
+                ) === null
+                && data_get(
+                    $parameters,
+                    'capabilities.transfers.requested'
+                ) === 'true';
         });
     }
 
