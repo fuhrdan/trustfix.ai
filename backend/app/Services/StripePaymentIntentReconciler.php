@@ -16,14 +16,19 @@ final class StripePaymentIntentReconciler
     {
         return $this->processor->process(
             $receiptId,
-            fn (array $event, int $id): string => $this->recordSuccess($event, $id)
+            fn (array $event, int $id): string => $this->reconcileTerminalEvent($event, $id)
                 ?? ($legacyHandler === null ? 'ignored' : $legacyHandler($event))
         );
     }
 
-    private function recordSuccess(#[\SensitiveParameter] array $event, int $receiptId): ?string
+    private function reconcileTerminalEvent(#[\SensitiveParameter] array $event, int $receiptId): ?string
     {
-        if ($event['type'] !== 'payment_intent.succeeded') {
+        $status = match ($event['type']) {
+            'payment_intent.succeeded' => 'succeeded',
+            'payment_intent.canceled' => 'canceled',
+            default => null,
+        };
+        if ($status === null) {
             return null;
         }
 
@@ -76,7 +81,18 @@ final class StripePaymentIntentReconciler
             throw new RuntimeException('Stripe funding does not match the local payment.');
         }
 
-        $chargeId = $this->confirmedCharge($event, $terms, $operation->stripe_api_version);
+        $this->assertTerminalSnapshot($event, $terms, $operation->stripe_api_version, $status);
+        if ($status === 'canceled') {
+            return $this->recordCancellation($payment, $intent, $receiptId);
+        }
+
+        $chargeId = $intent['latest_charge'] ?? null;
+        if (is_array($chargeId)) {
+            $chargeId = ($chargeId['object'] ?? null) === 'charge' ? ($chargeId['id'] ?? null) : null;
+        }
+        if (!$this->stripeId($chargeId, 'ch_')) {
+            throw new RuntimeException('Stripe funding snapshot does not match reserved terms.');
+        }
         $key = "payment:{$payment->id}:succeeded";
         $previous = DB::table('payment_journal_entries')->where('entry_key', $key)->lockForUpdate()->first();
         if ($previous) {
@@ -121,30 +137,83 @@ final class StripePaymentIntentReconciler
         return 'processed';
     }
 
-    private function confirmedCharge(#[\SensitiveParameter] array $event, object $terms, string $apiVersion): string
+    private function recordCancellation(object $payment, #[\SensitiveParameter] array $intent, int $receiptId): string
     {
-        $intent = $event['data']['object'];
-        $charge = $intent['latest_charge'] ?? null;
-        if (is_array($charge)) {
-            $charge = ($charge['object'] ?? null) === 'charge' ? ($charge['id'] ?? null) : null;
+        $canceledAt = $intent['canceled_at'] ?? null;
+        if (!is_int($canceledAt) || $canceledAt < 1) {
+            throw new RuntimeException('Stripe cancellation time is invalid.');
         }
+
+        $key = "payment:{$payment->id}:cancelled";
+        $fundedKey = "payment:{$payment->id}:succeeded";
+        $entries = DB::table('payment_journal_entries')->whereIn('entry_key', [$key, $fundedKey])
+            ->lockForUpdate()->get()->keyBy('entry_key');
+        if ($entries->has($fundedKey) || $payment->paid_at !== null
+            || !in_array($payment->status, [
+                'requires_payment_method', 'requires_action', 'processing', 'failed', 'cancelled',
+            ], true)) {
+            throw new RuntimeException('Stripe cancellation conflicts with the local payment state.');
+        }
+
+        $details = ['stripe_canceled_at' => $canceledAt];
+        $previous = $entries->get($key);
+        if ($previous) {
+            if ((int) $previous->payment_id !== (int) $payment->id
+                || $previous->entry_type !== 'payment_intent_cancelled'
+                || (int) $previous->amount_cents !== 0
+                || $previous->currency !== $payment->currency
+                || $previous->stripe_object_id !== $intent['id']
+                || $previous->stripe_event_receipt_id === null
+                || json_decode((string) $previous->details, true, 512, JSON_THROW_ON_ERROR) !== $details
+                || $payment->status !== 'cancelled') {
+                throw new RuntimeException('Conflicting Stripe cancellation journal entry.');
+            }
+
+            return 'ignored';
+        }
+
+        $now = now();
+        DB::table('payment_journal_entries')->insert([
+            'payment_id' => $payment->id,
+            'entry_key' => $key,
+            'entry_type' => 'payment_intent_cancelled',
+            'amount_cents' => 0,
+            'currency' => $payment->currency,
+            'stripe_object_id' => $intent['id'],
+            'stripe_event_receipt_id' => $receiptId,
+            'details' => json_encode($details, JSON_THROW_ON_ERROR),
+            'created_at' => $now,
+        ]);
+        DB::table('payments')->where('id', $payment->id)->update([
+            'status' => 'cancelled',
+            'updated_at' => $now,
+        ]);
+
+        return 'processed';
+    }
+
+    private function assertTerminalSnapshot(
+        #[\SensitiveParameter] array $event, object $terms, string $apiVersion, string $status
+    ): void {
+        $intent = $event['data']['object'];
+        $kind = $status === 'succeeded' ? 'funding' : 'cancellation';
+        $received = $status === 'succeeded' ? (int) $terms->amount_cents : 0;
 
         if (($event['account'] ?? null) !== null || ($event['context'] ?? null) !== null
             || ($event['api_version'] ?? null) !== $apiVersion
             || $terms->payment_model !== StripePaymentGateway::PAYMENT_MODEL
             || ($intent['object'] ?? null) !== 'payment_intent'
             || ($intent['livemode'] ?? null) !== false
-            || ($intent['status'] ?? null) !== 'succeeded'
+            || ($intent['status'] ?? null) !== $status
             || ($intent['capture_method'] ?? null) !== 'automatic'
             || ($intent['amount'] ?? null) !== (int) $terms->amount_cents
-            || ($intent['amount_received'] ?? null) !== (int) $terms->amount_cents
+            || ($intent['amount_received'] ?? null) !== $received
             || $terms->currency !== 'usd' || ($intent['currency'] ?? null) !== $terms->currency
             || ($intent['transfer_group'] ?? null) !== $terms->transfer_group
             || ($intent['transfer_data'] ?? null) !== null
             || ($intent['application_fee_amount'] ?? null) !== null
-            || ($intent['on_behalf_of'] ?? null) !== null
-            || !$this->stripeId($charge, 'ch_')) {
-            throw new RuntimeException('Stripe funding snapshot does not match reserved terms.');
+            || ($intent['on_behalf_of'] ?? null) !== null) {
+            throw new RuntimeException("Stripe $kind snapshot does not match reserved terms.");
         }
 
         $expected = [
@@ -158,11 +227,9 @@ final class StripePaymentIntentReconciler
         $metadata = $intent['metadata'] ?? null;
         foreach ($expected as $field => $value) {
             if (!is_array($metadata) || ($metadata[$field] ?? null) !== $value) {
-                throw new RuntimeException('Stripe funding metadata does not match reserved terms.');
+                throw new RuntimeException("Stripe $kind metadata does not match reserved terms.");
             }
         }
-
-        return $charge;
     }
 
     private function stripeId(mixed $id, string $prefix): bool

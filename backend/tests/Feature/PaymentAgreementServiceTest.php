@@ -1099,6 +1099,106 @@ class PaymentAgreementServiceTest extends TestCase
         self::assertSame(1, (int) DB::table('stripe_event_processing')->value('attempts'));
     }
 
+    public function test_webhook_retries_and_records_reserved_cancellation_once(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $event = $this->cancellationEvent($ids, 'evt_cancellation_early');
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        $receiptId = DB::table('stripe_event_receipts')->value('id');
+        self::assertSame('failed', DB::table('stripe_event_processing')
+            ->where('stripe_event_receipt_id', $receiptId)->value('status'));
+
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        config(['payments.enabled' => false]);
+
+        $this->postStripeSnapshot($event)->assertOk();
+        $this->postStripeSnapshot($event)->assertOk();
+        $event['id'] = 'evt_cancellation_duplicate';
+        $this->postStripeSnapshot($event)->assertOk();
+        $late = $event;
+        $late['id'] = 'evt_processing_after_cancellation';
+        $late['type'] = 'payment_intent.processing';
+        $late['data']['object']['status'] = 'processing';
+        $this->postStripeSnapshot($late)->assertOk();
+
+        $state = DB::table('stripe_event_processing')->where('stripe_event_receipt_id', $receiptId)->first();
+        self::assertSame('processed', $state->status);
+        self::assertSame(2, (int) $state->attempts);
+        $payment = DB::table('payments')->find($ids['payment_id']);
+        self::assertSame('cancelled', $payment->status);
+        self::assertNull($payment->paid_at);
+        self::assertSame('accepted', Job::findOrFail(1)->status);
+        $entries = DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_cancelled')->get();
+        self::assertCount(1, $entries);
+        $entry = $entries->first();
+        self::assertSame((int) $receiptId, (int) $entry->stripe_event_receipt_id);
+        self::assertSame($ids['payment_id'], (int) $entry->payment_id);
+        self::assertSame(0, (int) $entry->amount_cents);
+        self::assertSame('usd', $entry->currency);
+        self::assertSame('pi_executor_fixture', $entry->stripe_object_id);
+        self::assertSame(['stripe_canceled_at' => $event['data']['object']['canceled_at']],
+            json_decode($entry->details, true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+    }
+
+    public function test_webhook_rejects_mismatched_or_funded_reserved_cancellation(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+
+        $event = $this->cancellationEvent($ids, 'evt_cancellation_nonzero');
+        $event['data']['object']['amount_received'] = 1;
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        $event = $this->cancellationEvent($ids, 'evt_cancellation_wrong_account');
+        $event['account'] = 'acct_cancellation_other';
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        $event = $this->cancellationEvent($ids, 'evt_cancellation_wrong_scope');
+        $event['data']['object']['metadata']['trustfix_agreement_sha256'] = str_repeat('0', 64);
+        $this->postStripeSnapshot($event)->assertStatus(503);
+        self::assertSame('requires_payment_method', DB::table('payments')->find($ids['payment_id'])->status);
+
+        $this->postStripeSnapshot($this->fundingEvent($ids, 'evt_cancellation_prior_funding'))->assertOk();
+        $this->postStripeSnapshot($this->cancellationEvent($ids, 'evt_cancellation_funded'))->assertStatus(503);
+        self::assertSame('succeeded', DB::table('payments')->find($ids['payment_id'])->status);
+        self::assertSame(1, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_cancelled')->count());
+        self::assertSame(4, DB::table('stripe_event_processing')->where('status', 'failed')->count());
+    }
+
+    public function test_webhook_keeps_legacy_cancellation_without_creating_reserved_history(): void
+    {
+        $this->checkout();
+        $id = $this->payment(['stripe_payment_intent_id' => 'pi_legacy_cancel_fixture']);
+        $this->postStripeSnapshot([
+            'id' => 'evt_legacy_cancellation',
+            'object' => 'event',
+            'type' => 'payment_intent.canceled',
+            'created' => time(),
+            'livemode' => false,
+            'data' => ['object' => [
+                'id' => 'pi_legacy_cancel_fixture', 'object' => 'payment_intent', 'status' => 'canceled',
+            ]],
+        ])->assertOk();
+        self::assertSame('cancelled', DB::table('payments')->find($id)->status);
+        self::assertSame(0, DB::table('payment_journal_entries')->count());
+    }
+
+    private function cancellationEvent(array $ids, string $eventId): array
+    {
+        $event = $this->fundingEvent($ids, $eventId);
+        $event['type'] = 'payment_intent.canceled';
+        $event['data']['object']['status'] = 'canceled';
+        $event['data']['object']['amount_received'] = 0;
+        $event['data']['object']['canceled_at'] = $event['created'];
+        $event['data']['object']['latest_charge'] = null;
+
+        return $event;
+    }
+
     private function postStripeSnapshot(array $event, bool $valid = true): \Illuminate\Testing\TestResponse
     {
         $payload = json_encode($event, JSON_THROW_ON_ERROR);
