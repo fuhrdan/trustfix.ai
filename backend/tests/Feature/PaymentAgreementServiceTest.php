@@ -1199,6 +1199,155 @@ class PaymentAgreementServiceTest extends TestCase
         return $event;
     }
 
+    public function test_checkout_api_requires_participant_consent_for_the_current_agreement(): void
+    {
+        $this->checkout();
+        $this->postJson('/api/jobs/1/payment-intent')->assertStatus(401);
+        $this->actAsJobUser(3, 'customer');
+        $this->postJson('/api/jobs/1/payment-agreement')->assertForbidden();
+        $this->actAsJobUser(1, 'customer');
+        $agreement = $this->postJson('/api/jobs/1/payment-agreement')->assertOk()
+            ->assertJsonPath('agreement.amount_cents', 12500)->json('agreement');
+        $data = ['agreement_id' => $agreement['id'], 'agreement_sha256' => $agreement['agreement_sha256']];
+        $this->postJson('/api/jobs/1/payment-intent')->assertStatus(422);
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409);
+        $decision = [
+            'agreement_sha256' => $agreement['agreement_sha256'],
+            'event_type' => 'scope_accepted', 'decision_key' => 'fixture_api_customer_consent',
+        ];
+        $url = '/api/payment-agreements/' . $agreement['id'] . '/decisions';
+        $first = $this->postJson($url, $decision)->assertOk()->assertJsonPath('decision.actor_role', 'customer');
+        $this->postJson($url, $decision)->assertOk()->assertJsonPath('decision.id', $first->json('decision.id'));
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409);
+
+        $this->actAsJobUser(2, 'handyman');
+        $decision['decision_key'] = 'fixture_api_contractor_consent';
+        $this->postJson($url, $decision)->assertOk()->assertJsonPath('decision.actor_role', 'contractor');
+        $this->postJson('/api/jobs/1/payment-agreement')->assertOk()
+            ->assertJsonPath('agreement.consents.customer', true)->assertJsonPath('agreement.consents.contractor', true);
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertForbidden();
+        $this->getJson('/api/jobs/1/payment-intent')->assertForbidden();
+        $this->actAsJobUser(1, 'customer');
+        $data['agreement_sha256'] = str_repeat('0', 64);
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409);
+        self::assertSame(0, DB::table('payments')->count());
+    }
+
+    public function test_checkout_api_reuses_the_intent_and_reads_current_status_without_exposing_the_secret(): void
+    {
+        $data = $this->approvedCheckoutRequest();
+        $this->expectedStripeResponses = 6;
+        $status = 'requires_payment_method';
+        $details = [];
+        Http::fake(function (Request $request) use (&$status, &$details) {
+            return $request->method() === 'POST' ? $this->executorResponse($request)
+                : $this->checkoutIntentResponse($request, $status, $details);
+        });
+        $url = '/api/jobs/1/payment-intent';
+        $first = $this->postJson($url, $data)->assertOk()->assertJsonPath('checkout_status', 'ready')
+            ->assertJsonPath('client_secret', 'pi_executor_fixture_secret_fixture');
+        self::assertStringContainsString('no-store', (string) $first->baseResponse->headers->get('Cache-Control'));
+        $status = 'requires_action';
+        $this->postJson($url, $data)->assertOk()->assertJsonPath('stripe_status', 'requires_action')
+            ->assertJsonPath('payment.id', $first->json('payment.id'));
+
+        $status = 'requires_payment_method';
+        $details = ['last_payment_error' => ['code' => 'card_declined', 'message' => 'Private fixture error']];
+        config(['payments.enabled' => false]);
+        $read = $this->getJson($url)->assertOk()->assertJsonPath('payment_failed', true)
+            ->assertJsonPath('stripe_status', 'requires_payment_method')->assertJsonMissingPath('client_secret');
+        self::assertStringNotContainsString('Private fixture error', $read->getContent());
+
+        $status = 'processing';
+        $details = ['amount_received' => 12500];
+        $this->getJson($url)->assertOk()->assertJsonPath('checkout_status', 'processing')
+            ->assertJsonMissingPath('client_secret');
+        $status = 'canceled';
+        $details = [];
+        $this->getJson($url)->assertOk()->assertJsonPath('checkout_status', 'awaiting_cancellation')
+            ->assertJsonMissingPath('client_secret');
+        $this->postStripeSnapshot($this->cancellationEvent($this->checkoutFixtureIds(), 'evt_checkout_api_cancelled'))
+            ->assertOk();
+        $this->getJson($url)->assertOk()->assertJsonPath('checkout_status', 'cancelled');
+        self::assertSame(1, DB::table('payments')->count());
+        self::assertSame(1, DB::table('stripe_operation_requests')->count());
+    }
+
+    public function test_checkout_api_waits_for_the_signed_funding_event(): void
+    {
+        $data = $this->approvedCheckoutRequest();
+        $this->expectedStripeResponses = 2;
+        Http::fake(fn (Request $request) => $request->method() === 'POST'
+            ? $this->executorResponse($request) : $this->checkoutIntentResponse($request, 'succeeded'));
+        $url = '/api/jobs/1/payment-intent';
+        $this->postJson($url, $data)->assertOk()->assertJsonPath('checkout_status', 'awaiting_confirmation')
+            ->assertJsonPath('payment.status', 'requires_payment_method')->assertJsonMissingPath('client_secret');
+        self::assertSame(0, DB::table('payment_journal_entries')->where('entry_type', 'payment_succeeded')->count());
+
+        $event = $this->fundingEvent($this->checkoutFixtureIds(), 'evt_checkout_api_funded');
+        $this->postStripeSnapshot($event)->assertOk();
+        $this->getJson($url)->assertOk()->assertJsonPath('checkout_status', 'succeeded')
+            ->assertJsonMissingPath('client_secret');
+    }
+
+    public function test_checkout_api_rechecks_eligibility_after_the_provider_read(): void
+    {
+        $data = $this->approvedCheckoutRequest();
+        $this->expectedStripeResponses = 2;
+        Http::fake(function (Request $request) {
+            if ($request->method() === 'POST') {
+                return $this->executorResponse($request);
+            }
+
+            self::assertSame(0, DB::transactionLevel());
+            DB::table('disputes')->insert(['job_id' => 1, 'status' => 'open']);
+
+            return $this->checkoutIntentResponse($request, 'requires_payment_method');
+        });
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409)->assertJsonMissingPath('client_secret');
+        self::assertSame('requires_payment_method', DB::table('payments')->first()->status);
+    }
+
+    public function test_checkout_api_rejects_a_provider_response_with_different_terms(): void
+    {
+        $data = $this->approvedCheckoutRequest();
+        $this->expectedStripeResponses = 2;
+        Http::fake(fn (Request $request) => $request->method() === 'POST' ? $this->executorResponse($request)
+            : $this->checkoutIntentResponse($request, 'requires_payment_method', ['amount' => 12501]));
+        $this->postJson('/api/jobs/1/payment-intent', $data)->assertStatus(409)->assertJsonMissingPath('client_secret');
+        self::assertSame(1, DB::table('payments')->count());
+    }
+
+    private function approvedCheckoutRequest(): array
+    {
+        $this->checkout();
+        $agreement = $this->proposal();
+        $this->both($agreement);
+        $this->actAsJobUser(1, 'customer');
+
+        return ['agreement_id' => (int) $agreement->id, 'agreement_sha256' => $agreement->agreement_sha256];
+    }
+
+    private function checkoutFixtureIds(): array
+    {
+        $installment = DB::table('payment_installments')->first();
+
+        return ['installment_id' => (int) $installment->id, 'payment_id' => (int) $installment->payment_id];
+    }
+
+    private function checkoutIntentResponse(Request $request, string $status, array $overrides = [])
+    {
+        self::assertSame(0, DB::transactionLevel());
+        self::assertSame('GET', $request->method());
+        self::assertSame('https://api.stripe.com/v1/payment_intents/pi_executor_fixture', $request->url());
+        $intent = $this->fundingEvent($this->checkoutFixtureIds(), 'evt_checkout_read_fixture')['data']['object'];
+        $intent['status'] = $status;
+        $intent['amount_received'] = $status === 'succeeded' ? $intent['amount'] : 0;
+        $intent['client_secret'] = 'pi_executor_fixture_secret_fixture';
+
+        return Http::response(array_replace($intent, $overrides), 200, ['Request-Id' => 'req_checkout_read_fixture']);
+    }
+
     private function postStripeSnapshot(array $event, bool $valid = true): \Illuminate\Testing\TestResponse
     {
         $payload = json_encode($event, JSON_THROW_ON_ERROR);

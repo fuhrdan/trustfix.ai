@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContractorProfile;
-use App\Models\Job;
 use App\Models\Payment;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentAgreementService;
+use App\Services\PaymentCheckoutService;
 use App\Services\PaymentSafetyGuard;
 use App\Services\StripeEventInbox;
 use App\Services\StripePaymentIntentReconciler;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -107,71 +109,80 @@ class PaymentController extends Controller
         return response()->json(['url' => $link['url']]);
     }
 
-    public function createIntent(Request $request, $jobId)
+    public function proposeAgreement(Request $request, $jobId): JsonResponse
     {
-        app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
+        $agreement = app(PaymentAgreementService::class)->proposeInitial(
+            (int) $jobId, (int) $request->user('api')->id
+        );
+        $consents = [];
+        foreach (['customer' => $agreement->customer_id, 'contractor' => $agreement->contractor_id] as $role => $id) {
+            $latest = DB::table('payment_agreement_consents')->useWritePdo()
+                ->where('payment_agreement_id', $agreement->id)->where('actor_id', $id)->orderByDesc('id')->first();
+            $consents[$role] = $latest?->actor_role === $role && $latest->event_type === 'scope_accepted'
+                && hash_equals($agreement->agreement_sha256, $latest->agreement_sha256);
+        }
 
-        $user = Auth::guard('api')->user();
-        $job = Job::with('handyman')->findOrFail($jobId);
+        return response()->json(['agreement' => [
+            'id' => (int) $agreement->id,
+            'job_id' => (int) $agreement->job_id,
+            'version' => (int) $agreement->version,
+            'agreement_sha256' => $agreement->agreement_sha256,
+            'amount_cents' => (int) $agreement->amount_cents,
+            'currency' => $agreement->currency,
+            'scope' => json_decode($agreement->scope_snapshot, true, 512, JSON_THROW_ON_ERROR),
+            'consents' => $consents,
+        ]], 200, ['Cache-Control' => 'private, no-store']);
+    }
 
-        abort_unless($job->customer_id === $user->id, 403);
-        abort_unless($job->handyman_id, 409, 'A contractor must accept this job first.');
-        abort_unless(in_array($job->status, ['accepted', 'scheduled', 'in_progress', 'completed'], true), 409);
-
-        $profile = ContractorProfile::where('user_id', $job->handyman_id)->firstOrFail();
-        abort_unless($profile->stripe_charges_enabled && $profile->stripe_account_id, 409, 'Contractor payouts are not ready.');
-
-        $amountCents = (int)round(((float)$job->agreed_price) * 100);
-        abort_unless($amountCents >= 50, 422, 'The agreed job price must be at least $0.50.');
-
-        $feeCents = (int)round($amountCents * config('services.stripe.platform_fee_percent', 10) / 100);
-
-        abort_if(
-            Payment::where('job_id', $job->id)->where('status', 'succeeded')->exists(),
-            409,
-            'This job has already been paid.'
+    public function recordAgreementDecision(Request $request, $agreementId): JsonResponse
+    {
+        $data = $request->validate([
+            'agreement_sha256' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+            'event_type' => ['required', 'in:scope_accepted,consent_revoked'],
+            'decision_key' => ['required', 'string', 'regex:/\A[A-Za-z0-9:_-]{16,191}\z/'],
+        ]);
+        $decision = app(PaymentAgreementService::class)->recordDecision(
+            (int) $agreementId, (int) $request->user('api')->id,
+            $data['agreement_sha256'], $data['event_type'], $data['decision_key']
         );
 
-        $payment = Payment::where('job_id', $job->id)
-            ->whereIn('status', ['requires_payment_method', 'requires_action', 'processing'])
-            ->latest()
-            ->first();
+        return response()->json(['decision' => [
+            'id' => (int) $decision->id,
+            'agreement_id' => (int) $decision->payment_agreement_id,
+            'actor_role' => $decision->actor_role,
+            'event_type' => $decision->event_type,
+        ]], 200, ['Cache-Control' => 'private, no-store']);
+    }
 
-        if (!$payment) {
-            $payment = Payment::create([
-                'job_id' => $job->id,
-                'customer_id' => $user->id,
-                'contractor_id' => $job->handyman_id,
-                'amount_cents' => $amountCents,
-                'platform_fee_cents' => $feeCents,
-                'currency' => 'usd',
-            ]);
-        }
-
-        if (!$payment->stripe_payment_intent_id) {
-            $intent = $this->stripe()->post('/payment_intents', [
-                'amount' => $amountCents,
-                'currency' => 'usd',
-                'automatic_payment_methods[enabled]' => 'true',
-                'application_fee_amount' => $feeCents,
-                'transfer_data[destination]' => $profile->stripe_account_id,
-                'metadata[trustfix_payment_id]' => $payment->id,
-                'metadata[trustfix_job_id]' => $job->id,
-                'description' => 'Trustfix job #' . $job->id,
-            ])->throw()->json();
-
-            $payment->update(['stripe_payment_intent_id' => $intent['id']]);
-        } else {
-            $intent = $this->stripe()
-                ->get('/payment_intents/' . $payment->stripe_payment_intent_id)
-                ->throw()
-                ->json();
-        }
-
-        return response()->json([
-            'client_secret' => $intent['client_secret'],
-            'payment' => $payment,
+    public function createIntent(Request $request, $jobId): JsonResponse
+    {
+        app(PaymentSafetyGuard::class)->assertPaymentsEnabled();
+        $data = $request->validate([
+            'agreement_id' => ['required', 'integer', 'min:1'],
+            'agreement_sha256' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ]);
+
+        return $this->checkoutResponse(app(PaymentCheckoutService::class)->begin(
+            (int) $jobId, (int) $data['agreement_id'], (int) $request->user('api')->id, $data['agreement_sha256']
+        ));
+    }
+
+    public function checkoutStatus(Request $request, $jobId): JsonResponse
+    {
+        return $this->checkoutResponse(app(PaymentCheckoutService::class)->status(
+            (int) $jobId, (int) $request->user('api')->id
+        ));
+    }
+
+    private function checkoutResponse(#[\SensitiveParameter] array $data): JsonResponse
+    {
+        $status = match ($data['checkout_status']) {
+            'busy', 'pending' => 202,
+            'reconciliation_required' => 409,
+            default => 200,
+        };
+
+        return response()->json($data, $status, ['Cache-Control' => 'private, no-store']);
     }
 
     public function webhook(Request $request)

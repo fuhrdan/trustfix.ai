@@ -123,7 +123,13 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
     Route::get('/contractor/dashboard', [ContractorDashboardController::class, 'show']);
     Route::post('/contractor/payout-account', [PaymentController::class, 'createConnectAccount']);
     Route::post('/contractor/payout-account/refresh', [PaymentController::class, 'refreshConnectAccount']);
-    Route::post('/jobs/{id}/payment-intent', [PaymentController::class, 'createIntent']);
+    Route::middleware('throttle:30,1,trustfix-payments')->group(function () {
+        Route::post('/jobs/{id}/payment-agreement', [PaymentController::class, 'proposeAgreement'])->whereNumber('id');
+        Route::post('/payment-agreements/{agreementId}/decisions', [PaymentController::class, 'recordAgreementDecision'])
+            ->whereNumber('agreementId');
+        Route::post('/jobs/{id}/payment-intent', [PaymentController::class, 'createIntent'])->whereNumber('id');
+        Route::get('/jobs/{id}/payment-intent', [PaymentController::class, 'checkoutStatus'])->whereNumber('id');
+    });
 
     Route::post('/jobs/{id}/change-orders', [ChangeOrderController::class, 'store']);
     Route::post('/change-orders/{id}/status', [ChangeOrderController::class, 'updateStatus']);
