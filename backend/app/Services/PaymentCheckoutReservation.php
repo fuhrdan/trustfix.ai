@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 final class PaymentCheckoutReservation
 {
-    private const OPERATION = 'create_payment_intent_v1';
+    public const OPERATION = 'create_payment_intent_v1';
 
     public function __construct(
         private readonly PaymentAgreementService $agreements,

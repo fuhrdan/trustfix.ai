@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutReservation;
+use App\Services\StripePaymentIntentExecutor;
 use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +25,7 @@ class PaymentAgreementServiceTest extends TestCase
     private Connection $memoryDb;
     private string $previousConnection = 'sqlite';
     private int $serial = 0;
+    private int $expectedStripeResponses = 0;
 
     protected function setUp(): void
     {
@@ -121,7 +125,7 @@ class PaymentAgreementServiceTest extends TestCase
     protected function tearDown(): void
     {
         try {
-            Http::assertNothingSent();
+            Http::assertSentCount($this->expectedStripeResponses);
         } finally {
             if (isset($this->memoryDb)) {
                 DB::purge(self::CONNECTION);
@@ -612,6 +616,214 @@ class PaymentAgreementServiceTest extends TestCase
         ), 409);
         self::assertSame($before, $this->rows('stripe_operation_requests'));
         self::assertSame(1, DB::table('payments')->count());
+    }
+
+    public function test_executor_binds_one_intent_and_replays_without_another_request(): void
+    {
+        [$executor, $ids, $saved] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn (Request $request) => $this->executorResponse($request));
+        $result = $executor->executeInitial($ids['operation_id'], 1);
+
+        self::assertSame([
+            'status' => 'completed',
+            'payment_id' => $ids['payment_id'],
+            'stripe_payment_intent_id' => 'pi_executor_fixture',
+        ], $result);
+        self::assertSame($result, $executor->executeInitial($ids['operation_id'], 1));
+        Http::assertSent(fn (Request $request) =>
+            $request->hasHeader('Idempotency-Key', $saved->idempotency_key)
+            && $request->data()['metadata']['trustfix_payment_id'] === (string) $ids['payment_id']);
+        $payment = DB::table('payments')->find($ids['payment_id']);
+        self::assertSame('pi_executor_fixture', $payment->stripe_payment_intent_id);
+        self::assertSame('requires_payment_method', $payment->status);
+        self::assertSame(1, (int) $this->operationState()->attempts);
+        self::assertNull($this->operationState()->lease_token);
+        self::assertSame(1, DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_created')->count());
+    }
+
+    public function test_executor_retries_a_timeout_with_identical_parameters_and_key(): void
+    {
+        [$executor, $ids, $saved] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        $attempts = [];
+        Http::fake(function (Request $request) use (&$attempts) {
+            $attempts[] = [$request->header('Idempotency-Key'), $request->data()];
+            if (count($attempts) === 1) {
+                throw new ConnectionException('Fixture network timeout');
+            }
+
+            return $this->executorResponse($request);
+        });
+
+        self::assertSame('pending', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('transport_error', $this->operationState()->last_error_code);
+        self::assertSame('completed', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertCount(2, $attempts);
+        self::assertSame([$saved->idempotency_key], $attempts[0][0]);
+        self::assertSame($attempts[0], $attempts[1]);
+        self::assertSame(2, (int) $this->operationState()->attempts);
+    }
+
+    public function test_executor_respects_active_leases_and_fences_stale_responses(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        DB::table('stripe_operation_processing')->update([
+            'status' => 'processing', 'attempts' => 1,
+            'lease_token' => str_repeat('a', 64), 'lease_expires_at' => now()->addMinute(),
+        ]);
+        Http::fake(function (Request $request) {
+            self::assertSame(2, (int) $this->operationState()->attempts);
+            DB::table('stripe_operation_processing')->update([
+                'attempts' => 3, 'lease_token' => str_repeat('b', 64),
+                'lease_expires_at' => now()->addMinute(),
+            ]);
+
+            return $this->executorResponse($request);
+        });
+
+        self::assertSame('busy', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        Http::assertNothingSent();
+        DB::table('stripe_operation_processing')->update(['lease_expires_at' => now()->subSecond()]);
+        $this->expectedStripeResponses = 1;
+        self::assertSame('busy', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame(str_repeat('b', 64), $this->operationState()->lease_token);
+        self::assertNull(DB::table('payments')->find($ids['payment_id'])->stripe_payment_intent_id);
+        self::assertFalse(DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_created')->exists());
+    }
+
+    public function test_executor_holds_an_expired_request_without_contacting_stripe(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->travel(24)->hours();
+        try {
+            self::assertSame('reconciliation_required', $executor->executeInitial($ids['operation_id'], 1)['status']);
+            self::assertSame('retry_window_closed', $this->operationState()->last_error_code);
+            self::assertSame(0, (int) $this->operationState()->attempts);
+        } finally {
+            $this->travelBack();
+        }
+    }
+
+    public function test_executor_holds_a_request_after_credential_rotation(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        config(['services.stripe.secret' => 'sk_test_rotated_executor_fixture']);
+
+        self::assertSame('reconciliation_required', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('credentials_changed', $this->operationState()->last_error_code);
+        self::assertSame(0, (int) $this->operationState()->attempts);
+    }
+
+    public function test_executor_rechecks_the_customer_and_current_authorization_before_contacting_stripe(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->denied(fn () => $executor->executeInitial($ids['operation_id'], 2), 403);
+        try {
+            DB::transaction(fn () => $executor->executeInitial($ids['operation_id'], 1));
+            self::fail('Execution must follow transaction commit.');
+        } catch (LogicException $exception) {
+            self::assertStringContainsString('committed reservation', $exception->getMessage());
+        }
+        $this->job(['status' => 'cancelled']);
+        $this->denied(fn () => $executor->executeInitial($ids['operation_id'], 1), 409);
+        self::assertSame(0, (int) $this->operationState()->attempts);
+    }
+
+    public function test_executor_recovers_the_same_intent_after_a_local_commit_failure(): void
+    {
+        [$executor, $ids, $saved] = $this->executionFixture();
+        $this->expectedStripeResponses = 2;
+        Http::fake(function (Request $request) use ($saved) {
+            self::assertTrue($request->hasHeader('Idempotency-Key', $saved->idempotency_key));
+
+            return $this->executorResponse($request);
+        });
+        Schema::create('executor_fixture_fault', function (Blueprint $table): void {
+            $table->boolean('enabled');
+        });
+        DB::table('executor_fixture_fault')->insert(['enabled' => true]);
+        DB::unprepared("CREATE TRIGGER executor_fixture_abort BEFORE INSERT ON payment_journal_entries
+            WHEN NEW.entry_type = 'payment_intent_created' AND (SELECT enabled FROM executor_fixture_fault) = 1
+            BEGIN SELECT RAISE(ABORT, 'executor_fixture_abort'); END");
+
+        try {
+            $executor->executeInitial($ids['operation_id'], 1);
+            self::fail('The test fault must roll back local finalization.');
+        } catch (QueryException $exception) {
+            self::assertStringContainsString('executor_fixture_abort', $exception->getMessage());
+        }
+        self::assertNull(DB::table('payments')->find($ids['payment_id'])->stripe_payment_intent_id);
+        self::assertSame('processing', $this->operationState()->status);
+        self::assertSame(1, (int) $this->operationState()->attempts);
+
+        DB::table('executor_fixture_fault')->update(['enabled' => false]);
+        DB::table('stripe_operation_processing')->update(['lease_expires_at' => now()->subSecond()]);
+        self::assertSame('pi_executor_fixture', $executor->executeInitial($ids['operation_id'], 1)['stripe_payment_intent_id']);
+        self::assertSame(1, DB::table('payment_journal_entries')->where('entry_type', 'payment_intent_created')->count());
+    }
+
+    public function test_executor_leaves_an_indeterminate_server_error_for_reconciliation(): void
+    {
+        [$executor, $ids] = $this->executionFixture();
+        $this->expectedStripeResponses = 1;
+        Http::fake(fn () => Http::response(['error' => ['message' => 'fixture provider detail']], 500));
+
+        self::assertSame('reconciliation_required', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('reconciliation_required', $executor->executeInitial($ids['operation_id'], 1)['status']);
+        self::assertSame('http_error_500', $this->operationState()->last_error_code);
+        $journal = DB::table('payment_journal_entries')->where('entry_type', 'intent_creation_failed')->first();
+        self::assertStringNotContainsString('fixture provider detail', $journal->details);
+    }
+
+    public function test_executor_limits_transport_retries_to_three_attempts(): void
+    {
+        [$executor, $ids, $saved] = $this->executionFixture();
+        $attempts = 0;
+        Http::fake(function (Request $request) use (&$attempts, $saved) {
+            self::assertTrue($request->hasHeader('Idempotency-Key', $saved->idempotency_key));
+            $attempts++;
+            throw new ConnectionException('Fixture network timeout');
+        });
+
+        foreach (['pending', 'pending', 'reconciliation_required', 'reconciliation_required'] as $status) {
+            self::assertSame($status, $executor->executeInitial($ids['operation_id'], 1)['status']);
+        }
+        self::assertSame(3, $attempts);
+        self::assertSame(3, (int) $this->operationState()->attempts);
+    }
+
+    private function executionFixture(): array
+    {
+        $agreement = $this->proposal();
+        $this->both($agreement);
+        $ids = $this->checkout()->reserveInitial(1, (int) $agreement->id, 1, $agreement->agreement_sha256);
+
+        return [
+            app(StripePaymentIntentExecutor::class), $ids,
+            DB::table('stripe_operation_requests')->find($ids['operation_id']),
+        ];
+    }
+
+    private function operationState(): object
+    {
+        return DB::table('stripe_operation_processing')->first();
+    }
+
+    private function executorResponse(Request $request)
+    {
+        self::assertSame(0, DB::transactionLevel());
+        self::assertSame('POST', $request->method());
+        self::assertSame('https://api.stripe.com/v1/payment_intents', $request->url());
+        $data = $request->data();
+
+        return Http::response([
+            'id' => 'pi_executor_fixture', 'object' => 'payment_intent', 'livemode' => false,
+            'amount' => (int) $data['amount'], 'currency' => $data['currency'],
+            'transfer_group' => $data['transfer_group'], 'metadata' => array_map('strval', $data['metadata']),
+            'capture_method' => 'automatic', 'status' => 'requires_payment_method',
+            'client_secret' => 'pi_executor_fixture_secret_fixture',
+        ], 200, ['Request-Id' => 'req_executor_fixture']);
     }
 
     private function checkout(): PaymentCheckoutReservation
