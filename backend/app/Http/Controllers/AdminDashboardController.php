@@ -15,7 +15,9 @@ use App\Models\Report;
 use App\Models\Review;
 use App\Models\User;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -368,35 +370,43 @@ class AdminDashboardController extends Controller
 
     public function updateJob(Request $request, $id)
     {
-        $job = Job::findOrFail($id);
+        [$job, $previousStatus] = DB::transaction(function () use ($request, $id) {
+            $job = Job::query()->lockForUpdate()->findOrFail($id);
 
-        $validated = $request->validate([
-            'status' => [
-                'required',
-                Rule::in([
-                    'posted',
-                    'requested',
-                    'accepted',
-                    'in_progress',
-                    'change_requested',
-                    'completed',
-                    'cancelled',
-                    'disputed',
-                ]),
-            ],
-            'address' => ['required', 'string', 'max:500'],
-            'lat' => ['nullable', 'numeric', 'between:-90,90'],
-            'lng' => ['nullable', 'numeric', 'between:-180,180'],
-            'initial_description' => ['required', 'string', 'max:5000'],
-            'agreed_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'onsite_contact_name' => ['nullable', 'string', 'max:255'],
-            'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
-            'skills' => ['nullable', 'array'],
-            'skills.*' => ['string', 'max:100'],
-        ]);
+            $validated = $request->validate([
+                'status' => [
+                    'required',
+                    Rule::in([
+                        'posted',
+                        'requested',
+                        'accepted',
+                        'in_progress',
+                        'change_requested',
+                        'completed',
+                        'cancelled',
+                        'disputed',
+                    ]),
+                ],
+                'address' => ['required', 'string', 'max:500'],
+                'lat' => ['nullable', 'numeric', 'between:-90,90'],
+                'lng' => ['nullable', 'numeric', 'between:-180,180'],
+                'initial_description' => ['required', 'string', 'max:5000'],
+                'agreed_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+                'onsite_contact_name' => ['nullable', 'string', 'max:255'],
+                'onsite_contact_phone' => ['nullable', 'string', 'max:50'],
+                'skills' => ['nullable', 'array'],
+                'skills.*' => ['string', 'max:100'],
+            ]);
 
-        $previousStatus = $job->status;
-        $job->update($validated);
+            $previousStatus = $job->status;
+            $job->fill($validated);
+            if ($job->isDirty(PaymentAgreementService::RESERVED_JOB_FIELDS)) {
+                app(PaymentAgreementService::class)->assertJobTermsEditable((int) $job->id);
+            }
+            $job->save();
+
+            return [$job, $previousStatus];
+        }, 3);
 
         if ($previousStatus !== $job->status) {
             $admin = auth('api')->user();

@@ -13,6 +13,7 @@ use App\Services\Estimating\EstimatePricingResolver;
 use App\Services\Estimating\JobAnalysisManager;
 use App\Services\Estimating\MaterialPriceMatcher;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -263,16 +264,18 @@ class JobEstimateController extends Controller
     public function accept(Request $request, $id)
     {
         [$job, $user] = $this->accessibleJob($id);
-        $estimate = $job->estimate;
+        $result = DB::transaction(function () use ($job, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($job->id);
+            if ($job->customer_id != $user->id && $user->role !== 'admin') {
+                return response()->json(['message' => 'Only the customer can accept this quote.'], 403);
+            }
 
-        if ($job->customer_id != $user->id && $user->role !== 'admin') {
-            return response()->json(['message' => 'Only the customer can accept this quote.'], 403);
-        }
-        if (!$estimate || $estimate->status !== 'quoted' || !$estimate->contractor_quote) {
-            return response()->json(['message' => 'There is no submitted quote to accept.'], 409);
-        }
+            $estimate = $job->estimate()->lockForUpdate()->first();
+            if (!$estimate || $estimate->status !== 'quoted' || !$estimate->contractor_quote) {
+                return response()->json(['message' => 'There is no submitted quote to accept.'], 409);
+            }
 
-        DB::transaction(function () use ($job, $estimate, $user) {
+            app(PaymentAgreementService::class)->assertJobTermsEditable((int) $job->id);
             $estimate->update([
                 'accepted_price' => $estimate->contractor_quote,
                 'status' => 'accepted',
@@ -281,7 +284,13 @@ class JobEstimateController extends Controller
             ]);
             $job->update(['agreed_price' => $estimate->contractor_quote]);
             $this->revision($estimate, $user, 'quote_accepted');
-        });
+
+            return [$job, $estimate];
+        }, 3);
+        if (!is_array($result)) {
+            return $result;
+        }
+        [$job, $estimate] = $result;
 
         $this->recordEvent(
             $job,

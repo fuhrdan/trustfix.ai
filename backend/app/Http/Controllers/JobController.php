@@ -16,6 +16,7 @@ use App\Models\JobMessage;
 use App\Models\Property;
 use App\Models\ContractorProfile;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -722,7 +723,23 @@ public function deleteImage($jobId, $imageId)
             $updateData['property_id'] = $property ? $property->id : null;
         }
 
-        $job->update($updateData);
+        $job = DB::transaction(function () use ($id, $user, $updateData) {
+            $lockedJob = Job::query()->lockForUpdate()->findOrFail($id);
+            if ($lockedJob->customer_id != $user->id) {
+                return null;
+            }
+
+            $lockedJob->fill($updateData);
+            if ($lockedJob->isDirty(PaymentAgreementService::RESERVED_JOB_FIELDS)) {
+                app(PaymentAgreementService::class)->assertJobTermsEditable((int) $lockedJob->id);
+            }
+            $lockedJob->save();
+
+            return $lockedJob;
+        }, 3);
+        if (!$job) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {

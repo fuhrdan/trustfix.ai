@@ -2,6 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\ChangeOrderController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\JobEstimateController;
+use App\Models\Job;
+use App\Models\User;
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutReservation;
 use App\Services\StripePaymentIntentExecutor;
@@ -10,6 +16,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Request as ControllerRequest;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -824,6 +831,100 @@ class PaymentAgreementServiceTest extends TestCase
             'capture_method' => 'automatic', 'status' => 'requires_payment_method',
             'client_secret' => 'pi_executor_fixture_secret_fixture',
         ], 200, ['Request-Id' => 'req_executor_fixture']);
+    }
+
+    public function test_reserved_terms_block_customer_and_admin_edits_while_collection_is_paused(): void
+    {
+        $this->reserve($this->proposal());
+        config(['payments.enabled' => false]);
+        $payload = [
+            'status' => 'accepted',
+            'address' => 'Fixture address',
+            'initial_description' => 'Fixture agreed scope',
+            'agreed_price' => '130.00',
+            'skills' => ['plumbing', 'repair'],
+        ];
+
+        $this->actAsJobUser(1, 'customer');
+        $this->denied(fn () => app(JobController::class)->update(
+            ControllerRequest::create('/api/jobs/1', 'PUT', $payload), 1
+        ), 409);
+        $this->actAsJobUser(3, 'admin');
+        $this->denied(fn () => app(AdminDashboardController::class)->updateJob(
+            ControllerRequest::create('/api/admin/jobs/1', 'PUT', $payload), 1
+        ), 409);
+
+        self::assertSame('125.00', Job::findOrFail(1)->agreed_price);
+        self::assertSame(1, DB::table('payment_installments')->count());
+    }
+
+    public function test_a_change_order_requires_counterparty_approval_and_updates_price_once(): void
+    {
+        $controller = app(ChangeOrderController::class);
+        $this->actAsJobUser(2, 'handyman');
+        $created = $controller->store(ControllerRequest::create('/api/jobs/1/change-orders', 'POST', [
+            'description' => 'Additional fixture work',
+            'price_delta' => '25.00',
+        ]), 1);
+        self::assertSame(201, $created->getStatusCode());
+        $id = $created->getData(true)['id'];
+        $approve = ControllerRequest::create("/api/change-orders/$id/status", 'POST', ['status' => 'approved']);
+
+        self::assertSame(403, $controller->updateStatus($approve, $id)->getStatusCode());
+        self::assertSame('125.00', Job::findOrFail(1)->agreed_price);
+        $this->actAsJobUser(1, 'customer');
+        self::assertSame(200, $controller->updateStatus($approve, $id)->getStatusCode());
+        self::assertSame(409, $controller->updateStatus($approve, $id)->getStatusCode());
+        self::assertSame('150.00', Job::findOrFail(1)->agreed_price);
+    }
+
+    public function test_reserved_terms_block_quote_acceptance_before_writing_estimate(): void
+    {
+        $this->reserve($this->proposal());
+        Schema::create('job_images', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('job_id');
+        });
+        Schema::create('job_estimates', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('job_id');
+            $table->string('status');
+            $table->decimal('contractor_quote', 10, 2);
+        });
+        DB::table('job_estimates')->insert(['job_id' => 1, 'status' => 'quoted', 'contractor_quote' => '135.00']);
+        $this->actAsJobUser(1, 'customer');
+        $this->denied(fn () => app(JobEstimateController::class)->accept(
+            ControllerRequest::create('/api/jobs/1/estimate/accept', 'POST'), 1
+        ), 409);
+
+        self::assertSame('quoted', DB::table('job_estimates')->first()->status);
+        self::assertSame('125.00', Job::findOrFail(1)->agreed_price);
+    }
+
+    public function test_reserved_terms_block_change_order_creation_and_approval(): void
+    {
+        $this->reserve($this->proposal());
+        $this->change(11, 'pending', '25.00');
+        $this->actAsJobUser(1, 'customer');
+        $controller = app(ChangeOrderController::class);
+        $this->denied(fn () => $controller->store(
+            ControllerRequest::create('/api/jobs/1/change-orders', 'POST', [
+                'description' => 'Additional fixture work', 'price_delta' => '25.00',
+            ]), 1
+        ), 409);
+        $this->denied(fn () => $controller->updateStatus(
+            ControllerRequest::create('/api/change-orders/11/status', 'POST', ['status' => 'approved']), 11
+        ), 409);
+
+        self::assertSame(1, DB::table('change_orders')->count());
+        self::assertSame('pending', DB::table('change_orders')->find(11)->status);
+        self::assertSame('125.00', Job::findOrFail(1)->agreed_price);
+    }
+
+    private function actAsJobUser(int $id, string $role): void
+    {
+        $user = (new User())->forceFill(['id' => $id, 'role' => $role, 'name' => 'Fixture User']);
+        $this->actingAs($user, 'api');
     }
 
     private function checkout(): PaymentCheckoutReservation

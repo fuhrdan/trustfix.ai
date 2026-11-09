@@ -15,6 +15,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class PaymentAgreementService
 {
+    public const RESERVED_JOB_FIELDS = [
+        'customer_id', 'handyman_id', 'status', 'property_id', 'address',
+        'initial_description', 'agreed_price', 'skills',
+    ];
+
     private const POLICY = 'staging_2026_11_v1';
     private const FEE_BASIS_POINTS = 1000;
 
@@ -40,10 +45,7 @@ final class PaymentAgreementService
                 return $latestInitial;
             }
 
-            $reserved = DB::table('payment_installments')
-                ->join('payment_agreements', 'payment_agreements.id', '=', 'payment_installments.payment_agreement_id')
-                ->where('payment_agreements.job_id', $jobId)->lockForUpdate()->first(['payment_installments.id']);
-            abort_if($reserved !== null, 409, 'A payable already exists; changes require a separate reviewed agreement.');
+            $this->assertJobTermsEditable($jobId);
 
             $previous = DB::table('payment_agreements')->where('job_id', $jobId)
                 ->orderByDesc('version')->lockForUpdate()->first();
@@ -150,6 +152,20 @@ final class PaymentAgreementService
         }
 
         return $agreement;
+    }
+
+    // Call inside a transaction holding the jobs row lock.
+    public function assertJobTermsEditable(int $jobId): void
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException('Checking reserved job terms requires the job transaction.');
+        }
+
+        $reserved = DB::table('payment_installments')
+            ->join('payment_agreements', 'payment_agreements.id', '=', 'payment_installments.payment_agreement_id')
+            ->where('payment_agreements.job_id', $jobId)
+            ->lockForUpdate()->first(['payment_installments.id']);
+        abort_if($reserved !== null, 409, 'A payable already exists; changes require a separate reviewed agreement.');
     }
 
     private function agreement(int $id): object

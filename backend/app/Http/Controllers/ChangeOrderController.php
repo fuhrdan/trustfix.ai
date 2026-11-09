@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\ChangeOrder;
 use App\Models\Job;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ChangeOrderController extends Controller
@@ -18,30 +20,35 @@ class ChangeOrderController extends Controller
         ]);
 
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($jobId);
 
-        $isCustomer = $job->customer_id === $user->id;
-        $isAssignedHandyman = $job->handyman_id === $user->id;
+        return DB::transaction(function () use ($jobId, $user, $validated) {
+            $job = Job::query()->lockForUpdate()->findOrFail($jobId);
 
-        if (!$isCustomer && !$isAssignedHandyman) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
+            $isCustomer = $job->customer_id === $user->id;
+            $isAssignedHandyman = $job->handyman_id === $user->id;
 
-        $requestedBy = $isCustomer ? 'customer' : 'handyman';
+            if (!$isCustomer && !$isAssignedHandyman) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
 
-        $changeOrder = ChangeOrder::create([
-            'job_id' => $job->id,
-            'requested_by' => $requestedBy,
-            'description' => $validated['description'],
-            'price_delta' => $validated['price_delta'],
-            'status' => 'pending',
-        ]);
+            app(PaymentAgreementService::class)->assertJobTermsEditable((int) $job->id);
 
-        $job->update([
-            'status' => 'change_requested',
-        ]);
+            $requestedBy = $isCustomer ? 'customer' : 'handyman';
 
-        return response()->json($changeOrder, 201);
+            $changeOrder = ChangeOrder::create([
+                'job_id' => $job->id,
+                'requested_by' => $requestedBy,
+                'description' => $validated['description'],
+                'price_delta' => $validated['price_delta'],
+                'status' => 'pending',
+            ]);
+
+            $job->update([
+                'status' => 'change_requested',
+            ]);
+
+            return response()->json($changeOrder, 201);
+        }, 3);
     }
 
     public function updateStatus(Request $request, $id)
@@ -51,36 +58,48 @@ class ChangeOrderController extends Controller
         ]);
 
         $user = Auth::guard('api')->user();
-        $changeOrder = ChangeOrder::with('job')->findOrFail($id);
-        $job = $changeOrder->job;
+        $jobId = ChangeOrder::query()->findOrFail($id, ['job_id'])->job_id;
 
-        $isCustomer = $job->customer_id === $user->id;
-        $isAssignedHandyman = $job->handyman_id === $user->id;
+        return DB::transaction(function () use ($jobId, $id, $user, $validated) {
+            $job = Job::query()->lockForUpdate()->findOrFail($jobId);
+            $changeOrder = ChangeOrder::where('job_id', $job->id)->lockForUpdate()->findOrFail($id);
 
-        if (!$isCustomer && !$isAssignedHandyman) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
+            $isCustomer = $job->customer_id === $user->id;
+            $isAssignedHandyman = $job->handyman_id === $user->id;
 
-        if ($changeOrder->status !== 'pending') {
-            return response()->json(['error' => 'Change order already reviewed'], 409);
-        }
+            if (!$isCustomer && !$isAssignedHandyman) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
 
-        $changeOrder->update([
-            'status' => $validated['status'],
-        ]);
+            if ($changeOrder->status !== 'pending') {
+                return response()->json(['error' => 'Change order already reviewed'], 409);
+            }
 
-        if ($validated['status'] === 'approved') {
-            $job->agreed_price = ($job->agreed_price ?? 0) + $changeOrder->price_delta;
-            $job->status = 'in_progress';
-            $job->save();
-        }
+            if ($validated['status'] === 'approved' && (
+                $isCustomer === $isAssignedHandyman
+                || $changeOrder->requested_by !== ($isCustomer ? 'handyman' : 'customer')
+            )) {
+                return response()->json(['error' => 'The counterparty must approve the change order.'], 403);
+            }
 
-        if ($validated['status'] === 'rejected') {
-            $job->update([
-                'status' => 'in_progress',
+            app(PaymentAgreementService::class)->assertJobTermsEditable((int) $job->id);
+            $changeOrder->update([
+                'status' => $validated['status'],
             ]);
-        }
 
-        return response()->json($changeOrder->fresh('job'));
+            if ($validated['status'] === 'approved') {
+                $job->agreed_price = ($job->agreed_price ?? 0) + $changeOrder->price_delta;
+                $job->status = 'in_progress';
+                $job->save();
+            }
+
+            if ($validated['status'] === 'rejected') {
+                $job->update([
+                    'status' => 'in_progress',
+                ]);
+            }
+
+            return response()->json($changeOrder->fresh('job'));
+        }, 3);
     }
 }
