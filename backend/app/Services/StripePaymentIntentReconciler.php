@@ -11,14 +11,39 @@ final class StripePaymentIntentReconciler
     {
     }
 
-    /** @param null|callable(array): string $legacyHandler */
-    public function process(int $receiptId, ?callable $legacyHandler = null): string
+    /**
+     * @param null|callable(array): string $legacyHandler
+     * @param null|callable(array, int): ?string $financialHandler
+     */
+    public function process(
+        int $receiptId,
+        ?callable $legacyHandler = null,
+        ?callable $financialHandler = null
+    ): string
     {
         return $this->processor->process(
             $receiptId,
-            fn (array $event, int $id): string => $this->reconcileTerminalEvent($event, $id)
-                ?? ($legacyHandler === null ? 'ignored' : $legacyHandler($event))
+            fn (array $event, int $id): string => $this->dispatch(
+                $event,
+                $id,
+                $legacyHandler,
+                $financialHandler
+            )
         );
+    }
+
+    private function dispatch(
+        #[\SensitiveParameter] array $event,
+        int $receiptId,
+        ?callable $legacyHandler,
+        ?callable $financialHandler
+    ): string {
+        $financial = $financialHandler === null
+            ? null : $financialHandler($event, $receiptId);
+
+        return $financial
+            ?? $this->reconcileTerminalEvent($event, $receiptId)
+            ?? ($legacyHandler === null ? 'ignored' : $legacyHandler($event));
     }
 
     private function reconcileTerminalEvent(#[\SensitiveParameter] array $event, int $receiptId): ?string

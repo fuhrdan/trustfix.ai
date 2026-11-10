@@ -10,6 +10,7 @@ use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentSafetyGuard;
 use App\Services\ManualPaymentReleaseService;
+use App\Services\ManualPaymentRefundService;
 use App\Services\StripeEventInbox;
 use App\Services\StripePaymentIntentReconciler;
 use Illuminate\Http\JsonResponse;
@@ -389,6 +390,7 @@ class PaymentController extends Controller
     public function releaseStatus(Request $request, $jobId): JsonResponse
     {
         $data = app(ManualPaymentReleaseService::class)->status((int) $jobId);
+        $data['refund'] = app(ManualPaymentRefundService::class)->status((int) $jobId);
 
         return response()->json(
             $data,
@@ -422,6 +424,33 @@ class PaymentController extends Controller
             ['Cache-Control' => 'private, no-store']
         );
     }
+
+    public function refundPayment(Request $request, $paymentId): JsonResponse
+    {
+        $request->validate([
+            'confirmation' => [
+                'required',
+                'in:refund_full_customer_payment',
+            ],
+        ]);
+
+        $data = app(ManualPaymentRefundService::class)->refund(
+            (int) $paymentId,
+            (int) $request->user('api')->id
+        );
+        $status = match ($data['status']) {
+            'busy', 'pending' => 202,
+            'reconciliation_required' => 409,
+            default => 200,
+        };
+
+        return response()->json(
+            $data,
+            $status,
+            ['Cache-Control' => 'private, no-store']
+        );
+    }
+
     public function webhook(Request $request)
     {
         $receiptId = app(StripeEventInbox::class)->receive(
@@ -429,8 +458,13 @@ class PaymentController extends Controller
         );
 
         try {
+            $refunds = app(ManualPaymentRefundService::class);
             $outcome = app(StripePaymentIntentReconciler::class)
-                ->process($receiptId, $this->applyLegacyWebhook(...));
+                ->process(
+                    $receiptId,
+                    $this->applyLegacyWebhook(...),
+                    $refunds->reconcileEvent(...)
+                );
             $status = in_array($outcome, ['processed', 'ignored', 'already_processed'], true) ? 200 : 503;
         } catch (Throwable $exception) {
             Log::warning('Stripe event processing requires retry or review.', [

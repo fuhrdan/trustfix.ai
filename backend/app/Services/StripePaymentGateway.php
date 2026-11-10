@@ -216,6 +216,125 @@ final class StripePaymentGateway
 
         return $result;
     }
+
+    // A released separate-charge transfer must be reversed before the platform
+    // creates the customer refund. The caller owns durable sequencing and retry.
+    public function createTransferReversal(
+        mixed $amountCents,
+        string $transferId,
+        array $metadata,
+        string $idempotencyKey
+    ): array {
+        $this->guard->assertRefundsEnabled();
+
+        if (!is_int($amountCents) || $amountCents < 1 || $amountCents > 99999999) {
+            throw new InvalidArgumentException('Reversal amount must be supported integer USD cents.');
+        }
+
+        $this->identifier($transferId, 'tr_');
+        if (preg_match('/\A[A-Za-z0-9:_-]{16,255}\z/', $idempotencyKey) !== 1) {
+            throw new InvalidArgumentException('A valid reversal idempotency key is required.');
+        }
+
+        $normalized = $this->refundMetadata($metadata);
+        $result = $this->resourceObject(
+            $this->send(
+                'POST',
+                '/transfers/' . $transferId . '/reversals',
+                [
+                    'amount' => $amountCents,
+                    'metadata' => $normalized,
+                ],
+                $idempotencyKey
+            ),
+            'transfer_reversal',
+            'trr_'
+        );
+        $reversal = $result['data'];
+        $returnedMetadata = $reversal['metadata'] ?? null;
+        if (is_array($returnedMetadata)) {
+            ksort($returnedMetadata);
+        }
+
+        if (($reversal['amount'] ?? null) !== $amountCents
+            || ($reversal['currency'] ?? null) !== 'usd'
+            || ($reversal['transfer'] ?? null) !== $transferId
+            || $returnedMetadata !== $normalized) {
+            throw new StripeApiException(
+                'transfer_reversal_mismatch',
+                $result['http_status'],
+                $result['request_id'],
+                true
+            );
+        }
+
+        return $result;
+    }
+
+    // Full refunds only. This payment model uses a platform charge and a
+    // separately controlled transfer, so Stripe's reverse_transfer and
+    // refund_application_fee parameters must never be sent here.
+    public function createFullRefund(
+        mixed $amountCents,
+        string $paymentIntentId,
+        string $chargeId,
+        array $metadata,
+        string $idempotencyKey
+    ): array {
+        $this->guard->assertRefundsEnabled();
+
+        if (!is_int($amountCents) || $amountCents < 50 || $amountCents > 99999999) {
+            throw new InvalidArgumentException('Refund amount must be supported integer USD cents.');
+        }
+
+        $this->identifier($paymentIntentId, 'pi_');
+        $this->identifier($chargeId, 'ch_');
+        if (preg_match('/\A[A-Za-z0-9:_-]{16,255}\z/', $idempotencyKey) !== 1) {
+            throw new InvalidArgumentException('A valid refund idempotency key is required.');
+        }
+
+        $normalized = $this->refundMetadata($metadata);
+        $result = $this->resourceObject(
+            $this->send(
+                'POST',
+                '/refunds',
+                [
+                    'payment_intent' => $paymentIntentId,
+                    'amount' => $amountCents,
+                    'reason' => 'requested_by_customer',
+                    'metadata' => $normalized,
+                ],
+                $idempotencyKey
+            ),
+            'refund',
+            're_'
+        );
+        $refund = $result['data'];
+        $returnedMetadata = $refund['metadata'] ?? null;
+        if (is_array($returnedMetadata)) {
+            ksort($returnedMetadata);
+        }
+
+        if (($refund['amount'] ?? null) !== $amountCents
+            || ($refund['currency'] ?? null) !== 'usd'
+            || ($refund['payment_intent'] ?? null) !== $paymentIntentId
+            || ($refund['charge'] ?? null) !== $chargeId
+            || ($refund['reason'] ?? null) !== 'requested_by_customer'
+            || !in_array(($refund['status'] ?? null), ['pending', 'requires_action', 'succeeded'], true)
+            || $returnedMetadata !== $normalized
+            || ($refund['source_transfer_reversal'] ?? null) !== null
+            || ($refund['transfer_reversal'] ?? null) !== null) {
+            throw new StripeApiException(
+                'refund_mismatch',
+                $result['http_status'],
+                $result['request_id'],
+                true
+            );
+        }
+
+        return $result;
+    }
+
     // Reads stay available while collection is paused, subject to the test guard.
     public function retrievePaymentIntent(string $id): array
     {
@@ -241,6 +360,18 @@ final class StripePaymentGateway
         );
     }
 
+    public function retrieveTransfer(string $id): array
+    {
+        $this->identifier($id, 'tr_');
+
+        return $this->financialObject(
+            $this->send('GET', '/transfers/' . $id),
+            'transfer',
+            'tr_',
+            $id
+        );
+    }
+
     public static function excludesRedirects(#[\SensitiveParameter] array $intent): bool
     {
         $methods = $intent['automatic_payment_methods'] ?? null;
@@ -255,6 +386,40 @@ final class StripePaymentGateway
             || preg_match('/\A' . preg_quote($prefix, '/') . '[A-Za-z0-9_]+\z/', $id) !== 1) {
             throw new InvalidArgumentException('Invalid Stripe resource identifier.');
         }
+    }
+
+    private function refundMetadata(array $metadata): array
+    {
+        $normalized = [];
+        foreach ($metadata as $key => $value) {
+            if (!is_string($key) || !mb_check_encoding($key, 'UTF-8')
+                || mb_strlen($key, 'UTF-8') < 1 || mb_strlen($key, 'UTF-8') > 40
+                || strpbrk($key, '[]') !== false
+                || (!is_string($value) && !is_int($value))) {
+                throw new InvalidArgumentException('Unsupported refund metadata.');
+            }
+
+            $value = (string) $value;
+            if (!mb_check_encoding($value, 'UTF-8') || mb_strlen($value, 'UTF-8') > 500) {
+                throw new InvalidArgumentException('Unsupported refund metadata.');
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        if (array_key_exists('trustfix_payment_model', $normalized)
+            && $normalized['trustfix_payment_model'] !== self::PAYMENT_MODEL) {
+            throw new InvalidArgumentException('Payment model metadata conflicts with this gateway.');
+        }
+
+        $normalized['trustfix_payment_model'] = self::PAYMENT_MODEL;
+        if (count($normalized) > 50) {
+            throw new InvalidArgumentException('Unsupported refund metadata.');
+        }
+
+        ksort($normalized);
+
+        return $normalized;
     }
 
     private function send(
@@ -340,6 +505,31 @@ final class StripePaymentGateway
             || !is_string($objectId) || strlen($objectId) > 191
             || preg_match('/\A' . preg_quote($prefix, '/') . '[A-Za-z0-9_]+\z/', $objectId) !== 1
             || ($id !== null && $objectId !== $id)) {
+            throw new StripeApiException(
+                'unsafe_object',
+                $result['http_status'],
+                $result['request_id'],
+                $result['write']
+            );
+        }
+
+        return $result;
+    }
+
+    // Refund and transfer-reversal objects do not expose a livemode field.
+    // Test-mode enforcement therefore comes from the guarded API credential and
+    // strict identity/context matching performed by their creation methods.
+    private function resourceObject(
+        #[\SensitiveParameter] array $result,
+        string $type,
+        string $prefix
+    ): array {
+        $object = $result['data'];
+        $objectId = $object['id'] ?? null;
+
+        if (($object['object'] ?? null) !== $type
+            || !is_string($objectId) || strlen($objectId) > 191
+            || preg_match('/\A' . preg_quote($prefix, '/') . '[A-Za-z0-9_]+\z/', $objectId) !== 1) {
             throw new StripeApiException(
                 'unsafe_object',
                 $result['http_status'],

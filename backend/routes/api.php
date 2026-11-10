@@ -206,6 +206,9 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
         Route::post('/admin/payments/{paymentId}/release', [PaymentController::class, 'releasePayment'])
             ->whereNumber('paymentId')
             ->middleware('throttle:10,1,trustfix-payment-releases');
+        Route::post('/admin/payments/{paymentId}/refund', [PaymentController::class, 'refundPayment'])
+            ->whereNumber('paymentId')
+            ->middleware('throttle:5,1,trustfix-payment-refunds');
         Route::put('/admin/jobs/{id}', [AdminDashboardController::class, 'updateJob']);
         Route::delete('/admin/jobs/{id}', [JobController::class, 'destroy']);
         

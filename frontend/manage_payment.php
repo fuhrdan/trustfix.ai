@@ -21,6 +21,15 @@ $release = is_array($result['release'] ?? null) ? $result['release'] : [
     'reason' => 'Payment release information is unavailable.',
     'stripe_transfer_id' => null,
 ];
+$refund = is_array($result['refund'] ?? null) ? $result['refund'] : [
+    'state' => 'unavailable',
+    'can_refund' => false,
+    'reason' => 'Payment refund information is unavailable.',
+    'full_refund_amount_cents' => null,
+    'requires_transfer_reversal' => false,
+    'stripe_refund_id' => null,
+    'stripe_transfer_reversal_id' => null,
+];
 $notice = $_GET['result'] ?? '';
 
 function adminPaymentMoney(int $cents, string $currency): string
@@ -28,15 +37,15 @@ function adminPaymentMoney(int $cents, string $currency): string
     return strtoupper($currency) . ' ' . number_format($cents / 100, 2);
 }
 
-$pageTitle = 'Payment Release';
+$pageTitle = 'Payment Release and Refund';
 include 'header.php';
 
 ?>
 
 <div class="tf-page-heading">
     <div>
-        <h1>Payment release for job #<?= (int)$jobId ?></h1>
-        <p class="tf-page-intro">Review verified funding and manually release only the recorded contractor proceeds.</p>
+        <h1>Payment controls for job #<?= (int)$jobId ?></h1>
+        <p class="tf-page-intro">Review verified funding, contractor release, and guarded full-refund status.</p>
     </div>
     <a href="manage_jobs.php">Back to jobs</a>
 </div>
@@ -52,6 +61,22 @@ include 'header.php';
 <?php elseif ($notice === 'failed'): ?>
     <div class="tf-alert tf-alert-error" role="alert">
         The release was not completed. Review the current release status below.
+    </div>
+<?php elseif ($notice === 'refund_awaiting'): ?>
+    <div class="tf-alert tf-alert-success" role="status">
+        Stripe accepted the full refund. Webhook confirmation is pending.
+    </div>
+<?php elseif ($notice === 'refund_completed'): ?>
+    <div class="tf-alert tf-alert-success" role="status">
+        The full customer refund is confirmed.
+    </div>
+<?php elseif ($notice === 'refund_pending'): ?>
+    <div class="tf-alert" role="status">
+        The refund workflow is pending. The same idempotent request can be retried.
+    </div>
+<?php elseif ($notice === 'refund_failed'): ?>
+    <div class="tf-alert tf-alert-error" role="alert">
+        The refund was not completed. Review both workflow states below; do not create a second refund manually.
     </div>
 <?php endif; ?>
 
@@ -111,6 +136,65 @@ include 'header.php';
                 </label>
                 <button type="submit" style="width:auto;">
                     <?= $release['state'] === 'pending' ? 'Retry release' : 'Release contractor proceeds' ?>
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <div class="tf-card" style="max-width:760px;margin-top:20px;">
+        <h2>Full refund status</h2>
+        <dl style="display:grid;grid-template-columns:minmax(180px,1fr) 2fr;gap:10px 18px;">
+            <dt>Refund state</dt>
+            <dd><strong><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string)$refund['state'])), ENT_QUOTES, 'UTF-8') ?></strong></dd>
+            <?php if ($payment !== null): ?>
+                <dt>Customer refund</dt>
+                <dd><strong><?= htmlspecialchars(adminPaymentMoney((int)$payment['amount_cents'], (string)$payment['currency']), ENT_QUOTES, 'UTF-8') ?></strong> (full payment only)</dd>
+                <dt>Platform fee returned</dt>
+                <dd><?= htmlspecialchars(adminPaymentMoney((int)$payment['platform_fee_cents'], (string)$payment['currency']), ENT_QUOTES, 'UTF-8') ?></dd>
+                <dt>Transfer reversal</dt>
+                <dd><?= !empty($refund['requires_transfer_reversal'])
+                    ? htmlspecialchars(adminPaymentMoney((int)$payment['contractor_proceeds_cents'], (string)$payment['currency']), ENT_QUOTES, 'UTF-8') . ' before refund'
+                    : 'Not required' ?></dd>
+            <?php endif; ?>
+        </dl>
+
+        <p><?= htmlspecialchars((string)$refund['reason'], ENT_QUOTES, 'UTF-8') ?></p>
+
+        <?php if (!empty($refund['stripe_transfer_reversal_id'])): ?>
+            <p><strong>Stripe transfer reversal:</strong>
+                <?= htmlspecialchars((string)$refund['stripe_transfer_reversal_id'], ENT_QUOTES, 'UTF-8') ?>
+            </p>
+        <?php endif; ?>
+        <?php if (!empty($refund['stripe_refund_id'])): ?>
+            <p><strong>Stripe refund:</strong>
+                <?= htmlspecialchars((string)$refund['stripe_refund_id'], ENT_QUOTES, 'UTF-8') ?>
+            </p>
+        <?php endif; ?>
+
+        <?php if (!empty($refund['can_refund']) && $payment !== null): ?>
+            <form
+                method="POST"
+                action="refund_payment.php"
+                onsubmit="return confirm('Issue the displayed FULL customer refund? If contractor funds were released, TrustFix will reverse that transfer first.');"
+            >
+                <?= csrfField() ?>
+                <input type="hidden" name="job_id" value="<?= (int)$jobId ?>">
+                <input type="hidden" name="payment_id" value="<?= (int)$payment['id'] ?>">
+                <label style="display:flex;gap:10px;align-items:flex-start;margin:18px 0;">
+                    <input
+                        type="checkbox"
+                        name="confirmation"
+                        value="refund_full_customer_payment"
+                        required
+                        style="width:auto;margin-top:4px;"
+                    >
+                    <span>I verified there is no open dispute and authorize a full refund of
+                        <strong><?= htmlspecialchars(adminPaymentMoney((int)$payment['amount_cents'], (string)$payment['currency']), ENT_QUOTES, 'UTF-8') ?></strong>.
+                        I understand any released contractor proceeds will be reversed first and partial refunds are not supported.
+                    </span>
+                </label>
+                <button type="submit" style="width:auto;">
+                    <?= $refund['state'] === 'pending' ? 'Retry full refund' : 'Issue full refund' ?>
                 </button>
             </form>
         <?php endif; ?>

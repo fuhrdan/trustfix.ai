@@ -86,6 +86,18 @@ final class ManualPaymentReleaseService
             ->where('request.operation_type', self::OPERATION)
             ->orderByDesc('request.id')
             ->first(['request.id', 'state.status', 'state.stripe_object_id']);
+        $reversalOperation = DB::table('stripe_operation_requests as request')
+            ->join('stripe_operation_processing as state', 'state.operation_request_id', '=', 'request.id')
+            ->where('request.payment_installment_id', $payment->installment_id)
+            ->where('request.operation_type', ManualPaymentRefundService::REVERSAL_OPERATION)
+            ->orderByDesc('request.id')
+            ->first(['state.status', 'state.stripe_object_id']);
+        $refundOperation = DB::table('stripe_operation_requests as request')
+            ->join('stripe_operation_processing as state', 'state.operation_request_id', '=', 'request.id')
+            ->where('request.payment_installment_id', $payment->installment_id)
+            ->where('request.operation_type', ManualPaymentRefundService::REFUND_OPERATION)
+            ->orderByDesc('request.id')
+            ->first(['state.status', 'state.stripe_object_id']);
 
         $ready = $payment->job_status === 'completed'
             && $payment->status === 'succeeded'
@@ -96,6 +108,11 @@ final class ManualPaymentReleaseService
             && $this->profileReady($profile);
 
         $state = match (true) {
+            $payment->status === 'refunded' => 'refunded',
+            $refundOperation?->status === 'reconciliation_required'
+                || $reversalOperation?->status === 'reconciliation_required'
+                => 'reconciliation_required',
+            $refundOperation !== null || $reversalOperation !== null => 'refunding',
             $operation?->status === 'completed'
                 && $this->stripeId($operation->stripe_object_id, 'tr_') => 'released',
             $operation?->status === 'reconciliation_required' => 'reconciliation_required',
@@ -106,6 +123,8 @@ final class ManualPaymentReleaseService
         };
 
         $reason = match (true) {
+            $state === 'refunded' => 'The customer payment was fully refunded.',
+            $state === 'refunding' => 'A full refund is in progress; contractor release is blocked.',
             $state === 'released' => 'Contractor proceeds were released.',
             $state === 'processing' => 'The release is currently processing.',
             $state === 'pending' => 'The release can be safely retried.',
@@ -118,6 +137,9 @@ final class ManualPaymentReleaseService
             default => 'Contractor proceeds are ready for manual release.',
         };
         $proceeds = (int) $payment->amount_cents - (int) $payment->platform_fee_cents;
+        $transferId = $operation?->status === 'completed'
+            && $this->stripeId($operation->stripe_object_id, 'tr_')
+            ? $operation->stripe_object_id : null;
 
         return [
             'job_id' => (int) $payment->job_id,
@@ -139,7 +161,7 @@ final class ManualPaymentReleaseService
                 'state' => $state,
                 'can_release' => in_array($state, ['ready', 'pending'], true),
                 'reason' => $reason,
-                'stripe_transfer_id' => $state === 'released' ? $operation->stripe_object_id : null,
+                'stripe_transfer_id' => $transferId,
             ],
         ];
     }
