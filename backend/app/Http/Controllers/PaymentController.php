@@ -21,6 +21,8 @@ use Throwable;
 
 class PaymentController extends Controller
 {
+    private const STRIPE_ACCOUNTS_V2_VERSION = '2026-10-28.endive';
+
     public function __construct(
         private readonly LifecycleNotificationService $notifications
     ) {
@@ -35,6 +37,20 @@ class PaymentController extends Controller
         return Http::asForm()
             ->withToken($secret)
             ->baseUrl('https://api.stripe.com/v1');
+    }
+
+    private function stripeAccountsV2()
+    {
+        $guard = app(PaymentSafetyGuard::class);
+        $guard->assertPaymentsEnabled();
+        $secret = $guard->apiSecret();
+
+        return Http::acceptJson()
+            ->withToken($secret)
+            ->withHeaders([
+                'Stripe-Version' => self::STRIPE_ACCOUNTS_V2_VERSION,
+            ])
+            ->baseUrl('https://api.stripe.com/v2');
     }
 
     public function publicConfig()
@@ -55,23 +71,45 @@ class PaymentController extends Controller
         $profile = $this->profileForOnboarding($user);
 
         if (!$profile->stripe_account_id) {
-            $account = $this->stripe()
+            $account = $this->stripeAccountsV2()
                 ->withHeaders([
                     'Idempotency-Key' =>
-                        'trustfix-connect-account-v2-user-' . $user->id,
+                        'trustfix-connect-account-v3-user-' . $user->id,
                 ])
-                ->post('/accounts', [
-                    'country' => 'US',
-                    'email' => $user->email,
-                    'controller[fees][payer]' => 'application',
-                    'controller[losses][payments]' => 'application',
-                    'controller[requirement_collection]' => 'stripe',
-                    'controller[stripe_dashboard][type]' => 'express',
-                    'capabilities[transfers][requested]' => 'true',
-                    'business_profile[url]' =>
-                        $profile->website
-                            ?: config('services.stripe.frontend_url'),
-                    'metadata[trustfix_user_id]' => (string) $user->id,
+                ->post('/core/accounts', [
+                    'contact_email' => $user->email,
+                    'display_name' => $profile->business_name,
+                    'dashboard' => 'express',
+                    'identity' => [
+                        'country' => 'us',
+                    ],
+                    'configuration' => [
+                        'recipient' => [
+                            'capabilities' => [
+                                'stripe_balance' => [
+                                    'stripe_transfers' => [
+                                        'requested' => true,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'defaults' => [
+                        'currency' => 'usd',
+                        'responsibilities' => [
+                            'fees_collector' => 'application',
+                            'losses_collector' => 'application',
+                        ],
+                    ],
+                    'include' => [
+                        'configuration.recipient',
+                        'defaults',
+                        'identity',
+                        'requirements',
+                    ],
+                    'metadata' => [
+                        'trustfix_user_id' => (string) $user->id,
+                    ],
                 ])
                 ->throw()
                 ->json();

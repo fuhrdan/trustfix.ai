@@ -46,13 +46,10 @@ class ContractorOnboardingTest extends TestCase
             $accountId,
             $onboardingUrl
         ) {
-            if ($request->url() === 'https://api.stripe.com/v1/accounts') {
+            if ($request->url() === 'https://api.stripe.com/v2/core/accounts') {
                 return Http::response([
                     'id' => $accountId,
-                    'object' => 'account',
-                    'details_submitted' => false,
-                    'charges_enabled' => false,
-                    'payouts_enabled' => false,
+                    'object' => 'v2.core.account',
                 ]);
             }
 
@@ -93,40 +90,57 @@ class ContractorOnboardingTest extends TestCase
         Http::assertSent(function (ClientRequest $request) use (
             $user
         ): bool {
-            if ($request->url() !== 'https://api.stripe.com/v1/accounts') {
+            if (
+                $request->url()
+                    !== 'https://api.stripe.com/v2/core/accounts'
+            ) {
                 return false;
             }
 
-            parse_str($request->body(), $parameters);
+            $parameters = json_decode($request->body(), true);
 
             return
-                ($request->header('Idempotency-Key')[0] ?? null)
-                    === 'trustfix-connect-account-v2-user-' . $user->id
+                $request->method() === 'POST'
+                && is_array($parameters)
+                && ($request->header('Authorization')[0] ?? null)
+                    === 'Bearer sk_test_contractor_onboarding'
+                && ($request->header('Stripe-Version')[0] ?? null)
+                    === '2026-10-28.endive'
+                && ($request->header('Idempotency-Key')[0] ?? null)
+                    === 'trustfix-connect-account-v3-user-' . $user->id
+                && data_get($parameters, 'contact_email')
+                    === $user->email
+                && data_get($parameters, 'display_name')
+                    === $user->name
+                && data_get($parameters, 'dashboard') === 'express'
+                && data_get($parameters, 'identity.country') === 'us'
+                && data_get(
+                    $parameters,
+                    'configuration.recipient.capabilities'
+                        . '.stripe_balance.stripe_transfers.requested'
+                ) === true
+                && data_get($parameters, 'defaults.currency') === 'usd'
+                && data_get(
+                    $parameters,
+                    'defaults.responsibilities.fees_collector'
+                ) === 'application'
+                && data_get(
+                    $parameters,
+                    'defaults.responsibilities.losses_collector'
+                ) === 'application'
+                && data_get($parameters, 'include') === [
+                    'configuration.recipient',
+                    'defaults',
+                    'identity',
+                    'requirements',
+                ]
+                && data_get(
+                    $parameters,
+                    'metadata.trustfix_user_id'
+                ) === (string) $user->id
                 && !array_key_exists('type', $parameters)
-                && data_get(
-                    $parameters,
-                    'controller.fees.payer'
-                ) === 'application'
-                && data_get(
-                    $parameters,
-                    'controller.losses.payments'
-                ) === 'application'
-                && data_get(
-                    $parameters,
-                    'controller.requirement_collection'
-                ) === 'stripe'
-                && data_get(
-                    $parameters,
-                    'controller.stripe_dashboard.type'
-                ) === 'express'
-                && data_get(
-                    $parameters,
-                    'capabilities.card_payments.requested'
-                ) === null
-                && data_get(
-                    $parameters,
-                    'capabilities.transfers.requested'
-                ) === 'true';
+                && !array_key_exists('controller', $parameters)
+                && !array_key_exists('capabilities', $parameters);
         });
     }
 
@@ -243,10 +257,10 @@ class ContractorOnboardingTest extends TestCase
         $user = $this->user('handyman', true);
 
         Http::fake(function (ClientRequest $request) use ($user) {
-            if ($request->url() === 'https://api.stripe.com/v1/accounts') {
+            if ($request->url() === 'https://api.stripe.com/v2/core/accounts') {
                 return Http::response([
                     'id' => 'acct_invalid_link_' . $user->id,
-                    'object' => 'account',
+                    'object' => 'v2.core.account',
                 ]);
             }
 
