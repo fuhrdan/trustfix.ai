@@ -201,6 +201,11 @@ Route::middleware(['auth:api', 'account.active', AdminAuditMiddleware::class])->
         Route::get('/admin/contractors', [AdminDashboardController::class, 'contractors']);
         Route::get('/admin/jobs', [AdminDashboardController::class, 'jobs']);
         Route::get('/admin/jobs/{id}', [AdminDashboardController::class, 'getJob']);
+        Route::get('/admin/jobs/{id}/payment-release', [PaymentController::class, 'releaseStatus'])
+            ->whereNumber('id');
+        Route::post('/admin/payments/{paymentId}/release', [PaymentController::class, 'releasePayment'])
+            ->whereNumber('paymentId')
+            ->middleware('throttle:10,1,trustfix-payment-releases');
         Route::put('/admin/jobs/{id}', [AdminDashboardController::class, 'updateJob']);
         Route::delete('/admin/jobs/{id}', [JobController::class, 'destroy']);
         

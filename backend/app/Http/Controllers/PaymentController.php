@@ -9,6 +9,7 @@ use App\Services\LifecycleNotificationService;
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentSafetyGuard;
+use App\Services\ManualPaymentReleaseService;
 use App\Services\StripeEventInbox;
 use App\Services\StripePaymentIntentReconciler;
 use Illuminate\Http\JsonResponse;
@@ -385,6 +386,42 @@ class PaymentController extends Controller
         return response()->json($data, $status, ['Cache-Control' => 'private, no-store']);
     }
 
+    public function releaseStatus(Request $request, $jobId): JsonResponse
+    {
+        $data = app(ManualPaymentReleaseService::class)->status((int) $jobId);
+
+        return response()->json(
+            $data,
+            200,
+            ['Cache-Control' => 'private, no-store']
+        );
+    }
+
+    public function releasePayment(Request $request, $paymentId): JsonResponse
+    {
+        $request->validate([
+            'confirmation' => [
+                'required',
+                'in:release_contractor_proceeds',
+            ],
+        ]);
+
+        $data = app(ManualPaymentReleaseService::class)->release(
+            (int) $paymentId,
+            (int) $request->user('api')->id
+        );
+        $status = match ($data['status']) {
+            'busy', 'pending' => 202,
+            'reconciliation_required' => 409,
+            default => 200,
+        };
+
+        return response()->json(
+            $data,
+            $status,
+            ['Cache-Control' => 'private, no-store']
+        );
+    }
     public function webhook(Request $request)
     {
         $receiptId = app(StripeEventInbox::class)->receive(

@@ -119,6 +119,103 @@ final class StripePaymentGateway
         return $result;
     }
 
+    // A manual release moves only the recorded contractor proceeds. The caller
+    // must reserve an immutable operation before invoking this write.
+    public function createTransfer(
+        mixed $amountCents,
+        string $destination,
+        string $transferGroup,
+        string $sourceTransaction,
+        array $metadata,
+        string $idempotencyKey,
+        string $description = ''
+    ): array {
+        $this->guard->assertTransfersEnabled();
+
+        if (!is_int($amountCents) || $amountCents < 1 || $amountCents > 99999999) {
+            throw new InvalidArgumentException('Transfer amount must be supported integer USD cents.');
+        }
+
+        $this->identifier($destination, 'acct_');
+        $this->identifier($sourceTransaction, 'ch_');
+
+        if (preg_match('/\A[A-Za-z0-9:_-]{1,100}\z/', $transferGroup) !== 1
+            || preg_match('/\A[A-Za-z0-9:_-]{16,255}\z/', $idempotencyKey) !== 1) {
+            throw new InvalidArgumentException('A valid operation key and transfer group are required.');
+        }
+
+        $normalized = [];
+        foreach ($metadata as $key => $value) {
+            if (!is_string($key) || !mb_check_encoding($key, 'UTF-8')
+                || mb_strlen($key, 'UTF-8') < 1 || mb_strlen($key, 'UTF-8') > 40
+                || strpbrk($key, '[]') !== false
+                || (!is_string($value) && !is_int($value))) {
+                throw new InvalidArgumentException('Unsupported transfer metadata.');
+            }
+
+            $value = (string) $value;
+            if (!mb_check_encoding($value, 'UTF-8') || mb_strlen($value, 'UTF-8') > 500) {
+                throw new InvalidArgumentException('Unsupported transfer metadata.');
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        if (array_key_exists('trustfix_payment_model', $normalized)
+            && $normalized['trustfix_payment_model'] !== self::PAYMENT_MODEL) {
+            throw new InvalidArgumentException('Payment model metadata conflicts with this gateway.');
+        }
+
+        $normalized['trustfix_payment_model'] = self::PAYMENT_MODEL;
+
+        if (count($normalized) > 50 || !mb_check_encoding($description, 'UTF-8')) {
+            throw new InvalidArgumentException('Unsupported transfer metadata or description.');
+        }
+
+        ksort($normalized);
+        $parameters = [
+            'amount' => $amountCents,
+            'currency' => 'usd',
+            'destination' => $destination,
+            'transfer_group' => $transferGroup,
+            'source_transaction' => $sourceTransaction,
+            'metadata' => $normalized,
+        ];
+
+        if ($description !== '') {
+            $parameters['description'] = $description;
+        }
+
+        $result = $this->financialObject(
+            $this->send('POST', '/transfers', $parameters, $idempotencyKey),
+            'transfer',
+            'tr_'
+        );
+        $transfer = $result['data'];
+        $returnedMetadata = $transfer['metadata'] ?? null;
+
+        if (is_array($returnedMetadata)) {
+            ksort($returnedMetadata);
+        }
+
+        if (($transfer['amount'] ?? null) !== $amountCents
+            || ($transfer['currency'] ?? null) !== 'usd'
+            || ($transfer['destination'] ?? null) !== $destination
+            || ($transfer['transfer_group'] ?? null) !== $transferGroup
+            || ($transfer['source_transaction'] ?? null) !== $sourceTransaction
+            || $returnedMetadata !== $normalized
+            || ($transfer['reversed'] ?? null) !== false
+            || ($transfer['amount_reversed'] ?? null) !== 0) {
+            throw new StripeApiException(
+                'transfer_mismatch',
+                $result['http_status'],
+                $result['request_id'],
+                true
+            );
+        }
+
+        return $result;
+    }
     // Reads stay available while collection is paused, subject to the test guard.
     public function retrievePaymentIntent(string $id): array
     {
