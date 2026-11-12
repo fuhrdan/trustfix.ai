@@ -210,7 +210,27 @@ class ContractorSelfRegistrationTest extends TestCase
             $entryScript
         );
         $this->assertStringContainsString(
-            'contractor_registration_entry.js?v=20261110',
+            'Sign Up as Contractor',
+            $entryScript
+        );
+        $this->assertStringContainsString(
+            '[data-trustfix-contractor-nav-item="true"]',
+            $entryScript
+        );
+        $this->assertStringContainsString(
+            '.header-nav-list',
+            $entryScript
+        );
+        $this->assertStringContainsString(
+            '.header-menu-nav-list .header-menu-nav-wrapper',
+            $entryScript
+        );
+        $this->assertStringContainsString(
+            'MutationObserver',
+            $entryScript
+        );
+        $this->assertStringContainsString(
+            'contractor_registration_entry.js?v=20261112-1',
             $homepage
         );
     }
