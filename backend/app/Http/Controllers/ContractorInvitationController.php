@@ -145,7 +145,7 @@ class ContractorInvitationController extends Controller
                     'message' => 'This TrustFix account is not currently active. Contact TrustFix for assistance.',
                 ];
             }
-            if ($user && $user->role === 'admin') {
+            if ($user && $user->hasRole('admin')) {
                 return [
                     'status' => 422,
                     'message' => 'Administrator accounts cannot be converted through a contractor invitation.',
@@ -160,8 +160,8 @@ class ContractorInvitationController extends Controller
                     'role' => 'handyman',
                     'account_status' => 'active',
                 ]);
-            } elseif ($user->role === 'customer') {
-                $user->forceFill(['role' => 'handyman'])->save();
+            } elseif ($user->hasRole('customer')) {
+                $user->grantRole('handyman', true);
             }
 
             if ($user->email_verified_at === null) {

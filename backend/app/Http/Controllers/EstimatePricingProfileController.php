@@ -2,28 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\Estimating\EstimatePricingResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EstimatePricingProfileController extends Controller
 {
-    public function __construct(private readonly EstimatePricingResolver $resolver)
-    {
-    }
+    public function __construct(private readonly EstimatePricingResolver $resolver) {}
 
-    public function show()
+    public function show(Request $request)
     {
         $user = Auth::guard('api')->user();
-        $this->authorizeRole($user?->role);
+        $scope = $this->pricingScope($request, $user);
 
-        return response()->json($this->resolver->forUser($user));
+        return response()->json($this->resolver->forUser($user, $scope));
     }
 
     public function update(Request $request)
     {
         $user = Auth::guard('api')->user();
-        $this->authorizeRole($user?->role);
+        $scope = $this->pricingScope($request, $user);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -38,7 +37,7 @@ class EstimatePricingProfileController extends Controller
             'uncertainty_percent' => ['required', 'numeric', 'min:0', 'max:50'],
         ]);
 
-        $profile = $this->resolver->saveForUser($user, $validated);
+        $profile = $this->resolver->saveForUser($user, $validated, $scope);
 
         return response()->json([
             'message' => 'Estimate pricing settings saved.',
@@ -46,10 +45,26 @@ class EstimatePricingProfileController extends Controller
         ]);
     }
 
-    private function authorizeRole(?string $role): void
+    private function pricingScope(Request $request, ?User $user): string
     {
-        if (!in_array($role, ['handyman', 'company', 'admin'], true)) {
+        if (! $user) {
+            abort(response()->json(['message' => 'Authentication is required.'], 401));
+        }
+
+        $validated = $request->validate([
+            'scope' => ['nullable', 'string', 'in:contractor,global'],
+        ]);
+        $isContractor = $user->hasAnyRole(['handyman', 'company']);
+        $isAdmin = $user->hasRole('admin');
+        $scope = $validated['scope'] ?? ($isContractor ? 'contractor' : 'global');
+
+        if (
+            ($scope === 'contractor' && ! $isContractor)
+            || ($scope === 'global' && ! $isAdmin)
+        ) {
             abort(response()->json(['message' => 'Contractor or administrator access is required.'], 403));
         }
+
+        return $scope;
     }
 }

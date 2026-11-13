@@ -26,12 +26,12 @@ class PrivateFileController extends Controller
         $user = Auth::guard('api')->user();
         $job = $image->job;
 
-        if (!$job) {
+        if (! $job) {
             abort(404);
         }
 
         if (
-            $user->role !== 'admin'
+            ! $user->hasRole('admin')
             && (int) $job->customer_id !== (int) $user->id
             && (int) $job->handyman_id !== (int) $user->id
         ) {
@@ -46,7 +46,7 @@ class PrivateFileController extends Controller
         $user = Auth::guard('api')->user();
         $property = $image->property;
 
-        if (!$property) {
+        if (! $property) {
             abort(404);
         }
 
@@ -55,9 +55,9 @@ class PrivateFileController extends Controller
             ->exists();
 
         if (
-            $user->role !== 'admin'
+            ! $user->hasRole('admin')
             && (int) $property->owner_user_id !== (int) $user->id
-            && !$hasSharedAccess
+            && ! $hasSharedAccess
         ) {
             abort(403, 'You do not have access to this property image.');
         }
@@ -69,7 +69,7 @@ class PrivateFileController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if ($user->role !== 'admin' && (int) $document->user_id !== (int) $user->id) {
+        if (! $user->hasRole('admin') && (int) $document->user_id !== (int) $user->id) {
             abort(403, 'You do not have access to this contractor document.');
         }
 
@@ -84,7 +84,7 @@ class PrivateFileController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if ($user->role !== 'admin' && (int) $document->handyman_id !== (int) $user->id) {
+        if (! $user->hasRole('admin') && (int) $document->handyman_id !== (int) $user->id) {
             abort(403, 'You do not have access to this document.');
         }
 
@@ -99,7 +99,7 @@ class PrivateFileController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if ($user->role !== 'admin' && (int) $claim->claimant_user_id !== (int) $user->id) {
+        if (! $user->hasRole('admin') && (int) $claim->claimant_user_id !== (int) $user->id) {
             abort(403, 'You do not have access to this profile claim document.');
         }
 
@@ -127,11 +127,11 @@ class PrivateFileController extends Controller
         }
 
         $mimeType = $disk->mimeType($path);
-        if (!is_string($mimeType) || $mimeType === '') {
+        if (! is_string($mimeType) || $mimeType === '') {
             $mimeType = 'application/octet-stream';
         }
 
-        if ($allowedMimeTypes !== null && !in_array($mimeType, $allowedMimeTypes, true)) {
+        if ($allowedMimeTypes !== null && ! in_array($mimeType, $allowedMimeTypes, true)) {
             abort(404);
         }
 

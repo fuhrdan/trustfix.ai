@@ -16,17 +16,23 @@ class ContractorDashboardController extends Controller
         $validated = $request->validate([
             'contractor_profile_id' => ['nullable', 'integer'],
         ]);
+        $isAdmin = $user->hasRole('admin');
+        $isContractor = $user->hasAnyRole(['handyman', 'company']);
+        $viewingAsAdmin = $isAdmin && (
+            ! $isContractor
+            || ! empty($validated['contractor_profile_id'])
+        );
 
-        if ($user->role === 'admin' && !empty($validated['contractor_profile_id'])) {
+        if ($viewingAsAdmin && ! empty($validated['contractor_profile_id'])) {
             $profile = ContractorProfile::where('status', 'approved')
                 ->find($validated['contractor_profile_id']);
         } else {
             $profile = ContractorProfile::where('user_id', $user->id)->first();
         }
 
-        if (!$profile || $profile->status !== 'approved') {
+        if (! $profile || $profile->status !== 'approved') {
             return response()->json([
-                'error' => $user->role === 'admin'
+                'error' => $viewingAsAdmin
                     ? 'Select an approved contractor.'
                     : 'Contractor approval is required.',
                 'approval_status' => $profile->status ?? 'not_submitted',
@@ -56,7 +62,7 @@ class ContractorDashboardController extends Controller
 
         return response()->json([
             'profile' => $profile,
-            'viewing_as_admin' => $user->role === 'admin',
+            'viewing_as_admin' => $viewingAsAdmin,
             'summary' => [
                 'total_jobs' => $jobs->count(),
                 'active_jobs' => $jobs->whereIn('status', ['accepted', 'scheduled', 'in_progress'])->count(),
@@ -68,9 +74,9 @@ class ContractorDashboardController extends Controller
             'jobs' => $jobs,
             'monthly_earnings' => $monthly,
             'payouts' => [
-                'details_submitted' => (bool)$profile->stripe_details_submitted,
-                'charges_enabled' => (bool)$profile->stripe_charges_enabled,
-                'payouts_enabled' => (bool)$profile->stripe_payouts_enabled,
+                'details_submitted' => (bool) $profile->stripe_details_submitted,
+                'charges_enabled' => (bool) $profile->stripe_charges_enabled,
+                'payouts_enabled' => (bool) $profile->stripe_payouts_enabled,
             ],
         ]);
     }

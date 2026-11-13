@@ -14,7 +14,9 @@ class AdminAuditMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->isMethodSafe() || $request->user('api')?->role !== 'admin') {
+        $administrator = $request->user('api');
+
+        if ($request->isMethodSafe() || ! $administrator?->hasRole('admin')) {
             return $next($request);
         }
 
@@ -90,6 +92,7 @@ class AdminAuditMiddleware
             foreach ($values as $key => $value) {
                 if (in_array(strtolower((string) $key), $sensitive, true)) {
                     $clean[$key] = '[redacted]';
+
                     continue;
                 }
 
@@ -130,8 +133,8 @@ class AdminAuditMiddleware
     {
         foreach ($parameters as $key => $parameter) {
             if (
-                !in_array((string) $key, ['id', 'user', 'job', 'case', 'report', 'document', 'review'], true)
-                && !preg_match('/id$/i', (string) $key)
+                ! in_array((string) $key, ['id', 'user', 'job', 'case', 'report', 'document', 'review'], true)
+                && ! preg_match('/id$/i', (string) $key)
             ) {
                 continue;
             }

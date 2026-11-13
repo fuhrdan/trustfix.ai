@@ -3,27 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
-use App\Models\User;
 use App\Models\PropertyImage;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class PropertyController extends Controller
 {
     public function myProperties()
     {
-        
+
         $user = Auth::guard('api')->user();
 
-        if (!$user)
-        {
+        if (! $user) {
             return response()->json([
-                'message' => 'Unauthenticated'
+                'message' => 'Unauthenticated',
             ], 401);
         }
-    
+
         $properties = Property::with('images')
             ->where('owner_user_id', $user->id)
             ->orWhereHas('users', function ($query) use ($user) {
@@ -35,7 +33,6 @@ class PropertyController extends Controller
         return response()->json($properties);
     }
 
-
     public function show($id)
     {
         $user = Auth::guard('api')->user();
@@ -44,26 +41,25 @@ class PropertyController extends Controller
             ->where('owner_user_id', $user->id)
             ->findOrFail($id);
 
-//Old peice, without image support        
-//        $properties = Property::query()->findOrFail($id);
+        // Old peice, without image support
+        //        $properties = Property::query()->findOrFail($id);
 
-// This throws an error, possibly delete or fix
+        // This throws an error, possibly delete or fix
 
-// Currently commented out.
-//        $isCustomer = $properties->customer_id == $user->id;
-//        $isAssignedHandyman = $properties->handyman_id == $user->id;
+        // Currently commented out.
+        //        $isCustomer = $properties->customer_id == $user->id;
+        //        $isAssignedHandyman = $properties->handyman_id == $user->id;
 
-// Let's go back and revisit the code above another time.
+        // Let's go back and revisit the code above another time.
 
-//        $isAdmin = $user->role == 'admin';
+        //        $isAdmin = $user->hasRole('admin');
 
-//        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
-//            return response()->json(['error' => 'Forbidden'], 403);
-//        }
+        //        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+        //            return response()->json(['error' => 'Forbidden'], 403);
+        //        }
 
         return response()->json($property);
     }
-
 
     public function addAuthorizedUser(Request $request, $id)
     {
@@ -73,29 +69,27 @@ class PropertyController extends Controller
             ->findOrFail($id);
 
         $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255']
+            'email' => ['required', 'email', 'max:255'],
         ]);
 
         $authorizedUser = User::whereRaw('LOWER(email) = ?', [
-            strtolower(trim($validated['email']))
+            strtolower(trim($validated['email'])),
         ])->first();
 
-        if (!$authorizedUser)
-        {
+        if (! $authorizedUser) {
             return response()->json([
-                'message' => 'No TrustFix user was found with that email address.'
+                'message' => 'No TrustFix user was found with that email address.',
             ], 404);
         }
 
-        if ($authorizedUser->id == $owner->id)
-        {
+        if ($authorizedUser->id == $owner->id) {
             return response()->json([
-                'message' => 'The property owner already has access to this property.'
+                'message' => 'The property owner already has access to this property.',
             ], 422);
         }
 
         $property->users()->syncWithoutDetaching([
-            $authorizedUser->id
+            $authorizedUser->id,
         ]);
 
         return response()->json([
@@ -104,7 +98,7 @@ class PropertyController extends Controller
             'users' => $property->users()
                 ->select('users.id', 'users.name', 'users.email')
                 ->orderBy('users.name')
-                ->get()
+                ->get(),
         ]);
     }
 
@@ -119,13 +113,13 @@ class PropertyController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Authorized user removed successfully.'
+            'message' => 'Authorized user removed successfully.',
         ]);
     }
 
     public function store(Request $request)
     {
-        
+
         $validated = $request->validate([
             'street_address' => ['required', 'string', 'max:500'],
             'address_line_2' => ['nullable', 'string', 'max:500'],
@@ -138,7 +132,7 @@ class PropertyController extends Controller
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
-        
+
         $property = Property::create([
             'owner_user_id' => Auth::guard('api')->id(),
             'street_address' => $validated['street_address'] ?? '',
@@ -148,38 +142,37 @@ class PropertyController extends Controller
             'state' => $validated['state'] ?? '',
             'zip' => $validated['zip'] ?? '',
             'county' => $validated['county'] ?? '',
-            'description' => $validated['description'] ?? ''
+            'description' => $validated['description'] ?? '',
         ]);
 
-
-        if($request->hasFile('images')) {
-            foreach($request->file('images') as $image) {
-                $path = $image->store('properties/' . $property->id, 'private');
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('properties/'.$property->id, 'private');
                 PropertyImage::create([
                     'property_id' => $property->id,
-                    'image_path' => $path
+                    'image_path' => $path,
                 ]);
             }
         }
 
-//        return response()->json($property->load('images'), 201);
+        //        return response()->json($property->load('images'), 201);
 
         return response()->json([
             'success' => true,
-            'data' => $property
+            'data' => $property,
         ], 201);
     }
-    
+
     public function uploadImage(Request $request, $id)
     {
-        
-//*********ERROR LOGGING***********************************
-//    \Log::info('Property image upload started', [
-//        'property_id' => $id,
-//        'user_id' => Auth::guard('api')->id(),
-//        'has_file' => $request->hasFile('image')
-//    ]);
-//*********END LOGGING*************************************
+
+        // *********ERROR LOGGING***********************************
+        //    \Log::info('Property image upload started', [
+        //        'property_id' => $id,
+        //        'user_id' => Auth::guard('api')->id(),
+        //        'has_file' => $request->hasFile('image')
+        //    ]);
+        // *********END LOGGING*************************************
         $property = Property::where(
             'owner_user_id',
             Auth::guard('api')->id()
@@ -190,14 +183,14 @@ class PropertyController extends Controller
                 'required',
                 'array',
                 'min:1',
-                'max:10'
+                'max:10',
             ],
             'images.*' => [
                 'required',
                 'image',
                 'mimes:jpg,jpeg,png,webp,gif',
-                'max:5120'
-            ]
+                'max:5120',
+            ],
         ]);
 
         if ($property->images()->count() + count($request->file('images')) > 20) {
@@ -206,31 +199,29 @@ class PropertyController extends Controller
             ], 422);
         }
 
-        foreach ($request->file('images') as $image)
-        {
+        foreach ($request->file('images') as $image) {
             $path = $image->store(
-                'properties/' . $property->id,
+                'properties/'.$property->id,
                 'private'
             );
 
             $property->images()->create([
-                'image_path' => $path
+                'image_path' => $path,
             ]);
         }
 
-        
-//*********ERROR LOGGING***********************************
-//    \Log::info('File stored', [
-//        'path' => $path
-//    ]);
-//*********END LOGGING*************************************
-    
+        // *********ERROR LOGGING***********************************
+        //    \Log::info('File stored', [
+        //        'path' => $path
+        //    ]);
+        // *********END LOGGING*************************************
+
         return response()->json([
             'success' => true,
             'images' => $property->images()->get(),
-            'property' => $property->load('images')
+            'property' => $property->load('images'),
         ]);
-    
+
     }
 
     public function deleteImage($imageId)
@@ -243,10 +234,9 @@ class PropertyController extends Controller
             $image->property_id
         );
 
-        if ($property->owner_user_id != $user->id)
-        {
+        if ($property->owner_user_id != $user->id) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 403);
         }
 
@@ -256,31 +246,31 @@ class PropertyController extends Controller
         $image->delete();
 
         return response()->json([
-            'success' => true
+            'success' => true,
         ]);
 
     }
 
-/*
-    public function show($id)
-    {
-        $property =
-            Property::where(
-                'owner_user_id',
-                auth()->id()
-            )
-            ->findOrFail($id);
+    /*
+        public function show($id)
+        {
+            $property =
+                Property::where(
+                    'owner_user_id',
+                    auth()->id()
+                )
+                ->findOrFail($id);
 
-        return response()->json(
-            $property
-        );
-    }
-*/
+            return response()->json(
+                $property
+            );
+        }
+    */
 
     public function update(Request $request, $id)
     {
-// Update for security
-//        $property = Property::findOrFail($id);
+        // Update for security
+        //        $property = Property::findOrFail($id);
 
         $property = Property::where(
             'owner_user_id',
@@ -295,25 +285,25 @@ class PropertyController extends Controller
             'state' => $request->state,
             'zip' => $request->zip,
             'county' => $request->county,
-            'description' => $request->description
+            'description' => $request->description,
         ]);
 
         return response()->json([
-            'success' => true
+            'success' => true,
         ]);
     }
 
     public function destroy($id)
     {
         $user = Auth::guard('api')->user();
-        $property = $user->role === 'admin'
+        $property = $user->hasRole('admin')
             ? Property::findOrFail($id)
             : Property::where('owner_user_id', $user->id)->findOrFail($id);
 
         $property->delete();
 
         return response()->json([
-            'success' => true
+            'success' => true,
         ]);
     }
 }

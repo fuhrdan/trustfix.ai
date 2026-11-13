@@ -4,9 +4,9 @@ require 'config.php';
 requireLogin();
 
 $user = currentUser(true);
-$role = $user['role'] ?? '';
-$isContractor = in_array($role, ['handyman', 'company', 'admin'], true);
-$isAdmin = $role === 'admin';
+$isCustomer = userHasRole($user, 'customer');
+$isContractor = userHasAnyRole($user, ['handyman', 'company']);
+$isAdmin = userHasRole($user, 'admin');
 
 $pageTitle = 'Dashboard';
 include 'header.php';
@@ -38,17 +38,22 @@ include 'header.php';
     </section>
 
     <section class="tf-card">
-        <h2><?= $isContractor ? 'Contractor Jobs' : 'Jobs' ?></h2>
+        <h2><?= $isContractor && !$isCustomer ? 'Contractor Jobs' : 'Jobs' ?></h2>
         <p>
-            <?= $isContractor
-                ? 'Review work opportunities and manage jobs already assigned to you.'
-                : 'Describe the work you need and follow it from estimate through completion.' ?>
+            <?php if ($isCustomer && $isContractor): ?>
+                Post repair work, review contractor opportunities, and manage every job in one place.
+            <?php elseif ($isContractor): ?>
+                Review work opportunities and manage jobs already assigned to you.
+            <?php else: ?>
+                Describe the work you need and follow it from estimate through completion.
+            <?php endif; ?>
         </p>
         <div class="tf-actions">
+            <?php if ($isCustomer): ?>
+                <a class="tf-button" href="add_job.php">Post a Job</a>
+            <?php endif; ?>
             <?php if ($isContractor): ?>
                 <a class="tf-button tf-button-success" href="available_jobs.php">Available Jobs</a>
-            <?php else: ?>
-                <a class="tf-button" href="add_job.php">Post a Job</a>
             <?php endif; ?>
             <a class="tf-button tf-button-secondary" href="my_jobs.php">My Jobs</a>
         </div>

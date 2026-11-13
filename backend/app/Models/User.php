@@ -1,23 +1,35 @@
 <?php
-//*****************************************************************************
-//** A user signs in where the soft lights glow
-//** Leaves quiet traces in the codes gentle flow.
-//** Each click a story the system will hold.
-//** A heartbeat of data in logic and soul. -Dan
-//*****************************************************************************
+
+// *****************************************************************************
+// ** A user signs in where the soft lights glow
+// ** Leaves quiet traces in the codes gentle flow.
+// ** Each click a story the system will hold.
+// ** A heartbeat of data in logic and soul. -Dan
+// *****************************************************************************
 
 namespace App\Models;
 
+use App\Services\LifecycleNotificationService;
+use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Database\Eloquent\Builder;
 // use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
-use App\Models\Property;
 
 class User extends Authenticatable implements JWTSubject, MustVerifyEmailContract
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    public const ROLES = [
+        'customer',
+        'handyman',
+        'company',
+        'admin',
+    ];
+
+    /** @use HasFactory<UserFactory> */
     use Notifiable;
 
     /**
@@ -51,7 +63,32 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     protected $hidden = [
         'password',
         'remember_token',
+        'role_assignments',
     ];
+
+    protected $appends = [
+        'roles',
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            if (! in_array($user->role, self::ROLES, true)) {
+                $user->role = 'customer';
+            }
+        });
+
+        static::created(function (User $user): void {
+            if (! $user->roleAssignmentsTableExists()) {
+                return;
+            }
+
+            $user->roleAssignments()->firstOrCreate([
+                'role' => $user->role,
+            ]);
+            $user->load('roleAssignments');
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -77,12 +114,164 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     {
         return [
             'role' => $this->role,
+            'roles' => $this->roleNames(),
         ];
+    }
+
+    public function roleAssignments(): HasMany
+    {
+        return $this->hasMany(UserRole::class);
+    }
+
+    public function getRolesAttribute(): array
+    {
+        return $this->roleNames();
+    }
+
+    public function roleNames(): array
+    {
+        $assigned = [];
+
+        if ($this->roleAssignmentsTableExists()) {
+            $assigned = $this->relationLoaded('roleAssignments')
+                ? $this->roleAssignments->pluck('role')->all()
+                : $this->roleAssignments()->pluck('role')->all();
+        }
+
+        if (in_array($this->role, self::ROLES, true)) {
+            $assigned[] = $this->role;
+        }
+
+        if ($assigned === []) {
+            return [];
+        }
+
+        return self::normalizeRoles($assigned);
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->roleNames(), true);
+    }
+
+    public function hasAnyRole(array|string $roles): bool
+    {
+        return array_intersect(
+            self::normalizeRoles((array) $roles),
+            $this->roleNames()
+        ) !== [];
+    }
+
+    public function grantRole(string $role, bool $makePrimary = false): self
+    {
+        $role = self::normalizeRoles([$role])[0];
+
+        if (! $this->roleAssignmentsTableExists()) {
+            if ($this->role === $role && ! $makePrimary) {
+                return $this;
+            }
+
+            throw new \LogicException(
+                'The user_roles table is required to grant an additional role.'
+            );
+        }
+
+        DB::transaction(function () use ($role, $makePrimary): void {
+            $this->roleAssignments()->firstOrCreate(['role' => $role]);
+
+            if ($makePrimary && $this->role !== $role) {
+                $this->forceFill(['role' => $role])->saveQuietly();
+            }
+        });
+
+        $this->load('roleAssignments');
+
+        return $this;
+    }
+
+    public function syncRoles(array $roles, ?string $primaryRole = null): self
+    {
+        $roles = self::normalizeRoles($roles);
+
+        if (! $this->roleAssignmentsTableExists()) {
+            throw new \LogicException(
+                'The user_roles table is required to synchronize roles.'
+            );
+        }
+
+        $primaryRole ??= in_array($this->role, $roles, true)
+            ? $this->role
+            : $roles[0];
+
+        if (! in_array($primaryRole, $roles, true)) {
+            throw new \InvalidArgumentException(
+                'The primary role must be one of the assigned roles.'
+            );
+        }
+
+        DB::transaction(function () use ($roles, $primaryRole): void {
+            $this->roleAssignments()
+                ->whereNotIn('role', $roles)
+                ->delete();
+
+            foreach ($roles as $role) {
+                $this->roleAssignments()->firstOrCreate(['role' => $role]);
+            }
+
+            if ($this->role !== $primaryRole) {
+                $this->forceFill(['role' => $primaryRole])->saveQuietly();
+            }
+        });
+
+        $this->load('roleAssignments');
+
+        return $this;
+    }
+
+    public function scopeWithRole(Builder $query, string $role): Builder
+    {
+        $role = self::normalizeRoles([$role])[0];
+
+        if (! $query->getModel()->roleAssignmentsTableExists()) {
+            return $query->where('role', $role);
+        }
+
+        return $query->where(function (Builder $roleQuery) use ($role): void {
+            $roleQuery->where('role', $role)
+                ->orWhereHas('roleAssignments', function (Builder $assignmentQuery) use ($role): void {
+                    $assignmentQuery->where('role', $role);
+                });
+        });
+    }
+
+    private function roleAssignmentsTableExists(): bool
+    {
+        return $this->getConnection()
+            ->getSchemaBuilder()
+            ->hasTable('user_roles');
+    }
+
+    public static function normalizeRoles(array $roles): array
+    {
+        $requested = array_values(array_unique(array_map(
+            static fn ($role): string => strtolower(trim((string) $role)),
+            $roles
+        )));
+        $normalized = array_values(array_filter(
+            self::ROLES,
+            static fn (string $role): bool => in_array($role, $requested, true)
+        ));
+
+        if ($normalized === [] || count($normalized) !== count($requested)) {
+            throw new \InvalidArgumentException('One or more user roles are invalid.');
+        }
+
+        return $normalized;
     }
 
     public function sendPasswordResetNotification($token): void
     {
-        app(\App\Services\LifecycleNotificationService::class)
+        app(LifecycleNotificationService::class)
             ->passwordReset($this, (string) $token);
     }
 

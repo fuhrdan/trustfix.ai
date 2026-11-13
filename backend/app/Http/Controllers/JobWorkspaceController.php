@@ -28,10 +28,10 @@ class JobWorkspaceController extends Controller
 
     private function markIncomingMessagesRead(Job $job, $user): void
     {
-        $isParticipant = (int)$job->customer_id === (int)$user->id
-            || (int)$job->handyman_id === (int)$user->id;
+        $isParticipant = (int) $job->customer_id === (int) $user->id
+            || (int) $job->handyman_id === (int) $user->id;
 
-        if (!$isParticipant) {
+        if (! $isParticipant) {
             return;
         }
 
@@ -61,9 +61,9 @@ class JobWorkspaceController extends Controller
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
-        $isAdmin = $user->role == 'admin';
+        $isAdmin = $user->hasRole('admin');
 
-        if (!$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+        if (! $isCustomer && ! $isAssignedHandyman && ! $isAdmin) {
             abort(response()->json(['error' => 'Forbidden'], 403));
         }
 
@@ -140,7 +140,7 @@ class JobWorkspaceController extends Controller
             'job_id' => $job->id,
             'user_id' => $user->id,
             'activity_type' => 'message_sent',
-            'description' => $user->name . ' sent a message.',
+            'description' => $user->name.' sent a message.',
         ]);
 
         return response()->json(

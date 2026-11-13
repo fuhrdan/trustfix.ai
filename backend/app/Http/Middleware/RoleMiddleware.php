@@ -13,13 +13,13 @@ class RoleMiddleware
     {
         $user = $request->user('api') ?? Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'error' => 'Unauthenticated',
             ], 401);
         }
 
-        if (!in_array($user->role, $roles, true)) {
+        if (! $user->hasAnyRole($roles)) {
             return response()->json([
                 'error' => 'Forbidden',
             ], 403);

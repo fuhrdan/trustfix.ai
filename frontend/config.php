@@ -49,6 +49,57 @@ $frontendSupportEmail = getenv('TRUSTFIX_SUPPORT_EMAIL') ?: 't.tyler@trustfixai.
 
 $jwtToken = $_SESSION['jwt_token'] ?? '';
 
+function userRoles($user)
+{
+    if (!is_array($user)) {
+        return [];
+    }
+
+    $allowedRoles = [
+        'customer',
+        'handyman',
+        'company',
+        'admin',
+    ];
+    $roles = is_array($user['roles'] ?? null)
+        ? $user['roles']
+        : [];
+
+    if (!empty($user['role'])) {
+        $roles[] = $user['role'];
+    }
+
+    $requested = array_values(array_unique(array_map(
+        static fn ($role) => strtolower(trim((string)$role)),
+        $roles
+    )));
+
+    return array_values(array_filter(
+        $allowedRoles,
+        static fn ($role) => in_array($role, $requested, true)
+    ));
+}
+
+function userHasRole($user, $role)
+{
+    return in_array(
+        strtolower(trim((string)$role)),
+        userRoles($user),
+        true
+    );
+}
+
+function userHasAnyRole($user, $roles)
+{
+    foreach ((array)$roles as $role) {
+        if (userHasRole($user, $role)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function requireLogin()
 {
     if (empty($_SESSION['jwt_token'])) {
@@ -109,13 +160,15 @@ function requireValidCsrf($jsonResponse = false)
 
 function currentUser($refresh = false)
 {
-    if (!$refresh && !empty($_SESSION['user']['role'])) {
-        return $_SESSION['user'];
+    $cachedUser = $_SESSION['user'] ?? null;
+
+    if (!$refresh && userRoles($cachedUser) !== []) {
+        return $cachedUser;
     }
 
     $user = apiRequest('GET', '/me');
 
-    if (is_array($user) && !empty($user['role'])) {
+    if (is_array($user) && userRoles($user) !== []) {
         $_SESSION['user'] = $user;
         return $user;
     }
@@ -182,10 +235,9 @@ function requireRole($roles)
 {
     requireLogin();
 
-    $roles = (array)$roles;
     $user = currentUser(true);
 
-    if (!in_array($user['role'] ?? '', $roles, true)) {
+    if (!userHasAnyRole($user, $roles)) {
         renderFrontendError(
             403,
             'Access Denied',

@@ -149,12 +149,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     }
     else
     {
+        $submittedRoles = $_POST['roles'] ?? [];
         $payload = [
             'name' => $_POST['name'] ?? '',
             'email' => $_POST['email'] ?? '',
             'phone' => $_POST['phone'] ?? '',
             'address' => $_POST['address'] ?? '',
-            'role' => $_POST['role'] ?? 'customer'
+            'role' => $_POST['role'] ?? 'customer',
+            'roles' => is_array($submittedRoles)
+                ? array_values($submittedRoles)
+                : [],
         ];
 
         $response = apiRequest(
@@ -209,6 +213,14 @@ if (
 $documents = $user['contractor_documents'] ?? [];
 $contractorProfile = $user['contractor_profile'] ?? null;
 $pendingDocuments = 0;
+$roleOptions = [
+    'customer' => 'Customer',
+    'handyman' => 'Handyman',
+    'company' => 'Company',
+    'admin' => 'Admin',
+];
+$assignedRoles = userRoles($user);
+$primaryRole = (string)($user['role'] ?? '');
 
 foreach ($documents as $document)
 {
@@ -278,45 +290,43 @@ include 'header.php';
 
     <br><br>
 
-    <label for="admin_user_role">Role</label><br>
+    <fieldset>
+        <legend>Assigned roles</legend>
+        <p>
+            Assign every capability this person should have. One account may be
+            a customer, contractor, company representative, and administrator.
+        </p>
+
+        <?php foreach ($roleOptions as $roleValue => $roleLabel): ?>
+            <label>
+                <input
+                    type="checkbox"
+                    name="roles[]"
+                    value="<?= htmlspecialchars($roleValue, ENT_QUOTES, 'UTF-8') ?>"
+                    <?= in_array($roleValue, $assignedRoles, true) ? 'checked' : '' ?>
+                >
+                <?= htmlspecialchars($roleLabel) ?>
+            </label><br>
+        <?php endforeach; ?>
+    </fieldset>
+
+    <br>
+
+    <label for="admin_user_role">Primary role</label><br>
+    <p>
+        The primary role controls legacy/default behavior and must also be
+        checked in the assigned roles above.
+    </p>
 
     <select id="admin_user_role" name="role">
-
-        <option
-            value="customer"
-            <?= ($user['role'] ?? '') === 'customer'
-                ? 'selected'
-                : '' ?>
-        >
-            Customer
-        </option>
-
-        <option
-            value="handyman"
-            <?= ($user['role'] ?? '') === 'handyman'
-                ? 'selected'
-                : '' ?>
-        >
-            Handyman
-        </option>
-
-        <option
-            value="company"
-            <?= ($user['role'] ?? '') === 'company'
-                ? 'selected'
-                : '' ?>
-        >
-            Company
-        </option>
-
-        <option
-            value="admin"
-            <?= ($user['role'] ?? '') === 'admin'
-                ? 'selected'
-                : '' ?>
-        >
-            Admin
-        </option>
+        <?php foreach ($roleOptions as $roleValue => $roleLabel): ?>
+            <option
+                value="<?= htmlspecialchars($roleValue, ENT_QUOTES, 'UTF-8') ?>"
+                <?= $primaryRole === $roleValue ? 'selected' : '' ?>
+            >
+                <?= htmlspecialchars($roleLabel) ?>
+            </option>
+        <?php endforeach; ?>
 
     </select>
 

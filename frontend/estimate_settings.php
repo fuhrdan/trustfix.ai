@@ -2,7 +2,29 @@
 
 require 'config.php';
 $user = requireRole(['handyman', 'company', 'admin']);
-$role = $user['role'] ?? '';
+$isContractor = userHasAnyRole($user, ['handyman', 'company']);
+$isAdmin = userHasRole($user, 'admin');
+$scope = (string)($_GET['scope'] ?? $_POST['scope'] ?? '');
+
+if ($scope === '') {
+    $scope = $isContractor ? 'contractor' : 'global';
+}
+
+if (
+    !in_array($scope, ['contractor', 'global'], true)
+    || ($scope === 'contractor' && !$isContractor)
+    || ($scope === 'global' && !$isAdmin)
+) {
+    renderFrontendError(
+        403,
+        'Access Denied',
+        'That estimate pricing profile is not assigned to this account.'
+    );
+}
+
+$pricingEndpoint = '/estimate-pricing-profile?' . http_build_query([
+    'scope' => $scope,
+]);
 
 $error = '';
 
@@ -27,17 +49,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : (float)($_POST[$field] ?? 0);
     }
 
-    $result = apiRequest('PUT', '/estimate-pricing-profile', $payload);
+    $result = apiRequest('PUT', $pricingEndpoint, $payload);
     $httpCode = (int)($result['_http_code'] ?? 200);
     if (is_array($result) && $httpCode >= 200 && $httpCode < 300 && empty($result['error'])) {
         $_SESSION['flash_success'] = 'Estimate pricing settings saved. New contractor reviews will use these values.';
-        header('Location: estimate_settings.php');
+        header('Location: estimate_settings.php?' . http_build_query([
+            'scope' => $scope,
+        ]));
         exit;
     }
     $error = $result['message'] ?? $result['error'] ?? 'Pricing settings could not be saved.';
 }
 
-$profile = apiRequest('GET', '/estimate-pricing-profile');
+$profile = apiRequest('GET', $pricingEndpoint);
 if (!is_array($profile) || !empty($profile['error'])) {
     die('Estimate pricing settings are temporarily unavailable.');
 }
@@ -56,10 +80,19 @@ include 'header.php';
 
 <div class="eps-shell">
     <header class="eps-hero">
-        <span class="eps-kicker"><?= $role === 'admin' ? 'TrustFix global defaults' : 'Contractor company profile' ?></span>
+        <span class="eps-kicker"><?= $scope === 'global' ? 'TrustFix global defaults' : 'Contractor company profile' ?></span>
         <h1>Estimate Pricing Settings</h1>
         <p>Convert labor time and verified material prices into a sustainable customer price.</p>
     </header>
+
+    <?php if ($isAdmin && $isContractor) { ?>
+        <nav class="eps-alert" aria-label="Estimate pricing profile scope">
+            <strong>Editing:</strong>
+            <a href="estimate_settings.php?scope=contractor">My contractor pricing</a>
+            &nbsp;|&nbsp;
+            <a href="estimate_settings.php?scope=global">TrustFix global defaults</a>
+        </nav>
+    <?php } ?>
 
     <?php if ($error !== '') { ?><div class="eps-alert eps-error"><?= htmlspecialchars($error) ?></div><?php } ?>
     <?php if (empty($profile['configured'])) { ?>
@@ -68,6 +101,7 @@ include 'header.php';
 
     <form method="POST">
         <?= csrfField() ?>
+        <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
         <div class="eps-grid">
             <section class="eps-card">
                 <h2>Labor and direct costs</h2>

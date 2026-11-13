@@ -48,6 +48,7 @@ class ContractorSelfRegistrationTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('user.email', 'new-contractor@example.test')
             ->assertJsonPath('user.role', 'customer')
+            ->assertJsonPath('user.roles', ['customer'])
             ->assertJsonPath('registration_type', 'contractor')
             ->assertJsonPath('contractor_status', 'pending')
             ->assertJsonPath('requires_email_verification', true);
@@ -58,6 +59,11 @@ class ContractorSelfRegistrationTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('customer', $user->role);
+        $this->assertSame(['customer'], $user->roles);
+        $this->assertDatabaseHas('user_roles', [
+            'user_id' => $user->id,
+            'role' => 'customer',
+        ]);
         $this->assertNull($user->email_verified_at);
         $this->assertDatabaseHas('contractor_profiles', [
             'user_id' => $user->id,
@@ -167,7 +173,17 @@ class ContractorSelfRegistrationTest extends TestCase
             ->assertJsonPath('status', 'approved')
             ->assertJsonPath('is_verified', true);
 
-        $this->assertSame('handyman', $user->fresh()->role);
+        $approvedUser = $user->fresh();
+        $this->assertSame('handyman', $approvedUser->role);
+        $this->assertSame(['customer', 'handyman'], $approvedUser->roles);
+        $this->assertDatabaseHas('user_roles', [
+            'user_id' => $user->id,
+            'role' => 'customer',
+        ]);
+        $this->assertDatabaseHas('user_roles', [
+            'user_id' => $user->id,
+            'role' => 'handyman',
+        ]);
         $this->assertDatabaseHas('contractor_profiles', [
             'id' => $profile->id,
             'status' => 'approved',

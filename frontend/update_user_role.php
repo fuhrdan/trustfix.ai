@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $userId = (int)($_POST['user_id'] ?? 0);
 $role = $_POST['role'] ?? '';
+$submittedRoles = $_POST['roles'] ?? [];
 $emailVerified = (string)($_POST['email_verified'] ?? '');
 
 $allowedRoles = [
@@ -30,13 +31,32 @@ $allowedRoles = [
     'company',
     'admin',
 ];
+$roles = [];
+$rolesAreValid = is_array($submittedRoles) && $submittedRoles !== [];
+
+if ($rolesAreValid) {
+    foreach ($submittedRoles as $submittedRole) {
+        if (
+            !is_string($submittedRole)
+            || !in_array($submittedRole, $allowedRoles, true)
+            || in_array($submittedRole, $roles, true)
+        ) {
+            $rolesAreValid = false;
+            break;
+        }
+
+        $roles[] = $submittedRole;
+    }
+}
 
 if (
     $userId <= 0
     || !in_array($role, $allowedRoles, true)
+    || !$rolesAreValid
+    || !in_array($role, $roles, true)
     || !in_array($emailVerified, ['0', '1'], true)
 ) {
-    $_SESSION['flash_error'] = 'Invalid user role or email verification update.';
+    $_SESSION['flash_error'] = 'Choose valid assigned roles, a primary role included in those assignments, and an email verification state.';
     header('Location: ' . $returnUrl);
     exit;
 }
@@ -59,6 +79,7 @@ $payload = [
     'phone' => $currentUser['phone'] ?? '',
     'address' => $currentUser['address'] ?? '',
     'role' => $role,
+    'roles' => $roles,
     'email_verified' => $emailVerified === '1',
 ];
 
@@ -69,7 +90,7 @@ $response = apiRequest(
 );
 
 if (($response['success'] ?? false) === true) {
-    $_SESSION['flash_success'] = 'User role and email verification updated.';
+    $_SESSION['flash_success'] = 'User roles, primary role, and email verification updated.';
 } else {
     $_SESSION['flash_error'] = apiMessage($response, 'User account update failed.');
 }

@@ -20,6 +20,12 @@ $totalUsers = max(0, (int)($result['total'] ?? count($users)));
 $loadError = !isset($result['data'])
     ? apiMessage($result, 'Unable to load user accounts right now.')
     : '';
+$roleOptions = [
+    'customer' => 'Customer',
+    'handyman' => 'Handyman',
+    'company' => 'Company',
+    'admin' => 'Admin',
+];
 
 function adminUserListUrl($targetPage, $search)
 {
@@ -91,7 +97,7 @@ include 'header.php';
             <th scope="col">Contact</th>
             <th scope="col">Contractor</th>
             <th scope="col">Last Login</th>
-            <th scope="col">Role</th>
+            <th scope="col">Roles</th>
             <th scope="col">Actions</th>
         </tr>
     </thead>
@@ -114,6 +120,8 @@ include 'header.php';
     );
     $isCurrentAdmin = (int)($user['id'] ?? 0) === (int)($currentAdmin['id'] ?? 0);
     $isEmailVerified = !empty($user['email_verified_at']);
+    $assignedRoles = userRoles($user);
+    $primaryRole = (string)($user['role'] ?? '');
 ?>
 
 <tr>
@@ -161,18 +169,38 @@ include 'header.php';
         <?php endif; ?>
     </td>
 
-    <td data-label="Role">
+    <td data-label="Roles">
         <form method="POST" action="update_user_role.php" class="tf-role-form">
             <?= csrfField() ?>
             <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
             <input type="hidden" name="return_q" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="return_page" value="<?= $currentPage ?>">
 
-            <select name="role" aria-label="Role for <?= htmlspecialchars($user['name'] ?? $user['email'] ?? 'user', ENT_QUOTES, 'UTF-8') ?>">
-                <?php foreach (['customer' => 'Customer', 'handyman' => 'Handyman', 'company' => 'Company', 'admin' => 'Admin'] as $roleValue => $roleLabel): ?>
+            <fieldset class="tf-role-assignments">
+                <legend>Assigned roles</legend>
+                <?php foreach ($roleOptions as $roleValue => $roleLabel): ?>
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="roles[]"
+                            value="<?= htmlspecialchars($roleValue, ENT_QUOTES, 'UTF-8') ?>"
+                            <?= in_array($roleValue, $assignedRoles, true) ? 'checked' : '' ?>
+                        >
+                        <?= htmlspecialchars($roleLabel) ?>
+                    </label>
+                <?php endforeach; ?>
+            </fieldset>
+
+            <label for="primary_role_<?= (int)$user['id'] ?>">Primary role</label>
+            <select
+                id="primary_role_<?= (int)$user['id'] ?>"
+                name="role"
+                aria-label="Primary role for <?= htmlspecialchars($user['name'] ?? $user['email'] ?? 'user', ENT_QUOTES, 'UTF-8') ?>"
+            >
+                <?php foreach ($roleOptions as $roleValue => $roleLabel): ?>
                     <option
-                        value="<?= htmlspecialchars($roleValue) ?>"
-                        <?= ($user['role'] ?? '') === $roleValue ? 'selected' : '' ?>
+                        value="<?= htmlspecialchars($roleValue, ENT_QUOTES, 'UTF-8') ?>"
+                        <?= $primaryRole === $roleValue ? 'selected' : '' ?>
                     >
                         <?= htmlspecialchars($roleLabel) ?>
                     </option>
@@ -198,7 +226,8 @@ include 'header.php';
                 >
             <?php endif; ?>
 
-            <button type="submit">Save Role &amp; Verification</button>
+            <p class="tf-muted">The primary role must also be checked above.</p>
+            <button type="submit">Save Roles &amp; Verification</button>
         </form>
     </td>
 

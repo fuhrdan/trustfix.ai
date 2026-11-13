@@ -1,35 +1,36 @@
 <?php
-//*****************************************************************************
-//** A job controller stands where the workflows meet,
-//** Guiding each task with a steady, silemt beat/
-//** It queues up the future, releases the past,
-//** A conductor of code, making moments last. -Dan
-//*****************************************************************************
+
+// *****************************************************************************
+// ** A job controller stands where the workflows meet,
+// ** Guiding each task with a steady, silemt beat/
+// ** It queues up the future, releases the past,
+// ** A conductor of code, making moments last. -Dan
+// *****************************************************************************
+
 namespace App\Http\Controllers;
 
 use App\Http\Resources\AvailableJobResource;
+use App\Models\ContractorProfile;
 use App\Models\Job;
-use App\Models\User;
-use App\Models\JobImage;
 use App\Models\JobActivity;
+use App\Models\JobImage;
 use App\Models\JobMessage;
 use App\Models\Property;
-use App\Models\ContractorProfile;
+use App\Models\User;
 use App\Services\LifecycleNotificationService;
 use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
     public function __construct(
         private readonly LifecycleNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     private function logJobEvent(Job $job, ?User $user, string $type, string $description): void
     {
@@ -52,7 +53,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -60,7 +61,7 @@ class JobController extends Controller
             ->where('status', 'approved')
             ->exists();
 
-        if (!$approvedContractor && $user->role !== 'admin') {
+        if (! $approvedContractor && ! $user->hasRole('admin')) {
             return response()->json(['error' => 'Approved contractor access is required'], 403);
         }
 
@@ -80,25 +81,25 @@ class JobController extends Controller
             ->whereNull('handyman_id')
             ->whereIn('status', ['posted', 'requested']);
 
-        if (!empty($validated['search'])) {
+        if (! empty($validated['search'])) {
             $search = $validated['search'];
 
             $query->where(function ($query) use ($search) {
-                $query->where('initial_description', 'like', '%' . $search . '%')
-                    ->orWhere('skills', 'like', '%' . $search . '%')
+                $query->where('initial_description', 'like', '%'.$search.'%')
+                    ->orWhere('skills', 'like', '%'.$search.'%')
                     ->orWhereHas('property', function ($propertyQuery) use ($search) {
                         $propertyQuery->where(function ($locationQuery) use ($search) {
-                            $locationQuery->where('city', 'like', '%' . $search . '%')
-                                ->orWhere('state', 'like', '%' . $search . '%');
+                            $locationQuery->where('city', 'like', '%'.$search.'%')
+                                ->orWhere('state', 'like', '%'.$search.'%');
                         });
                     });
             });
         }
 
-        if (!empty($validated['category'])) {
+        if (! empty($validated['category'])) {
             $category = $validated['category'];
 
-            $query->where('skills', 'like', '%' . $category . '%');
+            $query->where('skills', 'like', '%'.$category.'%');
         }
 
         switch ($validated['budget'] ?? 'any') {
@@ -157,13 +158,16 @@ class JobController extends Controller
 
         $query = Job::with(['customer', 'handyman', 'property', 'changeOrders', 'disputes', 'images', 'messages', 'activities', 'estimate']);
 
-        if ($user->role === 'handyman') {
-            $query->where('handyman_id', $user->id);
-        } elseif (in_array($user->role, ['company', 'admin'], true)) {
+        $canViewCustomerJobs = $user->hasAnyRole(['customer', 'company', 'admin']);
+        $canViewContractorJobs = $user->hasAnyRole(['handyman', 'company', 'admin']);
+
+        if ($canViewCustomerJobs && $canViewContractorJobs) {
             $query->where(function ($jobQuery) use ($user) {
                 $jobQuery->where('customer_id', $user->id)
                     ->orWhere('handyman_id', $user->id);
             });
+        } elseif ($canViewContractorJobs) {
+            $query->where('handyman_id', $user->id);
         } else {
             $query->where('customer_id', $user->id);
         }
@@ -179,19 +183,19 @@ class JobController extends Controller
 
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedHandyman = $job->handyman_id == $user->id;
-        $isAvailableForHandyman = in_array($user->role, ['handyman', 'company'], true)
-            && !$job->handyman_id
+        $isAvailableForHandyman = $user->hasAnyRole(['handyman', 'company'])
+            && ! $job->handyman_id
             && in_array($job->status, ['posted', 'requested'], true)
             && ContractorProfile::where('user_id', $user->id)
                 ->where('status', 'approved')
                 ->exists();
-        $isAdmin = $user->role == 'admin';
+        $isAdmin = $user->hasRole('admin');
 
-        if (!$isCustomer && !$isAssignedHandyman && !$isAvailableForHandyman && !$isAdmin) {
+        if (! $isCustomer && ! $isAssignedHandyman && ! $isAvailableForHandyman && ! $isAdmin) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        if ($isAvailableForHandyman && !$isCustomer && !$isAssignedHandyman && !$isAdmin) {
+        if ($isAvailableForHandyman && ! $isCustomer && ! $isAssignedHandyman && ! $isAdmin) {
             $job->load([
                 'property:id,city,state',
                 'estimate:id,job_id,estimate_low,estimate_high',
@@ -220,7 +224,7 @@ class JobController extends Controller
 
     private function getAccessibleProperty($propertyId)
     {
-        if (!$propertyId) {
+        if (! $propertyId) {
             return null;
         }
 
@@ -243,16 +247,16 @@ class JobController extends Controller
         $apartment = trim($property->apartment ?? '');
 
         $cityStateZip = trim(
-            trim($property->city ?? '') . ', ' .
-            trim($property->state ?? '') . ' ' .
+            trim($property->city ?? '').', '.
+            trim($property->state ?? '').' '.
             trim($property->zip ?? '')
         );
 
         $parts = array_filter([
             $line1,
             $line2,
-            $apartment ? 'Apt/Unit ' . $apartment : '',
-            $cityStateZip
+            $apartment ? 'Apt/Unit '.$apartment : '',
+            $cityStateZip,
         ]);
 
         return implode(', ', $parts);
@@ -263,7 +267,7 @@ class JobController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -289,7 +293,7 @@ class JobController extends Controller
 
         if ($address === '') {
             return response()->json([
-                'message' => 'An address or property_id is required.'
+                'message' => 'An address or property_id is required.',
             ], 422);
         }
 
@@ -302,8 +306,8 @@ class JobController extends Controller
             'initial_description' => $validated['initial_description'],
             'agreed_price' => $validated['agreed_price'] ?? null,
             'onsite_contact_name' => $validated['onsite_contact_name'] ?? null,
-            'onsite_contact_phone'=> $validated['onsite_contact_phone'] ?? null,
-            'skills' => $validated['skills'] ?? []
+            'onsite_contact_phone' => $validated['onsite_contact_phone'] ?? null,
+            'skills' => $validated['skills'] ?? [],
         ];
 
         if ($property && Schema::hasColumn('jobs', 'property_id')) {
@@ -311,18 +315,18 @@ class JobController extends Controller
         }
 
         $job = Job::create($createData);
-        
-        if($request->hasFile('images')) {
-            foreach($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'private');
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('jobs/'.$job->id, 'private');
                 JobImage::create([
                     'job_id' => $job->id,
-                    'image_path' => $path
+                    'image_path' => $path,
                 ]);
             }
         }
 
-        $this->logJobEvent($job, $user, 'job_posted', 'Job was posted by ' . $user->name . '.');
+        $this->logJobEvent($job, $user, 'job_posted', 'Job was posted by '.$user->name.'.');
 
         return response()->json($job->load(['images', 'property', 'messages', 'activities']), 201);
     }
@@ -333,7 +337,7 @@ class JobController extends Controller
 
         $user = Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -343,7 +347,7 @@ class JobController extends Controller
 
         $request->validate([
             'images' => ['required', 'array', 'min:1', 'max:10'],
-            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120']
+            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
 
         if ($job->images()->count() + count($request->file('images')) > 20) {
@@ -353,61 +357,61 @@ class JobController extends Controller
         }
 
         foreach ($request->file('images') as $image) {
-            $path = $image->store('jobs/' . $job->id, 'private');
+            $path = $image->store('jobs/'.$job->id, 'private');
 
             JobImage::create([
                 'job_id' => $job->id,
-                'image_path' => $path
+                'image_path' => $path,
             ]);
         }
 
         $job->refresh();
-        
+
         return response()->json([
             'success' => true,
             'images' => $job->images()->get(),
             'message' => 'Images uploaded successfully',
-            'job' => $job->load('images')
+            'job' => $job->load('images'),
         ]);
     }
 
-public function deleteImage($jobId, $imageId)
-{
-    $user = Auth::guard('api')->user();
+    public function deleteImage($jobId, $imageId)
+    {
+        $user = Auth::guard('api')->user();
 
-    // Find job and ensure ownership/permission
-    $job = Job::findOrFail($jobId);
+        // Find job and ensure ownership/permission
+        $job = Job::findOrFail($jobId);
 
-    // SECURITY CHECK (adjust to your logic)
-    if (!$user || $job->customer_id != $user->id) {
+        // SECURITY CHECK (adjust to your logic)
+        if (! $user || $job->customer_id != $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        // Find image belonging to this job
+        $image = JobImage::where('id', $imageId)
+            ->where('job_id', $jobId)
+            ->first();
+
+        if (! $image) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Image not found',
+            ], 404);
+        }
+
+        Storage::disk('private')->delete($image->image_path);
+        Storage::disk('public')->delete($image->image_path);
+
+        // Delete DB record
+        $image->delete();
+
         return response()->json([
-            'success' => false,
-            'message' => 'Unauthorized'
-        ], 403);
+            'success' => true,
+        ]);
     }
-
-    // Find image belonging to this job
-    $image = JobImage::where('id', $imageId)
-        ->where('job_id', $jobId)
-        ->first();
-
-    if (!$image) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Image not found'
-        ], 404);
-    }
-
-    Storage::disk('private')->delete($image->image_path);
-    Storage::disk('public')->delete($image->image_path);
-
-    // Delete DB record
-    $image->delete();
-
-    return response()->json([
-        'success' => true
-    ]);
-}
 
     // Nearby handymen, simple radius filter
     public function nearbyHandymen(Request $request)
@@ -422,9 +426,9 @@ public function deleteImage($jobId, $imageId)
         $lng = $validated['lng'];
         $radius = $validated['radius'] ?? 10;
 
-        $handymen = User::where('role', 'handyman')
+        $handymen = User::withRole('handyman')
             ->selectRaw(
-                "*, (3959 * acos(cos(radians(?)) * cos(radians(lat)) * cos(radians(lng) - radians(?)) + sin(radians(?)) * sin(radians(lat)))) AS distance",
+                '*, (3959 * acos(cos(radians(?)) * cos(radians(lat)) * cos(radians(lng) - radians(?)) + sin(radians(?)) * sin(radians(lat)))) AS distance',
                 [$lat, $lng, $lat]
             )
             ->having('distance', '<=', $radius)
@@ -438,7 +442,7 @@ public function deleteImage($jobId, $imageId)
     {
         $user = Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -446,7 +450,7 @@ public function deleteImage($jobId, $imageId)
             ->where('status', 'approved')
             ->exists();
 
-        if (!$approvedContractor) {
+        if (! $approvedContractor) {
             return response()->json(['error' => 'Approved contractor access is required'], 403);
         }
 
@@ -457,7 +461,7 @@ public function deleteImage($jobId, $imageId)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$job) {
+            if (! $job) {
                 return null;
             }
 
@@ -465,14 +469,14 @@ public function deleteImage($jobId, $imageId)
             $job->status = 'accepted';
             $job->save();
 
-            $this->logJobEvent($job, $user, 'job_accepted', $user->name . ' accepted this job.');
+            $this->logJobEvent($job, $user, 'job_accepted', $user->name.' accepted this job.');
 
             return $job->load(['customer', 'handyman', 'property', 'images', 'messages', 'activities']);
         });
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json([
-                'error' => 'Job is no longer available'
+                'error' => 'Job is no longer available',
             ], 409);
         }
 
@@ -506,10 +510,11 @@ public function deleteImage($jobId, $imageId)
                 'status' => 'in_progress',
             ]);
 
-            $this->logJobEvent($job, $user, 'job_started', $user->name . ' started this job.');
+            $this->logJobEvent($job, $user, 'job_started', $user->name.' started this job.');
+
             return $job;
         }, 3);
-        if (!($job instanceof Job)) {
+        if (! ($job instanceof Job)) {
             return $job;
         }
 
@@ -552,10 +557,11 @@ public function deleteImage($jobId, $imageId)
                 ]);
             }
 
-            $this->logJobEvent($job, $user, 'job_completed', $user->name . ' marked this job complete.');
+            $this->logJobEvent($job, $user, 'job_completed', $user->name.' marked this job complete.');
+
             return $job;
         }, 3);
-        if (!($job instanceof Job)) {
+        if (! ($job instanceof Job)) {
             return $job;
         }
 
@@ -585,10 +591,11 @@ public function deleteImage($jobId, $imageId)
                 'status' => 'cancelled',
             ]);
 
-            $this->logJobEvent($job, $user, 'job_cancelled', $user->name . ' cancelled this job.');
+            $this->logJobEvent($job, $user, 'job_cancelled', $user->name.' cancelled this job.');
+
             return $job;
         }, 3);
-        if (!($job instanceof Job)) {
+        if (! ($job instanceof Job)) {
             return $job;
         }
 
@@ -619,11 +626,11 @@ public function deleteImage($jobId, $imageId)
                 ],
             ]);
 
-            $isAdmin = $user->role === 'admin';
+            $isAdmin = $user->hasRole('admin');
             $isCustomer = $job->customer_id == $user->id;
             $isContractor = $job->handyman_id == $user->id;
 
-            if (!$isAdmin && !$isCustomer && !$isContractor) {
+            if (! $isAdmin && ! $isCustomer && ! $isContractor) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -638,16 +645,16 @@ public function deleteImage($jobId, $imageId)
             ];
             $newStatus = $validated['status'];
 
-            if (!in_array($newStatus, $transitions[$job->status] ?? [], true)) {
+            if (! in_array($newStatus, $transitions[$job->status] ?? [], true)) {
                 return response()->json([
                     'message' => 'That job status transition is not allowed.',
                 ], 409);
             }
 
             if (
-                !$isAdmin
+                ! $isAdmin
                 && $isCustomer
-                && !in_array($newStatus, ['change_requested', 'cancelled'], true)
+                && ! in_array($newStatus, ['change_requested', 'cancelled'], true)
             ) {
                 return response()->json([
                     'message' => 'Customers can request a change or cancel an active job.',
@@ -655,9 +662,9 @@ public function deleteImage($jobId, $imageId)
             }
 
             if (
-                !$isAdmin
+                ! $isAdmin
                 && $isContractor
-                && !in_array(
+                && ! in_array(
                     $newStatus,
                     ['accepted', 'in_progress', 'change_requested', 'completed'],
                     true
@@ -674,20 +681,21 @@ public function deleteImage($jobId, $imageId)
             $job->update(['status' => $newStatus]);
 
             $description = $user->name
-                . ' changed the job status from '
-                . str_replace('_', ' ', $previousStatus)
-                . ' to '
-                . str_replace('_', ' ', $newStatus)
-                . '.';
+                .' changed the job status from '
+                .str_replace('_', ' ', $previousStatus)
+                .' to '
+                .str_replace('_', ' ', $newStatus)
+                .'.';
             $this->logJobEvent(
                 $job,
                 $user,
                 'job_status_changed',
                 $description
             );
+
             return $job;
         }, 3);
-        if (!($job instanceof Job)) {
+        if (! ($job instanceof Job)) {
             return $job;
         }
 
@@ -700,7 +708,7 @@ public function deleteImage($jobId, $imageId)
     {
         $user = Auth::guard('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -709,7 +717,7 @@ public function deleteImage($jobId, $imageId)
         if ($job->customer_id != $user->id) {
 
             return response()->json([
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 403);
         }
 
@@ -744,7 +752,7 @@ public function deleteImage($jobId, $imageId)
 
         if ($address === '') {
             return response()->json([
-                'message' => 'An address or property_id is required.'
+                'message' => 'An address or property_id is required.',
             ], 422);
         }
 
@@ -756,7 +764,7 @@ public function deleteImage($jobId, $imageId)
             'agreed_price' => $validated['agreed_price'] ?? null,
             'onsite_contact_name' => $validated['onsite_contact_name'] ?? null,
             'onsite_contact_phone' => $validated['onsite_contact_phone'] ?? null,
-            'skills' => $validated['skills'] ?? []
+            'skills' => $validated['skills'] ?? [],
         ];
 
         if (Schema::hasColumn('jobs', 'property_id')) {
@@ -777,17 +785,17 @@ public function deleteImage($jobId, $imageId)
 
             return $lockedJob;
         }, 3);
-        if (!$job) {
+        if (! $job) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('jobs/' . $job->id, 'private');
+                $path = $image->store('jobs/'.$job->id, 'private');
 
                 JobImage::create([
                     'job_id' => $job->id,
-                    'image_path' => $path
+                    'image_path' => $path,
                 ]);
             }
         }
@@ -802,10 +810,10 @@ public function deleteImage($jobId, $imageId)
         return DB::transaction(function () use ($id, $user) {
             $job = Job::query()->lockForUpdate()->findOrFail($id);
 
-            if ($user->role !== 'admin' && $job->customer_id != $user->id) {
+            if (! $user->hasRole('admin') && $job->customer_id != $user->id) {
 
                 return response()->json([
-                    'message' => 'Unauthorized'
+                    'message' => 'Unauthorized',
                 ], 403);
             }
 
@@ -817,7 +825,7 @@ public function deleteImage($jobId, $imageId)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Job deleted successfully'
+                'message' => 'Job deleted successfully',
             ]);
         }, 3);
     }

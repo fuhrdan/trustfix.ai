@@ -6,11 +6,11 @@ use App\Models\ContractorProfile;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\LifecycleNotificationService;
+use App\Services\ManualPaymentRefundService;
+use App\Services\ManualPaymentReleaseService;
 use App\Services\PaymentAgreementService;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentSafetyGuard;
-use App\Services\ManualPaymentReleaseService;
-use App\Services\ManualPaymentRefundService;
 use App\Services\StripeEventInbox;
 use App\Services\StripePaymentIntentReconciler;
 use Illuminate\Http\JsonResponse;
@@ -27,8 +27,7 @@ class PaymentController extends Controller
 
     public function __construct(
         private readonly LifecycleNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     private function stripe()
     {
@@ -72,11 +71,10 @@ class PaymentController extends Controller
         $user = $this->onboardingUser();
         $profile = $this->profileForOnboarding($user);
 
-        if (!$profile->stripe_account_id) {
+        if (! $profile->stripe_account_id) {
             $account = $this->stripeAccountsV2()
                 ->withHeaders([
-                    'Idempotency-Key' =>
-                        'trustfix-connect-account-v3-user-' . $user->id,
+                    'Idempotency-Key' => 'trustfix-connect-account-v3-user-'.$user->id,
                 ])
                 ->post('/core/accounts', [
                     'contact_email' => $user->email,
@@ -136,14 +134,11 @@ class PaymentController extends Controller
                 if ($locked->stripe_account_id === null) {
                     $locked->update([
                         'stripe_account_id' => $accountId,
-                        'stripe_details_submitted' =>
-                            (bool) ($account['details_submitted'] ?? false),
-                        'stripe_charges_enabled' =>
-                            (bool) ($account['charges_enabled'] ?? false),
-                        'stripe_payouts_enabled' =>
-                            (bool) ($account['payouts_enabled'] ?? false),
+                        'stripe_details_submitted' => (bool) ($account['details_submitted'] ?? false),
+                        'stripe_charges_enabled' => (bool) ($account['charges_enabled'] ?? false),
+                        'stripe_payouts_enabled' => (bool) ($account['payouts_enabled'] ?? false),
                     ]);
-                } elseif (!hash_equals(
+                } elseif (! hash_equals(
                     (string) $locked->stripe_account_id,
                     $accountId
                 )) {
@@ -173,7 +168,7 @@ class PaymentController extends Controller
         );
 
         $account = $this->stripe()
-            ->get('/accounts/' . $profile->stripe_account_id)
+            ->get('/accounts/'.$profile->stripe_account_id)
             ->throw()
             ->json();
 
@@ -187,12 +182,9 @@ class PaymentController extends Controller
         );
 
         $profile->update([
-            'stripe_details_submitted' =>
-                (bool) ($account['details_submitted'] ?? false),
-            'stripe_charges_enabled' =>
-                (bool) ($account['charges_enabled'] ?? false),
-            'stripe_payouts_enabled' =>
-                (bool) ($account['payouts_enabled'] ?? false),
+            'stripe_details_submitted' => (bool) ($account['details_submitted'] ?? false),
+            'stripe_charges_enabled' => (bool) ($account['charges_enabled'] ?? false),
+            'stripe_payouts_enabled' => (bool) ($account['payouts_enabled'] ?? false),
         ]);
 
         return response()->json(
@@ -209,7 +201,7 @@ class PaymentController extends Controller
         abort_unless($user instanceof User, 401, 'Unauthenticated.');
 
         abort_unless(
-            in_array($user->role, ['handyman', 'company'], true),
+            $user->hasAnyRole(['handyman', 'company']),
             403,
             'A contractor account is required.'
         );
@@ -234,8 +226,7 @@ class PaymentController extends Controller
             return ContractorProfile::firstOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'business_name' =>
-                        trim((string) $user->name) !== ''
+                    'business_name' => trim((string) $user->name) !== ''
                             ? trim((string) $user->name)
                             : 'Contractor Profile',
                     'status' => 'pending',
@@ -267,10 +258,8 @@ class PaymentController extends Controller
 
         $link = $this->stripe()->post('/account_links', [
             'account' => $profile->stripe_account_id,
-            'refresh_url' =>
-                $frontend . '/contractor_payout_return.php?refresh=1',
-            'return_url' =>
-                $frontend . '/contractor_payout_return.php',
+            'refresh_url' => $frontend.'/contractor_payout_return.php?refresh=1',
+            'return_url' => $frontend.'/contractor_payout_return.php',
             'type' => 'account_onboarding',
         ])->throw()->json();
 
@@ -285,12 +274,9 @@ class PaymentController extends Controller
         return response()->json(
             [
                 'url' => $url,
-                'details_submitted' =>
-                    (bool) $profile->stripe_details_submitted,
-                'charges_enabled' =>
-                    (bool) $profile->stripe_charges_enabled,
-                'payouts_enabled' =>
-                    (bool) $profile->stripe_payouts_enabled,
+                'details_submitted' => (bool) $profile->stripe_details_submitted,
+                'charges_enabled' => (bool) $profile->stripe_charges_enabled,
+                'payouts_enabled' => (bool) $profile->stripe_payouts_enabled,
             ],
             200,
             ['Cache-Control' => 'private, no-store']
@@ -305,9 +291,10 @@ class PaymentController extends Controller
             && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
             && strtolower((string) ($parts['host'] ?? ''))
                 === 'connect.stripe.com'
-            && !isset($parts['user'], $parts['pass'], $parts['port'])
+            && ! isset($parts['user'], $parts['pass'], $parts['port'])
             && str_starts_with((string) ($parts['path'] ?? ''), '/');
     }
+
     public function proposeAgreement(Request $request, $jobId): JsonResponse
     {
         $agreement = app(PaymentAgreementService::class)->proposeInitial(
@@ -502,13 +489,13 @@ class PaymentController extends Controller
         }
 
         $jobId = Payment::where('stripe_payment_intent_id', $object['id'])->value('job_id');
-        if ($jobId === null || !DB::table('jobs')->where('id', $jobId)->lockForUpdate()->first(['id'])) {
+        if ($jobId === null || ! DB::table('jobs')->where('id', $jobId)->lockForUpdate()->first(['id'])) {
             return 'ignored';
         }
 
         $payment = Payment::where('job_id', $jobId)
             ->where('stripe_payment_intent_id', $object['id'])->lockForUpdate()->first();
-        if (!$payment || $payment->status === $status
+        if (! $payment || $payment->status === $status
             || in_array($payment->status, ['succeeded', 'cancelled', 'refunded'], true)) {
             return 'ignored';
         }

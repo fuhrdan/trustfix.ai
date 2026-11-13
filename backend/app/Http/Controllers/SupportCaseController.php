@@ -13,8 +13,7 @@ class SupportCaseController extends Controller
 {
     public function __construct(
         private readonly OperationsAlertService $alerts,
-    ) {
-    }
+    ) {}
 
     public function store(Request $request)
     {
@@ -36,13 +35,13 @@ class SupportCaseController extends Controller
         ]);
         $user = Auth::guard('api')->user();
 
-        if (!empty($validated['job_id'])) {
+        if (! empty($validated['job_id'])) {
             $job = Job::findOrFail($validated['job_id']);
             $isParticipant = (int) $job->customer_id === (int) $user->id
                 || (int) $job->handyman_id === (int) $user->id
-                || $user->role === 'admin';
+                || $user->hasRole('admin');
 
-            if (!$isParticipant) {
+            if (! $isParticipant) {
                 return response()->json([
                     'error' => 'You can only attach a job that belongs to your account.',
                 ], 403);
