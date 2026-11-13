@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Dispute;
 use App\Models\Job;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class DisputeController extends Controller
@@ -18,39 +20,43 @@ class DisputeController extends Controller
         ]);
 
         $user = Auth::guard('api')->user();
-        $job = Job::findOrFail($jobId);
 
-        $isCustomer = $job->customer_id === $user->id;
-        $isAssignedHandyman = $job->handyman_id === $user->id;
+        return DB::transaction(function () use ($jobId, $user, $validated) {
+            $job = Job::query()->lockForUpdate()->findOrFail($jobId);
 
-        if (!$isCustomer && !$isAssignedHandyman) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
+            $isCustomer = $job->customer_id === $user->id;
+            $isAssignedHandyman = $job->handyman_id === $user->id;
 
-        if (in_array($job->status, ['completed', 'cancelled'], true)) {
-            return response()->json(['error' => 'This job can no longer be disputed'], 409);
-        }
+            if (!$isCustomer && !$isAssignedHandyman) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
 
-        $dispute = Dispute::updateOrCreate(
-            [
-                'job_id' => $job->id,
-                'opened_by' => $user->id,
-            ],
-            [
-                'reason' => $validated['reason'],
-                'details' => $validated['details'] ?? null,
-                'status' => 'open',
-                'resolved_by' => null,
-                'resolved_at' => null,
-                'resolution_notes' => null,
-            ]
-        );
+            $reserved = app(PaymentAgreementService::class)->jobHasReservedPayable((int) $job->id);
+            if ($job->status === 'cancelled' || ($job->status === 'completed' && !$reserved)) {
+                return response()->json(['error' => 'This job can no longer be disputed'], 409);
+            }
 
-        $job->update([
-            'status' => 'disputed',
-        ]);
+            $dispute = Dispute::updateOrCreate(
+                [
+                    'job_id' => $job->id,
+                    'opened_by' => $user->id,
+                ],
+                [
+                    'reason' => $validated['reason'],
+                    'details' => $validated['details'] ?? null,
+                    'status' => 'open',
+                    'resolved_by' => null,
+                    'resolved_at' => null,
+                    'resolution_notes' => null,
+                ]
+            );
 
-        return response()->json($dispute->load(['job', 'openedBy']), 201);
+            if (!$reserved) {
+                $job->update(['status' => 'disputed']);
+            }
+
+            return response()->json($dispute->load(['job', 'openedBy']), 201);
+        }, 3);
     }
 
     public function myDisputes()
@@ -98,21 +104,25 @@ class DisputeController extends Controller
         ]);
 
         $admin = Auth::guard('api')->user();
-        $dispute = Dispute::with('job')->findOrFail($id);
+        $jobId = Dispute::query()->findOrFail($id, ['job_id'])->job_id;
 
-        $dispute->update([
-            'status' => $validated['status'],
-            'resolved_by' => in_array($validated['status'], ['resolved', 'dismissed'], true) ? $admin->id : null,
-            'resolved_at' => in_array($validated['status'], ['resolved', 'dismissed'], true) ? now() : null,
-            'resolution_notes' => $validated['resolution_notes'] ?? null,
-        ]);
+        return DB::transaction(function () use ($jobId, $id, $admin, $validated) {
+            $job = Job::query()->lockForUpdate()->findOrFail($jobId);
+            $dispute = Dispute::where('job_id', $job->id)->lockForUpdate()->findOrFail($id);
 
-        if (in_array($validated['status'], ['resolved', 'dismissed'], true)) {
-            $dispute->job->update([
-                'status' => 'in_progress',
+            $dispute->update([
+                'status' => $validated['status'],
+                'resolved_by' => in_array($validated['status'], ['resolved', 'dismissed'], true) ? $admin->id : null,
+                'resolved_at' => in_array($validated['status'], ['resolved', 'dismissed'], true) ? now() : null,
+                'resolution_notes' => $validated['resolution_notes'] ?? null,
             ]);
-        }
 
-        return response()->json($dispute->fresh(['job', 'openedBy', 'resolvedBy']));
+            if (in_array($validated['status'], ['resolved', 'dismissed'], true)
+                && !app(PaymentAgreementService::class)->jobHasReservedPayable((int) $job->id)) {
+                $job->update(['status' => 'in_progress']);
+            }
+
+            return response()->json($dispute->fresh(['job', 'openedBy', 'resolvedBy']));
+        }, 3);
     }
 }

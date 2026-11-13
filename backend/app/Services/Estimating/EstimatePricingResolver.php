@@ -30,31 +30,47 @@ class EstimatePricingResolver
             : $this->starter();
     }
 
-    public function forUser(User $user): array
+    public function forUser(User $user, ?string $scope = null): array
     {
-        $query = $user->role === 'admin'
+        $isGlobal = $this->isGlobalScope($user, $scope);
+        $query = $isGlobal
             ? EstimatePricingProfile::whereNull('user_id')
             : EstimatePricingProfile::where('user_id', $user->id);
 
         $profile = $query->latest('id')->first();
 
         return $profile
-            ? $this->serialize($profile, $user->role === 'admin' ? 'trustfix' : 'contractor')
+            ? $this->serialize($profile, $isGlobal ? 'trustfix' : 'contractor')
             : $this->starter();
     }
 
-    public function saveForUser(User $user, array $values): EstimatePricingProfile
-    {
-        $profile = $user->role === 'admin'
+    public function saveForUser(
+        User $user,
+        array $values,
+        ?string $scope = null
+    ): EstimatePricingProfile {
+        $isGlobal = $this->isGlobalScope($user, $scope);
+        $profile = $isGlobal
             ? EstimatePricingProfile::firstOrNew(['user_id' => null])
             : EstimatePricingProfile::firstOrNew(['user_id' => $user->id]);
 
         $profile->fill($values);
-        $profile->user_id = $user->role === 'admin' ? null : $user->id;
+        $profile->user_id = $isGlobal ? null : $user->id;
         $profile->active = true;
         $profile->save();
 
         return $profile;
+    }
+
+    private function isGlobalScope(User $user, ?string $scope): bool
+    {
+        $scope ??= $user->hasRole('admin') ? 'global' : 'contractor';
+
+        if (! in_array($scope, ['contractor', 'global'], true)) {
+            throw new \InvalidArgumentException('Unknown estimate pricing scope.');
+        }
+
+        return $scope === 'global';
     }
 
     private function serialize(EstimatePricingProfile $profile, string $source): array

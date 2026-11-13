@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContractorProfile;
 use App\Models\User;
 use App\Services\LifecycleNotificationService;
 use App\Services\LoginSecurityService;
@@ -9,23 +10,32 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
     public function __construct(
         private readonly LifecycleNotificationService $notifications,
         private readonly LoginSecurityService $loginSecurity,
-    ) {
-    }
+    ) {}
 
     public function register(Request $request)
     {
+        $requestedAccountType = Str::lower(trim((string) $request->input(
+            'account_type',
+            'customer'
+        )));
+
         $request->merge([
             'email' => Str::lower(trim((string) $request->input('email'))),
+            'account_type' => $requestedAccountType !== ''
+                ? $requestedAccountType
+                : 'customer',
         ]);
 
         $validated = $request->validate([
@@ -35,28 +45,68 @@ class AuthController extends Controller
             'username' => ['nullable', 'string', 'max:255', 'unique:users,username'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
+            'account_type' => ['required', Rule::in(['customer', 'contractor'])],
+            'business_name' => [
+                'required_if:account_type,contractor',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'service_area' => [
+                'required_if:account_type,contractor',
+                'nullable',
+                'string',
+                'max:255',
+            ],
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'username' => $validated['username'] ?? null,
-            'password' => Hash::make($validated['password']),
-            // Public registration can never grant an elevated role.
-            'role' => 'customer',
-            'company_id' => null,
-            'phone' => $validated['phone'] ?? null,
-            'address' => $validated['address'] ?? null,
-        ]);
+        $accountType = $validated['account_type'];
+
+        $user = DB::transaction(function () use ($validated, $accountType): User {
+            $createdUser = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'username' => $validated['username'] ?? null,
+                'password' => Hash::make($validated['password']),
+                // Public registration never grants an elevated role. The
+                // existing admin approval workflow performs promotion only
+                // after reviewing the pending contractor profile.
+                'role' => 'customer',
+                'company_id' => null,
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+            ]);
+
+            if ($accountType === 'contractor') {
+                ContractorProfile::create([
+                    'user_id' => $createdUser->id,
+                    'business_name' => trim((string) $validated['business_name']),
+                    'business_phone' => $validated['phone'] ?? null,
+                    'service_area' => trim((string) $validated['service_area']),
+                    'phone' => $validated['phone'] ?? null,
+                    'status' => 'pending',
+                    'is_public' => false,
+                    'is_verified' => false,
+                ]);
+            }
+
+            return $createdUser;
+        });
 
         $welcomeQueued = $this->notifications->welcome($user);
         $verificationQueued = $this->notifications->emailVerification($user);
 
         return response()->json([
             'user' => $user,
+            'registration_type' => $accountType,
+            'contractor_status' => $accountType === 'contractor'
+                ? 'pending'
+                : null,
             'requires_email_verification' => true,
             'notification_queued' => $welcomeQueued && $verificationQueued,
-            'message' => 'Account created. Check your email to verify your address before signing in.',
+            'message' => $accountType === 'contractor'
+                ? 'Contractor account created. Check your email to verify your address, then complete your profile for TrustFix review.'
+                : 'Account created. Check your email to verify your address before signing in.',
         ], 201);
     }
 
@@ -70,13 +120,13 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['nullable', 'string', 'max:255', 'unique:users,username,' . $user->id],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'username' => ['nullable', 'string', 'max:255', 'unique:users,username,'.$user->id],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $emailChanged = !hash_equals(
+        $emailChanged = ! hash_equals(
             Str::lower((string) $user->email),
             $validated['email']
         );
@@ -158,7 +208,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        if (!$token = Auth::guard('api')->attempt($credentials)) {
+        if (! $token = Auth::guard('api')->attempt($credentials)) {
             $this->loginSecurity->recordAttempt(
                 $request,
                 $attemptedUser,
@@ -189,7 +239,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             Auth::guard('api')->logout();
             $this->notifications->emailVerification($user);
             $this->loginSecurity->recordAttempt(
@@ -236,7 +286,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $validated['email'])->first();
 
-        if ($user && !$user->hasVerifiedEmail()) {
+        if ($user && ! $user->hasVerifiedEmail()) {
             $this->notifications->emailVerification($user);
         }
 
@@ -250,26 +300,26 @@ class AuthController extends Controller
         // Accept existing absolute signed links during the domain transition,
         // plus the new host-independent relative signatures used by the
         // TrustFix frontend verification bridge.
-        if (!$request->hasValidSignature() && !$request->hasValidSignature(false)) {
+        if (! $request->hasValidSignature() && ! $request->hasValidSignature(false)) {
             abort(403, 'Invalid or expired verification link.');
         }
 
         $user = User::findOrFail($id);
 
-        if (!hash_equals(
+        if (! hash_equals(
             sha1($user->getEmailForVerification()),
             (string) $hash
         )) {
             abort(403, 'Invalid verification link.');
         }
 
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $user->markEmailAsVerified();
             event(new Verified($user));
         }
 
         $redirectUrl = rtrim((string) config('trustfix.frontend_url'), '/')
-            . '/login.php?verified=1';
+            .'/login.php?verified=1';
 
         if ($request->expectsJson()) {
             return response()->json([

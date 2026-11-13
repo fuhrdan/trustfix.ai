@@ -11,8 +11,8 @@ if (!is_array($jobs) || isset($jobs['error']) || isset($jobs['message'])) {
     $jobs = [];
 }
 
-$role = $user['role'] ?? ($_SESSION['user']['role'] ?? '');
-$isContractorRole = in_array($role, ['handyman', 'company', 'admin'], true);
+$isCustomerRole = userHasRole($user, 'customer');
+$isContractorRole = userHasAnyRole($user, ['handyman', 'company']);
 
 function jobText($value, $fallback = 'Not provided')
 {
@@ -70,7 +70,9 @@ $buckets = [
         'jobs' => [],
     ],
     'waiting' => [
-        'title' => $isContractorRole ? 'Waiting / Open' : 'Posted / Waiting',
+        'title' => $isCustomerRole && $isContractorRole
+            ? 'Posted / Open'
+            : ($isContractorRole ? 'Waiting / Open' : 'Posted / Waiting'),
         'statuses' => ['posted', 'requested'],
         'jobs' => [],
     ],
@@ -149,10 +151,11 @@ include 'header.php';
 </div>
 
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:25px;">
+    <?php if ($isCustomerRole): ?>
+        <a class="tf-button" href="add_job.php">Post New Job</a>
+    <?php endif; ?>
     <?php if ($isContractorRole): ?>
         <a class="tf-button tf-button-success" href="available_jobs.php">Find Available Jobs</a>
-    <?php else: ?>
-        <a class="tf-button" href="add_job.php">Post New Job</a>
     <?php endif; ?>
 </div>
 

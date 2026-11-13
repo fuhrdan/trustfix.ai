@@ -144,6 +144,7 @@ include 'header.php';
             <th scope="col">Description</th>
             <th scope="col">Price</th>
             <th scope="col">Created</th>
+            <th scope="col">Payment</th>
             <th scope="col">Edit</th>
             <th scope="col">Delete</th>
         </tr>
@@ -152,7 +153,7 @@ include 'header.php';
 
     <?php if (empty($jobs)): ?>
         <tr>
-            <td colspan="10">No jobs found.</td>
+            <td colspan="11">No jobs found.</td>
         </tr>
     <?php endif; ?>
 
@@ -187,6 +188,12 @@ include 'header.php';
             </td>
 
             <td><?= htmlspecialchars($job['created_at'] ?? '') ?></td>
+
+            <td>
+                <a href="manage_payment.php?job_id=<?= (int)($job['id'] ?? 0) ?>">
+                    Payment
+                </a>
+            </td>
 
             <td>
                 <a href="admin_edit_job.php?id=<?= (int)($job['id'] ?? 0) ?>">

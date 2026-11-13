@@ -42,8 +42,11 @@
             : $resolvedPageTitle . ' | TrustFix';
         $isAuthenticated = !empty($_SESSION['jwt_token']);
         $sessionUser = $isAuthenticated ? currentUser() : [];
-        $sessionRole = $sessionUser['role'] ?? '';
-        $contractorRoles = ['handyman', 'company', 'admin'];
+        $showContractorNavigation = userHasAnyRole(
+            $sessionUser,
+            ['handyman', 'company']
+        );
+        $showAdminNavigation = userHasRole($sessionUser, 'admin');
         $notificationSummary = $isAuthenticated
             ? messageNotificationSummary()
             : ['unread_count' => 0, 'latest_job_id' => null];
@@ -63,7 +66,7 @@
             ],
         ];
 
-        if (in_array($sessionRole, $contractorRoles, true)) {
+        if ($showContractorNavigation) {
             array_splice($menuSections['Workspace'], 1, 0, [[
                 'href' => 'available_jobs.php',
                 'label' => 'Available Jobs',
@@ -74,7 +77,7 @@
             ];
         }
 
-        if ($sessionRole === 'admin') {
+        if ($showAdminNavigation) {
             $menuSections['Administration'] = [
                 ['href' => 'list_users.php', 'label' => 'Manage Users'],
                 ['href' => 'manage_jobs.php', 'label' => 'Manage Jobs'],

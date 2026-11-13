@@ -276,8 +276,11 @@ function wsTitle($text)
                 <a href="job_detail.php?id=<?= (int)$job['id'] ?>" style="background:#333;">Details</a>
                 <a href="estimate_job.php?id=<?= (int)$job['id'] ?>" style="background:#13764f;">Smart Estimate</a>
                 <a href="edit_job.php?id=<?= (int)$job['id'] ?>" style="background:#6c757d;">Edit</a>
-                <?php if ($isCustomer && !empty($job['handyman_id']) && !$successfulPayment && !empty($job['agreed_price'])) { ?>
-                    <a href="pay_job.php?id=<?= (int)$job['id'] ?>" style="background:#16835a;">Pay Contractor</a>
+                <?php if ((int) ($currentUser['id'] ?? 0) > 0
+                    && ($isCustomer || (int) ($job['handyman_id'] ?? 0) === (int) $currentUser['id'])
+                    && !empty($job['handyman_id']) && !$successfulPayment && !empty($job['agreed_price'])
+                    && in_array($job['status'] ?? '', ['accepted', 'scheduled'], true)) { ?>
+                    <a href="pay_job.php?id=<?= (int)$job['id'] ?>" style="background:#16835a;">Review Payment Terms</a>
                 <?php } ?>
             </div>
         </section>

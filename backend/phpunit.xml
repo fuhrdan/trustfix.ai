@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
-         colors="true"
->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd" bootstrap="vendor/autoload.php" colors="true">
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -18,22 +14,85 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_KEY" value="base64:3TQwcnHSB4nQecFLItVx2Tb/NK61dZXG/Dc7gXDrxRM="/>
-        <env name="JWT_SECRET" value="trustfix-testing-jwt-secret-only-not-for-production"/>
-        <env name="APP_URL" value="http://localhost"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="cache"/>
-        <env name="APP_MAINTENANCE_STORE" value="array"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:3TQwcnHSB4nQecFLItVx2Tb/NK61dZXG/Dc7gXDrxRM=" force="true"/>
+        <env name="JWT_SECRET" value="trustfix-testing-jwt-secret-only-not-for-production" force="true"/>
+        <env name="APP_URL" value="http://localhost" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="cache" force="true"/>
+        <env name="APP_MAINTENANCE_STORE" value="array" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="PULSE_ENABLED" value="false" force="true"/>
+        <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+        <server name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_KEY" value="base64:3TQwcnHSB4nQecFLItVx2Tb/NK61dZXG/Dc7gXDrxRM=" force="true"/>
+        <server name="JWT_SECRET" value="trustfix-testing-jwt-secret-only-not-for-production" force="true"/>
+        <server name="APP_URL" value="http://localhost" force="true"/>
+        <server name="APP_MAINTENANCE_DRIVER" value="cache" force="true"/>
+        <server name="APP_MAINTENANCE_STORE" value="array" force="true"/>
+        <server name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <server name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
+        <server name="DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="MAIL_MAILER" value="array" force="true"/>
+        <server name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="PULSE_ENABLED" value="false" force="true"/>
+        <server name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <server name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+        <env name="APP_DEBUG" value="false" force="true"/>
+        <server name="APP_DEBUG" value="false" force="true"/>
+        <env name="TRUSTFIX_FRONTEND_URL" value="http://localhost" force="true"/>
+        <server name="TRUSTFIX_FRONTEND_URL" value="http://localhost" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <server name="DB_URL" value="" force="true"/>
+        <env name="DATABASE_URL" value="" force="true"/>
+        <server name="DATABASE_URL" value="" force="true"/>
+        <env name="DB_USERNAME" value="" force="true"/>
+        <server name="DB_USERNAME" value="" force="true"/>
+        <env name="DB_PASSWORD" value="" force="true"/>
+        <server name="DB_PASSWORD" value="" force="true"/>
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <server name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_LIMITER" value="array" force="true"/>
+        <server name="CACHE_LIMITER" value="array" force="true"/>
+        <env name="MAIL_DRIVER" value="array" force="true"/>
+        <server name="MAIL_DRIVER" value="array" force="true"/>
+        <env name="FILESYSTEM_DISK" value="local" force="true"/>
+        <server name="FILESYSTEM_DISK" value="local" force="true"/>
+        <env name="STRIPE_KEY" value="" force="true"/>
+        <server name="STRIPE_KEY" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <server name="STRIPE_SECRET" value="" force="true"/>
+        <env name="STRIPE_WEBHOOK_SECRET" value="" force="true"/>
+        <server name="STRIPE_WEBHOOK_SECRET" value="" force="true"/>
+        <env name="STRIPE_PAYMENTS_ENABLED" value="false" force="true"/>
+        <server name="STRIPE_PAYMENTS_ENABLED" value="false" force="true"/>
+        <env name="STRIPE_PAYOUT_RELEASES_ENABLED" value="false" force="true"/>
+        <server name="STRIPE_PAYOUT_RELEASES_ENABLED" value="false" force="true"/>
+        <env name="STRIPE_PAYOUT_AUTO_RELEASE_ENABLED" value="false" force="true"/>
+        <server name="STRIPE_PAYOUT_AUTO_RELEASE_ENABLED" value="false" force="true"/>
+        <env name="STRIPE_REFUNDS_ENABLED" value="false" force="true"/>
+        <server name="STRIPE_REFUNDS_ENABLED" value="false" force="true"/>
+        <env name="STRIPE_TEST_MODE_ONLY" value="true" force="true"/>
+        <server name="STRIPE_TEST_MODE_ONLY" value="true" force="true"/>
+        <env name="APP_CONFIG_CACHE" value="bootstrap/cache/config-testing.php" force="true"/>
+        <server name="APP_CONFIG_CACHE" value="bootstrap/cache/config-testing.php" force="true"/>
+        <env name="APP_ROUTES_CACHE" value="bootstrap/cache/routes-testing.php" force="true"/>
+        <server name="APP_ROUTES_CACHE" value="bootstrap/cache/routes-testing.php" force="true"/>
+        <env name="APP_SERVICES_CACHE" value="bootstrap/cache/services-testing.php" force="true"/>
+        <server name="APP_SERVICES_CACHE" value="bootstrap/cache/services-testing.php" force="true"/>
+        <env name="APP_PACKAGES_CACHE" value="bootstrap/cache/packages-testing.php" force="true"/>
+        <server name="APP_PACKAGES_CACHE" value="bootstrap/cache/packages-testing.php" force="true"/>
+        <env name="APP_EVENTS_CACHE" value="bootstrap/cache/events-testing.php" force="true"/>
+        <server name="APP_EVENTS_CACHE" value="bootstrap/cache/events-testing.php" force="true"/>
     </php>
 </phpunit>

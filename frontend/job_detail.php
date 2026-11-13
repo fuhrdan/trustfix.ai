@@ -2,8 +2,10 @@
 require 'config.php';
 requireLogin();
 $currentUser = currentUser();
-$currentRole = $currentUser['role'] ?? '';
-$isContractorAccount = in_array($currentRole, ['handyman', 'company'], true);
+$isContractorAccount = userHasAnyRole(
+    $currentUser,
+    ['handyman', 'company']
+);
 
 $jobId = (int)($_GET['id'] ?? 0);
 

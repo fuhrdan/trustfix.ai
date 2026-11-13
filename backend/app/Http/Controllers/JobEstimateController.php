@@ -13,6 +13,7 @@ use App\Services\Estimating\EstimatePricingResolver;
 use App\Services\Estimating\JobAnalysisManager;
 use App\Services\Estimating\MaterialPriceMatcher;
 use App\Services\LifecycleNotificationService;
+use App\Services\PaymentAgreementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +26,7 @@ class JobEstimateController extends Controller
         private readonly MaterialPriceMatcher $materialMatcher,
         private readonly EstimateCalculator $calculator,
         private readonly LifecycleNotificationService $notifications,
-    ) {
-    }
+    ) {}
 
     public function show($id)
     {
@@ -85,7 +85,7 @@ class JobEstimateController extends Controller
                     ? $estimate->created_by_user_id
                     : $user->id,
                 'version' => $estimate->exists ? $estimate->version + 1 : 1,
-                'status' => !empty($analysis['follow_up_questions'])
+                'status' => ! empty($analysis['follow_up_questions'])
                     ? 'needs_information'
                     : 'preliminary',
                 'analysis_provider' => $analysisResult['provider'],
@@ -114,7 +114,7 @@ class JobEstimateController extends Controller
             $job,
             $user,
             'estimate_analyzed',
-            'TrustFix generated a ' . str_replace('_', ' ', $estimate->status) . ' job analysis.'
+            'TrustFix generated a '.str_replace('_', ' ', $estimate->status).' job analysis.'
         );
 
         return response()->json([
@@ -131,7 +131,7 @@ class JobEstimateController extends Controller
         $this->requireContractorOrAdmin($job, $user);
         $estimate = $job->estimate;
 
-        if (!$estimate) {
+        if (! $estimate) {
             return response()->json(['message' => 'Generate an analysis before contractor review.'], 409);
         }
         if (in_array($estimate->status, ['accepted', 'completed'], true)) {
@@ -200,7 +200,7 @@ class JobEstimateController extends Controller
             $job,
             $user,
             'estimate_reviewed',
-            $user->name . ' reviewed and adjusted the TrustFix estimate.'
+            $user->name.' reviewed and adjusted the TrustFix estimate.'
         );
 
         return response()->json([
@@ -215,7 +215,7 @@ class JobEstimateController extends Controller
         $this->requireContractorOrAdmin($job, $user);
         $estimate = $job->estimate;
 
-        if (!$estimate || $estimate->status !== 'contractor_reviewed') {
+        if (! $estimate || $estimate->status !== 'contractor_reviewed') {
             return response()->json(['message' => 'Save a contractor review before submitting the quote.'], 409);
         }
 
@@ -252,7 +252,7 @@ class JobEstimateController extends Controller
             $job,
             $user,
             'quote_submitted',
-            $user->name . ' submitted a contractor quote for customer review.'
+            $user->name.' submitted a contractor quote for customer review.'
         );
 
         $this->notifications->quoteSubmitted($job, $estimate->fresh());
@@ -263,16 +263,18 @@ class JobEstimateController extends Controller
     public function accept(Request $request, $id)
     {
         [$job, $user] = $this->accessibleJob($id);
-        $estimate = $job->estimate;
+        $result = DB::transaction(function () use ($job, $user) {
+            $job = Job::query()->lockForUpdate()->findOrFail($job->id);
+            if ($job->customer_id != $user->id && ! $user->hasRole('admin')) {
+                return response()->json(['message' => 'Only the customer can accept this quote.'], 403);
+            }
 
-        if ($job->customer_id != $user->id && $user->role !== 'admin') {
-            return response()->json(['message' => 'Only the customer can accept this quote.'], 403);
-        }
-        if (!$estimate || $estimate->status !== 'quoted' || !$estimate->contractor_quote) {
-            return response()->json(['message' => 'There is no submitted quote to accept.'], 409);
-        }
+            $estimate = $job->estimate()->lockForUpdate()->first();
+            if (! $estimate || $estimate->status !== 'quoted' || ! $estimate->contractor_quote) {
+                return response()->json(['message' => 'There is no submitted quote to accept.'], 409);
+            }
 
-        DB::transaction(function () use ($job, $estimate, $user) {
+            app(PaymentAgreementService::class)->assertJobTermsEditable((int) $job->id);
             $estimate->update([
                 'accepted_price' => $estimate->contractor_quote,
                 'status' => 'accepted',
@@ -281,13 +283,19 @@ class JobEstimateController extends Controller
             ]);
             $job->update(['agreed_price' => $estimate->contractor_quote]);
             $this->revision($estimate, $user, 'quote_accepted');
-        });
+
+            return [$job, $estimate];
+        }, 3);
+        if (! is_array($result)) {
+            return $result;
+        }
+        [$job, $estimate] = $result;
 
         $this->recordEvent(
             $job,
             $user,
             'quote_accepted',
-            $user->name . ' accepted the contractor quote.'
+            $user->name.' accepted the contractor quote.'
         );
 
         $this->notifications->quoteAccepted($job, $estimate->fresh());
@@ -301,11 +309,11 @@ class JobEstimateController extends Controller
         $this->requireContractorOrAdmin($job, $user);
         $estimate = $job->estimate;
 
-        if (!$estimate) {
+        if (! $estimate) {
             return response()->json(['message' => 'No estimate exists for this job.'], 409);
         }
-        if (!in_array($estimate->status, ['accepted', 'completed'], true)
-            && !in_array($job->status, ['in_progress', 'completed'], true)) {
+        if (! in_array($estimate->status, ['accepted', 'completed'], true)
+            && ! in_array($job->status, ['in_progress', 'completed'], true)) {
             return response()->json(['message' => 'Actual results can be recorded after the quote is accepted or work begins.'], 409);
         }
 
@@ -330,7 +338,7 @@ class JobEstimateController extends Controller
             $job,
             $user,
             'estimate_actuals_recorded',
-            $user->name . ' recorded actual labor, materials, and final invoice data.'
+            $user->name.' recorded actual labor, materials, and final invoice data.'
         );
 
         return response()->json($estimate->fresh());
@@ -350,7 +358,7 @@ class JobEstimateController extends Controller
     private function accessibleJob($id, bool $withEstimate = false): array
     {
         $user = Auth::guard('api')->user();
-        if (!$user) {
+        if (! $user) {
             abort(response()->json(['error' => 'Unauthenticated'], 401));
         }
 
@@ -362,8 +370,8 @@ class JobEstimateController extends Controller
         $job = Job::with($relations)->findOrFail($id);
         $isCustomer = $job->customer_id == $user->id;
         $isAssignedContractor = $job->handyman_id == $user->id;
-        $isAdmin = $user->role === 'admin';
-        if (!$isCustomer && !$isAssignedContractor && !$isAdmin) {
+        $isAdmin = $user->hasRole('admin');
+        if (! $isCustomer && ! $isAssignedContractor && ! $isAdmin) {
             abort(response()->json(['error' => 'Forbidden'], 403));
         }
 
@@ -372,14 +380,14 @@ class JobEstimateController extends Controller
 
     private function requireParticipant(Job $job, User $user): void
     {
-        if ($job->customer_id != $user->id && $job->handyman_id != $user->id && $user->role !== 'admin') {
+        if ($job->customer_id != $user->id && $job->handyman_id != $user->id && ! $user->hasRole('admin')) {
             abort(response()->json(['message' => 'Only the customer or assigned contractor can analyze this job.'], 403));
         }
     }
 
     private function requireContractorOrAdmin(Job $job, User $user): void
     {
-        if ($user->role !== 'admin' && $job->handyman_id != $user->id) {
+        if (! $user->hasRole('admin') && $job->handyman_id != $user->id) {
             abort(response()->json(['message' => 'Only the assigned contractor can review this estimate.'], 403));
         }
     }
@@ -388,13 +396,13 @@ class JobEstimateController extends Controller
     {
         $isCustomer = $job->customer_id == $user->id;
         $isAssigned = $job->handyman_id == $user->id;
-        $isAdmin = $user->role === 'admin';
+        $isAdmin = $user->hasRole('admin');
         $locked = $estimate && in_array($estimate->status, ['accepted', 'completed'], true);
 
         return [
             'can_analyze' => ($isCustomer || $isAssigned || $isAdmin)
-                && (!$estimate || !in_array($estimate->status, ['quoted', 'accepted', 'completed'], true)),
-            'can_review' => ($isAssigned || $isAdmin) && !$locked,
+                && (! $estimate || ! in_array($estimate->status, ['quoted', 'accepted', 'completed'], true)),
+            'can_review' => ($isAssigned || $isAdmin) && ! $locked,
             'can_quote' => ($isAssigned || $isAdmin)
                 && $estimate
                 && $estimate->status === 'contractor_reviewed',
@@ -424,7 +432,7 @@ class JobEstimateController extends Controller
     {
         return array_values(array_map(
             fn ($material) => $material['name'] ?? 'Unnamed material',
-            array_filter($materials, fn ($material) => !empty($material['price_missing']))
+            array_filter($materials, fn ($material) => ! empty($material['price_missing']))
         ));
     }
 

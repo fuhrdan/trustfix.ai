@@ -2,8 +2,9 @@
 require 'config.php';
 requireLogin();
 
-$currentUser = apiRequest('GET', '/me');
-$isAdmin = ($currentUser['role'] ?? '') === 'admin';
+$currentUser = currentUser(true);
+$isAdmin = userHasRole($currentUser, 'admin');
+$isContractor = userHasAnyRole($currentUser, ['handyman', 'company']);
 $selectedProfileId = max(0, (int)($_GET['contractor_profile_id'] ?? 0));
 $approvedContractors = [];
 
@@ -14,13 +15,14 @@ if ($isAdmin) {
     );
     $approvedContractors = $contractorResponse['data'] ?? [];
 
-    if (!$selectedProfileId && !empty($approvedContractors)) {
+    if (!$isContractor && !$selectedProfileId && !empty($approvedContractors)) {
         $selectedProfileId = (int)($approvedContractors[0]['id'] ?? 0);
     }
 }
 
+$viewingAsAdmin = $isAdmin && (!$isContractor || $selectedProfileId > 0);
 $dashboardEndpoint = '/contractor/dashboard';
-if ($isAdmin && $selectedProfileId) {
+if ($viewingAsAdmin && $selectedProfileId) {
     $dashboardEndpoint .= '?' . http_build_query([
         'contractor_profile_id' => $selectedProfileId,
     ]);
@@ -35,7 +37,7 @@ if (($data['_http_code'] ?? 200) === 403) {
     <div class="cd-shell">
         <section class="cd-empty">
             <span class="cd-kicker">Contractor access</span>
-            <?php if ($isAdmin) { ?>
+            <?php if ($viewingAsAdmin) { ?>
                 <h1>No approved contractors are available</h1>
                 <p>Approve a contractor from Manage Users, then return here to review their contractor dashboard.</p>
                 <a class="cd-button" href="list_users.php">Manage users</a>
@@ -127,6 +129,9 @@ include 'header.php';
                 <label for="contractor_profile_id">Viewing contractor dashboard</label>
             </div>
             <select id="contractor_profile_id" name="contractor_profile_id" onchange="this.form.submit()">
+                <?php if ($isContractor) { ?>
+                    <option value="0" <?= $selectedProfileId === 0 ? 'selected' : '' ?>>My contractor dashboard</option>
+                <?php } ?>
                 <?php foreach ($approvedContractors as $approvedContractor) { ?>
                     <option
                         value="<?= (int)($approvedContractor['id'] ?? 0) ?>"
@@ -181,7 +186,7 @@ include 'header.php';
                     <h3>Payout account</h3>
                     <?php if (!empty($payouts['payouts_enabled'])) { ?>
                         <p class="cd-ready"><strong>✓ Ready for payouts</strong></p>
-                    <?php } elseif ($isAdmin) { ?>
+                    <?php } elseif ($viewingAsAdmin) { ?>
                         <p class="cd-warn"><strong>Contractor action required</strong></p>
                         <p>The contractor must sign in and complete their own secure Stripe onboarding.</p>
                     <?php } else { ?>
@@ -246,7 +251,7 @@ include 'header.php';
             <p><strong>Details submitted:</strong> <?= !empty($payouts['details_submitted']) ? 'Yes' : 'No' ?><br>
                <strong>Charges enabled:</strong> <?= !empty($payouts['charges_enabled']) ? 'Yes' : 'No' ?><br>
                <strong>Payouts enabled:</strong> <?= !empty($payouts['payouts_enabled']) ? 'Yes' : 'No' ?></p>
-            <?php if ($isAdmin) { ?>
+            <?php if ($viewingAsAdmin) { ?>
                 <p class="cd-meta">Payout onboarding is read-only for administrators because the contractor must personally provide and verify banking information.</p>
             <?php } else { ?>
                 <form method="POST" action="start_contractor_onboarding.php"><?= csrfField() ?><button class="cd-button"><?= !empty($payouts['details_submitted']) ? 'Update payout account' : 'Set up payout account' ?></button></form>

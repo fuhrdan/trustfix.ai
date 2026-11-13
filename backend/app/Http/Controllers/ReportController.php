@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContractorProfile;
-use App\Models\Job;
 use App\Models\Report;
 use App\Models\User;
 use App\Services\LifecycleNotificationService;
@@ -15,8 +14,7 @@ class ReportController extends Controller
 {
     public function __construct(
         private readonly LifecycleNotificationService $notifications,
-    ) {
-    }
+    ) {}
 
     public function store(Request $request)
     {
@@ -40,7 +38,7 @@ class ReportController extends Controller
 
         $user = Auth::guard('api')->user();
 
-        if (!empty($validated['reported_user_id']) && (int) $validated['reported_user_id'] === $user->id) {
+        if (! empty($validated['reported_user_id']) && (int) $validated['reported_user_id'] === $user->id) {
             return response()->json(['error' => 'You cannot report yourself'], 422);
         }
 
@@ -80,19 +78,19 @@ class ReportController extends Controller
 
         $query = Report::with(['reporter', 'reportedUser', 'contractorProfile', 'job', 'reviewer']);
 
-        if (!empty($validated['status'])) {
+        if (! empty($validated['status'])) {
             $query->where('status', $validated['status']);
         }
 
-        if (!empty($validated['reported_user_id'])) {
+        if (! empty($validated['reported_user_id'])) {
             $query->where('reported_user_id', $validated['reported_user_id']);
         }
 
-        if (!empty($validated['contractor_profile_id'])) {
+        if (! empty($validated['contractor_profile_id'])) {
             $query->where('contractor_profile_id', $validated['contractor_profile_id']);
         }
 
-        if (!empty($validated['job_id'])) {
+        if (! empty($validated['job_id'])) {
             $query->where('job_id', $validated['job_id']);
         }
 
@@ -171,7 +169,11 @@ class ReportController extends Controller
         ]);
 
         if ($validated['status'] === 'approved') {
-            $profile->user()->update(['role' => 'handyman']);
+            $user = $profile->user()->firstOrFail();
+            // Approval adds contractor capability without removing homeowner or
+            // administrator access. Admin remains primary; other accounts use
+            // contractor as the legacy/default role.
+            $user->grantRole('handyman', ! $user->hasRole('admin'));
         }
 
         if ($previousStatus !== $validated['status']) {
