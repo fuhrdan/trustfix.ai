@@ -487,6 +487,31 @@ class MultiRoleAuthorizationTest extends TestCase
         $this->assertStringNotContainsString('$user?->role', $pricingController);
     }
 
+    public function test_multi_role_architecture_is_documented_for_human_reviewers(): void
+    {
+        $documentation = file_get_contents(
+            dirname(base_path()).'/docs/multi-role-authorization.md'
+        );
+
+        $this->assertIsString($documentation);
+        $this->assertStringContainsString(
+            '`users` is the canonical identity table',
+            $documentation
+        );
+        $this->assertStringContainsString(
+            '`user_roles` stores additive authorization capabilities',
+            $documentation
+        );
+        $this->assertStringContainsString(
+            'Do not authorize against `users.role` directly',
+            $documentation
+        );
+        $this->assertStringContainsString(
+            'Application rollback does not require dropping `user_roles`',
+            $documentation
+        );
+    }
+
     private function user(string $role): User
     {
         $user = User::create([

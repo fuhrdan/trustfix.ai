@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Add additive capabilities and backfill every existing primary role.
+     *
+     * The legacy `users.role` column is intentionally not removed: it remains
+     * the default/compatibility role during rolling deployment and rollback.
+     */
     public function up(): void
     {
         Schema::create('user_roles', function (Blueprint $table): void {
@@ -23,6 +29,8 @@ return new class extends Migration
 
         $now = now();
 
+        // Chunking bounds memory use; insertOrIgnore makes a retried backfill
+        // safe against the unique (user_id, role) constraint.
         DB::table('users')
             ->select(['id', 'role'])
             ->orderBy('id')
@@ -44,6 +52,13 @@ return new class extends Migration
             });
     }
 
+    /**
+     * Remove only additive assignments; primary roles remain on `users`.
+     *
+     * Operators should prefer application rollback without `migrate:rollback`
+     * after secondary roles have been assigned, because dropping this table
+     * necessarily discards those secondary capabilities.
+     */
     public function down(): void
     {
         Schema::dropIfExists('user_roles');

@@ -153,6 +153,7 @@ class ContractorInvitationController extends Controller
             }
 
             if (! $user) {
+                // A brand-new invitee may start with contractor as primary.
                 $user = User::create([
                     'name' => $invite->name ?: strstr($invite->email, '@', true),
                     'email' => $invite->email,
@@ -161,6 +162,8 @@ class ContractorInvitationController extends Controller
                     'account_status' => 'active',
                 ]);
             } elseif ($user->hasRole('customer')) {
+                // An existing homeowner keeps customer capability while the
+                // contractor role becomes the legacy/default experience.
                 $user->grantRole('handyman', true);
             }
 

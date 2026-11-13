@@ -49,6 +49,12 @@ $frontendSupportEmail = getenv('TRUSTFIX_SUPPORT_EMAIL') ?: 't.tyler@trustfixai.
 
 $jwtToken = $_SESSION['jwt_token'] ?? '';
 
+/**
+ * Return every capability exposed by the API/session user payload.
+ *
+ * `roles` is authoritative for additive access. The legacy `role` value is
+ * unioned in so sessions created during rolling deployment remain safe.
+ */
 function userRoles($user)
 {
     if (!is_array($user)) {
@@ -80,6 +86,7 @@ function userRoles($user)
     ));
 }
 
+/** Check one frontend capability without branching on the primary role. */
 function userHasRole($user, $role)
 {
     return in_array(
@@ -89,6 +96,7 @@ function userHasRole($user, $role)
     );
 }
 
+/** Check whether the current payload grants any requested capability. */
 function userHasAnyRole($user, $roles)
 {
     foreach ((array)$roles as $role) {
@@ -231,6 +239,7 @@ function forgetMessageNotificationSummary()
     unset($_SESSION['message_notification_summary']);
 }
 
+/** Enforce additive frontend authorization after refreshing the API user. */
 function requireRole($roles)
 {
     requireLogin();

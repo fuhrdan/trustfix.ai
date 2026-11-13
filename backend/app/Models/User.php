@@ -20,6 +20,14 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
+/**
+ * TrustFix's canonical account and identity record.
+ *
+ * `users.role` is deliberately retained as the compatibility/default role for
+ * legacy clients. Authorization must use roleNames(), hasRole(), hasAnyRole(),
+ * or scopeWithRole() so additive assignments in `user_roles` are respected.
+ * See docs/multi-role-authorization.md for invariants and rollout guidance.
+ */
 class User extends Authenticatable implements JWTSubject, MustVerifyEmailContract
 {
     public const ROLES = [
@@ -66,10 +74,18 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         'role_assignments',
     ];
 
+    /** Include the complete additive role set in API serialization. */
     protected $appends = [
         'roles',
     ];
 
+    /**
+     * Keep account creation compatible on both sides of the migration.
+     *
+     * Before `user_roles` exists, the primary role remains sufficient for
+     * login and legacy authorization. After migration, every new account also
+     * receives a matching additive assignment.
+     */
     protected static function booted(): void
     {
         static::creating(function (User $user): void {
@@ -118,16 +134,26 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         ];
     }
 
+    /** @return HasMany<UserRole, $this> */
     public function roleAssignments(): HasMany
     {
         return $this->hasMany(UserRole::class);
     }
 
+    /** @return list<string> */
     public function getRolesAttribute(): array
     {
         return $this->roleNames();
     }
 
+    /**
+     * Return the normalized union of additive assignments and primary role.
+     *
+     * The union keeps partially migrated and rolled-back installations usable
+     * without allowing callers to accidentally ignore an assigned capability.
+     *
+     * @return list<string>
+     */
     public function roleNames(): array
     {
         $assigned = [];
@@ -149,11 +175,17 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         return self::normalizeRoles($assigned);
     }
 
+    /** Determine whether this account has one specific capability. */
     public function hasRole(string $role): bool
     {
         return in_array($role, $this->roleNames(), true);
     }
 
+    /**
+     * Determine whether this account has at least one requested capability.
+     *
+     * @param  array<int, string>|string  $roles
+     */
     public function hasAnyRole(array|string $roles): bool
     {
         return array_intersect(
@@ -162,6 +194,12 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         ) !== [];
     }
 
+    /**
+     * Add a capability without removing existing assignments.
+     *
+     * Set $makePrimary only when legacy/default behavior should switch to the
+     * granted role. The operation is transactional and idempotent.
+     */
     public function grantRole(string $role, bool $makePrimary = false): self
     {
         $role = self::normalizeRoles([$role])[0];
@@ -189,6 +227,14 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         return $this;
     }
 
+    /**
+     * Replace the additive role set while preserving the primary-role invariant.
+     *
+     * This is the administrative write path. The primary role must be included
+     * in $roles, and assignments plus `users.role` change in one transaction.
+     *
+     * @param  array<int, string>  $roles
+     */
     public function syncRoles(array $roles, ?string $primaryRole = null): self
     {
         $roles = self::normalizeRoles($roles);
@@ -228,6 +274,12 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         return $this;
     }
 
+    /**
+     * Query accounts by capability, including the legacy primary-role fallback.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
     public function scopeWithRole(Builder $query, string $role): Builder
     {
         $role = self::normalizeRoles([$role])[0];
@@ -244,6 +296,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         });
     }
 
+    /** Support zero-downtime deployment before and after the additive table. */
     private function roleAssignmentsTableExists(): bool
     {
         return $this->getConnection()
@@ -251,6 +304,12 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
             ->hasTable('user_roles');
     }
 
+    /**
+     * Validate, deduplicate, and order roles using the application allowlist.
+     *
+     * @param  array<int, mixed>  $roles
+     * @return list<string>
+     */
     public static function normalizeRoles(array $roles): array
     {
         $requested = array_values(array_unique(array_map(

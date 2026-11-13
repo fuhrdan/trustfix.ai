@@ -157,6 +157,8 @@ class AdminDashboardController extends Controller
             'email_verified' => ['sometimes', 'boolean'],
         ]);
 
+        // Older admin clients submit only `role`. Preserve current additive
+        // assignments for those clients instead of silently deleting them.
         $rolesWereProvided = array_key_exists('roles', $validated);
         $primaryRole = $validated['role'];
         $requestedRoles = $rolesWereProvided
@@ -216,6 +218,8 @@ class AdminDashboardController extends Controller
             ], 422);
         }
 
+        // Identity fields, additive assignments, primary role, and verification
+        // state must succeed or fail as one administrative operation.
         DB::transaction(function () use (
             $primaryRole,
             $requestedEmailVerification,

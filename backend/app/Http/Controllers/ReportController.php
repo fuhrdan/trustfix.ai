@@ -170,6 +170,9 @@ class ReportController extends Controller
 
         if ($validated['status'] === 'approved') {
             $user = $profile->user()->firstOrFail();
+            // Approval adds contractor capability without removing homeowner or
+            // administrator access. Admin remains primary; other accounts use
+            // contractor as the legacy/default role.
             $user->grantRole('handyman', ! $user->hasRole('admin'));
         }
 
