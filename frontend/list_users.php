@@ -122,6 +122,15 @@ include 'header.php';
     $isEmailVerified = !empty($user['email_verified_at']);
     $assignedRoles = userRoles($user);
     $primaryRole = (string)($user['role'] ?? '');
+    $assignedRoleLabels = [];
+
+    foreach ($assignedRoles as $assignedRole) {
+        $assignedRoleLabels[] = $roleOptions[$assignedRole]
+            ?? ucfirst((string)$assignedRole);
+    }
+
+    $primaryRoleLabel = $roleOptions[$primaryRole]
+        ?? ucfirst($primaryRole ?: 'customer');
 ?>
 
 <tr>
@@ -169,8 +178,27 @@ include 'header.php';
         <?php endif; ?>
     </td>
 
-    <td data-label="Roles">
-        <form method="POST" action="update_user_role.php" class="tf-role-form">
+    <td data-label="Roles" class="tf-role-cell">
+        <?php
+        /*
+         * Keep the table readable at a glance. The complete additive-role
+         * editor remains available on demand instead of expanding every row.
+         */
+        ?>
+        <div class="tf-role-overview">
+            <span class="tf-role-primary">
+                Primary: <strong><?= htmlspecialchars($primaryRoleLabel) ?></strong>
+            </span>
+            <div class="tf-role-badges" aria-label="Assigned roles">
+                <?php foreach ($assignedRoleLabels as $assignedRoleLabel): ?>
+                    <span class="tf-role-badge"><?= htmlspecialchars($assignedRoleLabel) ?></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <details class="tf-role-editor">
+            <summary>Manage roles &amp; verification</summary>
+            <form method="POST" action="update_user_role.php" class="tf-role-form">
             <?= csrfField() ?>
             <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
             <input type="hidden" name="return_q" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>">
@@ -227,8 +255,9 @@ include 'header.php';
             <?php endif; ?>
 
             <p class="tf-muted">The primary role must also be checked above.</p>
-            <button type="submit">Save Roles &amp; Verification</button>
-        </form>
+                <button type="submit">Save Roles &amp; Verification</button>
+            </form>
+        </details>
     </td>
 
     <td data-label="Actions">

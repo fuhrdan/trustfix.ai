@@ -99,7 +99,7 @@
     <meta charset="utf-8">
     <title><?= htmlspecialchars($documentTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="TF-Style.css?v=20260823-login-security">
+    <link rel="stylesheet" href="TF-Style.css?v=20261114-admin-role-view">
 </head>
 
 <body>

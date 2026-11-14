@@ -363,6 +363,8 @@ class MultiRoleAuthorizationTest extends TestCase
         $frontend = dirname(base_path()).'/frontend';
         $listUsers = file_get_contents($frontend.'/list_users.php');
         $editUser = file_get_contents($frontend.'/edit_user.php');
+        $stylesheet = file_get_contents($frontend.'/TF-Style.css');
+        $header = file_get_contents($frontend.'/header.php');
         $updateUserRole = file_get_contents($frontend.'/update_user_role.php');
 
         $this->assertIsString($listUsers);
@@ -370,6 +372,33 @@ class MultiRoleAuthorizationTest extends TestCase
         $this->assertStringContainsString('name="roles[]"', $listUsers);
         $this->assertStringContainsString('>Primary role</label>', $listUsers);
         $this->assertStringContainsString('Save Roles &amp; Verification', $listUsers);
+        $this->assertStringContainsString('class="tf-role-overview"', $listUsers);
+        $this->assertStringContainsString('class="tf-role-badges"', $listUsers);
+        $this->assertStringContainsString('class="tf-role-editor"', $listUsers);
+        $this->assertStringContainsString(
+            'Manage roles &amp; verification',
+            $listUsers
+        );
+
+        $this->assertIsString($stylesheet);
+        $this->assertStringContainsString(
+            '.tf-admin-users-table td[data-label="Roles"]',
+            $stylesheet
+        );
+        $this->assertStringContainsString('.tf-role-assignments', $stylesheet);
+        $this->assertStringContainsString('.tf-role-overview', $stylesheet);
+        $this->assertStringContainsString('.tf-role-badge', $stylesheet);
+        $this->assertStringContainsString('.tf-role-editor', $stylesheet);
+        $this->assertStringContainsString(
+            'grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));',
+            $stylesheet
+        );
+
+        $this->assertIsString($header);
+        $this->assertStringContainsString(
+            'TF-Style.css?v=20261114-admin-role-view',
+            $header
+        );
 
         $this->assertIsString($editUser);
         $this->assertStringContainsString("'roles' => is_array(\$submittedRoles)", $editUser);

@@ -743,6 +743,65 @@ button:disabled,
     overflow-wrap: anywhere;
 }
 
+.tf-admin-users-table td[data-label="Roles"]
+{
+    overflow-wrap: normal;
+    vertical-align: top;
+}
+
+.tf-role-overview
+{
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.tf-role-primary
+{
+    white-space: nowrap;
+}
+
+.tf-role-badges
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.tf-role-badge
+{
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border: 1px solid #bfd5f5;
+    border-radius: 999px;
+    background: #edf5ff;
+    color: var(--tf-blue-dark);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.tf-role-editor
+{
+    margin-top: 9px;
+}
+
+.tf-role-editor > summary
+{
+    color: var(--tf-blue-dark);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.tf-role-editor[open] > summary
+{
+    margin-bottom: 10px;
+}
+
 .tf-role-form,
 .tf-admin-user-actions,
 .tf-admin-user-actions form
@@ -752,22 +811,74 @@ button:disabled,
 
 .tf-role-form
 {
+    /*
+     * The additive-role editor contains a fieldset, two selects, help text,
+     * and a submit button. Keep those controls in one flow so CSS grid
+     * auto-placement cannot squeeze the fieldset into a character-wide cell.
+     */
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
     align-items: start;
+    min-width: 0;
+    overflow-wrap: normal;
+    font-size: 14px;
+}
+
+.tf-role-assignments
+{
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 12px 12px;
+    box-sizing: border-box;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px 12px;
+    border: 1px solid var(--tf-border);
+    border-radius: 8px;
+}
+
+.tf-role-assignments legend
+{
+    padding: 0 4px;
+    font-weight: 700;
+}
+
+.tf-role-assignments label
+{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.tf-role-assignments input[type="checkbox"]
+{
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.tf-role-form > label,
+.tf-role-form .tf-muted
+{
+    margin: 0;
 }
 
 .tf-role-form select
 {
+    width: 100%;
     min-width: 0;
     margin: 0;
 }
 
 .tf-role-form button
 {
+    width: 100%;
     padding: 9px 11px;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 .tf-admin-user-actions
@@ -1145,6 +1256,11 @@ table th
 
 @media (max-width: 560px)
 {
+    .tf-role-assignments
+    {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .tf-filter-grid
     {
         grid-template-columns: 1fr;
