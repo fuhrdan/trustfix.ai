@@ -100,6 +100,7 @@
     <title><?= htmlspecialchars($documentTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="TF-Style.css?v=20261114-admin-role-view">
+    <link rel="stylesheet" href="TF-Mobile.css?v=20261117">
 </head>
 
 <body>

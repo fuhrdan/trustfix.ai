@@ -1,0 +1,210 @@
+/*
+ * TrustFix — phone readability improvements
+ * 2026-11-17
+ *
+ * Upload alongside frontend/TF-Style.css and load AFTER it in frontend/header.php.
+ * Presentation only: no PHP, JavaScript, routes, or payment changes.
+ * All layout overrides are restricted to phone-sized screens.
+ */
+
+@media screen and (max-width: 767px) {
+  :root {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-size: 16px;
+    line-height: 1.55;
+    overflow-wrap: break-word;
+  }
+
+  /* TrustFix's shared page container: comfortable, consistent gutters. */
+  main#main-content.container {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  main#main-content :is(article, section, aside, fieldset, form) {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.28;
+    overflow-wrap: break-word;
+  }
+
+  h1 { font-size: clamp(26px, 7vw, 32px); }
+  h2 { font-size: clamp(21px, 5.5vw, 26px); }
+  h3 { font-size: clamp(18px, 4.8vw, 22px); }
+
+  main#main-content :is(p, li, dd, dt, label, .tf-page-intro,
+                       .tf-muted, .tf-card p, .tf-section-heading p) {
+    line-height: 1.55;
+  }
+
+  .tf-page-intro { font-size: 16px; }
+
+  /* Dashboard, properties, jobs, and contractor cards. !important is needed
+     where existing PHP uses an inline two-column grid definition. */
+  main#main-content .tf-card-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px;
+  }
+
+  main#main-content .tf-card-grid > * { min-width: 0; }
+
+  main#main-content .tf-card {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    padding: 18px;
+  }
+
+  main#main-content .tf-card :is(p, li) { font-size: 16px; }
+  main#main-content .tf-card :is(h2, h3) { margin-top: 0; }
+
+  /* Action bars wrap instead of running off the right side of the phone. */
+  main#main-content .tf-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 100%;
+  }
+
+  main#main-content .tf-actions > :is(a.tf-button, button, input[type="submit"]) {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 145px;
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  /* Readable, finger-friendly forms; 16px stops iOS input-focus zoom. */
+  main#main-content :is(input[type="text"], input[type="email"],
+                        input[type="password"], input[type="tel"],
+                        input[type="url"], input[type="number"],
+                        input[type="search"], input[type="date"],
+                        input[type="datetime-local"], select, textarea) {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  main#main-content textarea {
+    min-height: 110px;
+    width: 100%;
+  }
+
+  main#main-content input[type="file"] {
+    max-width: 100%;
+    font-size: 15px;
+  }
+
+  main#main-content :is(button, .tf-button, input[type="submit"],
+                        input[type="button"], input[type="reset"]) {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-height: 44px;
+    font-size: 15px;
+    line-height: 1.35;
+    touch-action: manipulation;
+  }
+
+  /* Existing grid-based filters and administrator role controls. */
+  main#main-content :is(.tf-filter-grid, .tf-role-assignments,
+                        .form-grid, .form-columns) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main#main-content :is(.tf-section-heading, .tf-actions,
+                        .tf-role-form, .tf-role-badges) {
+    min-width: 0;
+  }
+
+  main#main-content .tf-section-heading { flex-wrap: wrap; }
+  main#main-content .tf-alert { overflow-wrap: anywhere; }
+
+  /* Keep wide data tables intact. Existing scrolling wrappers stay swipeable. */
+  main#main-content :is(.table-responsive, .table-wrapper, .table-container,
+                        .tf-table-wrapper, .tf-table-wrap, .tf-table-responsive) {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main#main-content table { font-size: 15px; }
+  main#main-content :is(th, td) { overflow-wrap: break-word; }
+  main#main-content pre { max-width: 100%; overflow-x: auto; }
+
+  main#main-content :is(img, video, svg) { max-width: 100%; }
+  main#main-content :is(img, video) { height: auto; }
+
+  /* TrustFix's current header/menu: larger hit targets, compact safe panel. */
+  .tf-top-nav .tf-nav-inner {
+    box-sizing: border-box;
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .tf-top-nav .tf-nav-actions {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .tf-top-nav :is(.tf-dashboard-link, .tf-notification-link,
+                  .tf-signout-button, .tf-nav-menu > summary,
+                  .tf-public-nav a) {
+    box-sizing: border-box;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .tf-nav-menu-panel {
+    box-sizing: border-box;
+    width: min(340px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 84px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tf-nav-menu-panel a {
+    box-sizing: border-box;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+@media screen and (max-width: 420px) {
+  main#main-content .tf-card { padding: 16px; }
+
+  /* On compact phones, dashboard actions become easy-to-tap full-width rows. */
+  main#main-content .tf-card > .tf-actions > :is(a.tf-button, button),
+  main#main-content .tf-card .tf-actions > :is(a.tf-button, button) {
+    flex-basis: 100%;
+  }
+
+  main#main-content :is(.tf-filter-grid, .tf-role-form) :is(input, select, button) {
+    max-width: 100%;
+  }
+}
